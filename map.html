@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Facebook Meta Mapper</title>
+
+  <!-- Leaflet + MarkerCluster -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <style>
+    :root{
+      --bg:#0f1115; --panel:#151923; --muted:#8a93a6; --text:#e6e9f2;
+      --accent:#7aa2f7; --accent-2:#a6da95; --danger:#f7768e; --border:#242a37;
+      --logo-size:72px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial,"Noto Sans";
+      background:linear-gradient(180deg,#0f1115 0%,#0b0d12 100%);
+      overflow:hidden;
+    }
+    header{padding:10px 16px 8px; border-bottom:1px solid var(--border)}
+    .brand{display:flex; align-items:center; gap:12px}
+    .brand-left{width:var(--logo-size); height:var(--logo-size); flex:0 0 var(--logo-size); display:flex; align-items:center; justify-content:center}
+    .brand-left img{width:100%; height:100%; object-fit:contain}
+    .brand-right{min-width:0}
+    .brand-title{margin:0; font-size:20px; line-height:1; letter-spacing:.2px}
+    .brand-help{color:var(--muted); margin-top:4px; font-size:13px}
+
+    .page{display:flex; flex-direction:column; height:100%; min-height:0}
+    .container{
+      flex:1; min-height:0; padding:0 16px 16px;
+      display:grid; grid-template-columns:340px 1fr; gap:16px; overflow:hidden;
+    }
+    .card{background:var(--panel); border:1px solid var(--border); border-radius:12px; overflow:hidden}
+    .card h2{
+      font-size:14px; margin:0; padding:12px 14px; border-bottom:1px solid var(--border);
+      color:var(--muted); letter-spacing:.2px; font-weight:700; text-transform:uppercase;
+    }
+    .section{padding:12px 14px}
+    .row{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+    .row + .row{margin-top:8px}
+    .small{font-size:12px; color:var(--muted)}
+    .muted{color:var(--muted)}
+
+    .left-card{display:flex; flex-direction:column; min-height:0}
+    .left-scroll{overflow:auto; padding-bottom:12px}
+
+    input[type="text"], select{
+      background:#0c0f15; color:var(--text); border:1px solid var(--border);
+      border-radius:10px; padding:8px 10px; font-size:14px;
+    }
+    .btn{
+      appearance:none; border:1px solid var(--border); background:#0e1220; color:#fff;
+      padding:8px 12px; border-radius:10px; cursor:pointer; font-size:13px;
+    }
+    .btn:hover{border-color:#2d3547}
+
+    .map-wrap{display:flex; flex-direction:column; min-height:0; position:relative}
+    .map-body{flex:1; min-height:0}
+    #map{height:100%; width:100%}
+
+    .graph-tip.leaflet-control{
+      background:var(--panel); color:var(--text); border:1px solid var(--border);
+      border-radius:10px; padding:6px 10px; font-size:12px;
+      box-shadow:0 8px 24px rgba(0,0,0,.30);
+    }
+    .graph-tip .tip-close{
+      appearance:none; border:none; background:transparent; color:inherit;
+      font-size:14px; line-height:1; padding-left:8px; cursor:pointer;
+    }
+
+    .tick{margin-left:8px; font-weight:700; color:#34d399;}
+    .cross{margin-left:6px; font-weight:700; color:var(--danger);}
+    .fix{margin-left:8px; font-weight:700; color:#fbbf24; cursor:pointer; background:none; border:none; padding:0;}
+    .fix:focus{outline:2px solid #3a4154; outline-offset:2px}
+
+    .fb-link{display:inline-flex; width:16px; height:16px; margin-right:8px; opacity:.95; align-items:center; justify-content:center;}
+    .fb-link svg{ width:16px; height:16px; fill:#3b82f6; }
+    .fb-link:hover{ opacity:1; }
+
+    .seed-dot{ margin-left:6px; font-size:12px; line-height:1; opacity:.95 }
+    .toggle-wrap{ display:flex; align-items:center; gap:6px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="brand">
+        <div class="brand-left" id="logoSlot">
+          <img src="https://i.imgur.com/7LlGcOC.png" alt="Logo"/>
+        </div>
+        <div class="brand-right">
+          <h1 class="brand-title">Facebook Meta Mapper</h1>
+          <div class="brand-help">Load JSON → parse places → cluster on the map. Export as JSON/CSV. (Nothing leaves your browser.)</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="container">
+      <!-- LEFT -->
+      <div class="card left-card">
+        <div class="left-scroll">
+          <h2>Data & Options</h2>
+          <div class="section">
+            <input id="file" type="file" accept=".json" hidden/>
+            <div class="row">
+              <label for="file" class="btn">Load JSON</label>
+              <button id="btnClear" class="btn">Clear map</button>
+              <button id="btnExport" class="btn">Export JSON</button>
+              <button id="btnExportCsv" class="btn">Export CSV</button>
+            </div>
+
+            <div class="row">
+              <label class="small" for="toggleAllMeta">Try all meta lines</label>
+              <input id="toggleAllMeta" type="checkbox" checked>
+            </div>
+
+            <div class="row">
+              <select id="countryHint" title="Bias ambiguous results toward this country">
+                <option value="">Country: Auto</option>
+                <option value="nz">New Zealand</option>
+                <option value="au">Australia</option>
+                <option value="fj">Fiji</option>
+                <option value="ws">Samoa</option>
+                <option value="to">Tonga</option>
+                <option value="vu">Vanuatu</option>
+                <option value="pg">Papua New Guinea</option>
+                <option value="sb">Solomon Islands</option>
+                <option value="gb">United Kingdom</option>
+                <option value="us">United States</option>
+                <option value="ca">Canada</option>
+                <option value="il">Israel</option>
+              </select>
+              <input id="search" type="text" placeholder="Filter list…"/>
+              <label class="toggle-wrap small" title="Hide rows & markers that aren’t mapped">
+                <input id="onlyMapped" type="checkbox"> Show only mapped
+              </label>
+            </div>
+          </div>
+
+          <h2>People & Progress</h2>
+          <div class="section">
+            <div class="row small muted">Loaded entries appear below. Click to pan to marker.</div>
+            <div class="row small muted">🌱 = Seed (no profile URL available)</div>
+
+            <div id="list" style="max-height:280px; overflow:auto; border:1px solid var(--border); border-radius:10px; padding:6px"></div>
+            <div class="row" style="margin-top:8px">
+              <div class="small muted">Progress</div>
+              <div style="flex:1; height:8px; border:1px solid var(--border); border-radius:999px; overflow:hidden; background:#0b0e14">
+                <div id="bar" style="height:100%; width:0%; background:linear-gradient(90deg,var(--accent),#60a5fa); transition:width .2s ease;"></div>
+              </div>
+              <span id="pct" class="small">0%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="card map-wrap">
+        <h2>Map</h2>
+        <div class="map-body" id="map"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  const $ = sel => document.querySelector(sel);
+  const listEl = $('#list');
+  const barEl  = $('#bar');
+  const pctEl  = $('#pct');
+  const fileEl = $('#file');
+  const searchEl = $('#search');
+  const tryAllEl = $('#toggleAllMeta');
+  const countryHintEl = $('#countryHint');
+  const onlyMappedEl = $('#onlyMapped');
+
+  // Debounce helper
+  function debounce(fn, delay = 250) {
+    let t;
+    return function(...args){
+      clearTimeout(t);
+      t = setTimeout(() => fn.apply(this, args), delay);
+    };
+  }
+
+  // Map
+  const map = L.map('map').setView([-41.2866, 174.7756], 4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
+
+  // Yellow teardrop (Option E)
+  function makeYellowIcon(){
+    const svg =
+      `<svg xmlns='http://www.w3.org/2000/svg' width='25' height='41' viewBox='0 0 25 41'>
+         <defs>
+           <filter id="sh" x="-50%" y="-50%" width="200%" height="200%">
+             <feDropShadow dx="0" dy="1.3" stdDeviation="1.2" flood-color="rgba(0,0,0,0.35)"/>
+           </filter>
+         </defs>
+         <path d='M12.5 0C5.6 0 0 5.6 0 12.5 0 21.9 12.5 41 12.5 41S25 21.9 25 12.5C25 5.6 19.4 0 12.5 0z'
+               fill='#FACC15' filter='url(#sh)'/>
+         <circle cx='12.5' cy='12.5' r='6.2' fill='none' stroke='white' stroke-width='1.2' opacity='.9'/>
+         <circle cx='12.5' cy='12.5' r='5.0' fill='white' opacity='.9'/>
+       </svg>`;
+    return L.icon({
+      iconUrl: 'data:image/svg+xml;base64,' + btoa(svg),
+      iconSize: [25,41], iconAnchor: [12,41], popupAnchor: [1,-34],
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      shadowSize: [41,41], shadowAnchor: [12,41]
+    });
+  }
+  const areaIcon = makeYellowIcon();
+
+  // Cluster
+  const cluster = L.markerClusterGroup({
+    maxClusterRadius: 60,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: false,
+    spiderfyDistanceMultiplier: 1.4
+  });
+  map.addLayer(cluster);
+
+  cluster.on('clusterclick', (e) => {
+    const kids = e.layer.getAllChildMarkers();
+    const same = kids.every(m => m.getLatLng().equals(kids[0].getLatLng()));
+    if (same || map.getZoom() >= 13) e.layer.spiderfy();
+    else e.layer.zoomToBounds();
+  });
+
+  // keep yellow during/after spiderfy
+  function reapplyAreaIconFor(list){
+    (list || []).forEach(m => { if (m && m._kind === 'area' && m.setIcon) m.setIcon(areaIcon); });
+  }
+  cluster.on('spiderfied',   e => reapplyAreaIconFor(e.markers));
+  cluster.on('unspiderfied', e => reapplyAreaIconFor(e.markers));
+  cluster.on('animationend', () => {
+    const all = cluster.getLayers().filter(l => l && l._kind === 'area');
+    reapplyAreaIconFor(all);
+  });
+  map.on('layeradd', e => {
+    const m = e.layer;
+    if (m && m._kind === 'area' && m.setIcon) m.setIcon(areaIcon);
+  });
+
+  // Bottom-left explanatory tip (leave text as-is)
+  const TipControl = L.Control.extend({
+    options: { position: 'bottomleft' },
+    onAdd: function(){
+      const div = L.DomUtil.create('div', 'graph-tip leaflet-control');
+      div.innerHTML = `<span><b>Yellow</b> = approximate area (city/region). <b>Blue</b> = precise place.</span>
+        <button class="tip-close" title="Dismiss">×</button>`;
+      L.DomEvent.disableClickPropagation(div);
+      L.DomEvent.on(div.querySelector('.tip-close'), 'click', () => map.removeControl(tipControl));
+      return div;
+    }
+  });
+  const tipControl = new TipControl();
+  map.addControl(tipControl);
+
+  // ------- State -------
+  let entries = [];
+  let markers = [];
+  let onMapPlaceClick = null, onKeyCancel = null;
+
+  function setProgress(done, total){
+    const p = total ? Math.round((done/total)*100) : 0;
+    barEl.style.width = p + '%';
+    pctEl.textContent = p + '%';
+  }
+
+  function clearMap(){
+    cluster.clearLayers();
+    markers.length = 0;
+    cancelPlacement();
+    for (const e of entries){
+      e._marker = null;
+      if (e._tick)  e._tick.textContent = '';
+      if (e._cross) e._cross.textContent = '';
+      if (e._fix)   e._fix.style.display = 'none';
+    }
+    listEl.innerHTML = '';
+    setProgress(0,0);
+  }
+
+  const sleep = (ms)=>new Promise(r=>setTimeout(r,ms)); // single definition
+
+  // cache
+  const MEM = new Map();
+  const CACHE_KEY = 'fbMetaGeoCacheV3';
+  const CACHE_TTL_MS = 60*24*60*60*1000;
+  (function loadCache(){
+    try{
+      const raw = localStorage.getItem(CACHE_KEY);
+      if(!raw) return;
+      const obj = JSON.parse(raw);
+      for(const [k,v] of Object.entries(obj)){
+        if(v && v.t && (Date.now()-v.t) < CACHE_TTL_MS) MEM.set(k, v.v);
+      }
+    }catch{}
+  })();
+  function saveCache(q, v){
+    try{
+      const raw = localStorage.getItem(CACHE_KEY);
+      const obj = raw ? JSON.parse(raw) : {};
+      obj[q] = { v, t: Date.now() };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(obj));
+    }catch{}
+  }
+
+  const countriesSet = new Set([
+    'afghanistan','albania','algeria','andorra','angola','antigua and barbuda','argentina','armenia','australia','austria',
+    'azerbaijan','bahamas','bahrain','bangladesh','barbados','belarus','belgium','belize','benin','bhutan','bolivia','bosnia and herzegovina',
+    'botswana','brazil','brunei','bulgaria','burkina faso','burundi','cambodia','cameroon','canada','cape verde','central african republic',
+    'chad','chile','china','colombia','comoros','congo','costa rica','cote d’ivoire','ivory coast','croatia','cuba','cyprus','czech republic',
+    'denmark','djibouti','dominica','dominican republic','ecuador','egypt','el salvador','equatorial guinea','eritrea','estonia','eswatini','ethiopia',
+    'fiji','finland','france','gabon','gambia','georgia','germany','greece','grenada','guatemala','guinea','guinea-bissau','guyana',
+    'haiti','honduras','hungary','iceland','india','indonesia','iran','iraq','ireland','israel','italy','jamaica','japan','jordan','kazakhstan',
+    'kenya','kiribati','kuwait','kyrgyzstan','laos','latvia','lebanon','lesotho','liberia','libya','liechtenstein','lithuania','luxembourg',
+    'madagascar','malawi','malaysia','maldives','mali','malta','marshall islands','mauritania','mauritius','mexico','micronesia','moldova',
+    'monaco','mongolia','montenegro','morocco','mozambique','myanmar','namibia','nauru','nepal','netherlands','new zealand','nicaragua','niger',
+    'nigeria','north macedonia','norway','oman','pakistan','palau','panama','papua new guinea','paraguay','peru','philippines','poland','portugal',
+    'qatar','romania','russia','rwanda','saint kitts and nevis','saint lucia','saint vincent and the grenadines','samoa','san marino','sao tome and principe',
+    'saudi arabia','senegal','serbia','seychelles','sierra leone','singapore','slovakia','slovenia','solomon islands','somalia','south africa','south korea',
+    'spain','sri lanka','sudan','suriname','sweden','switzerland','syria','taiwan','tajikistan','tanzania','thailand','timor-leste','togo','tonga',
+    'trinidad and tobago','tunisia','turkey','turkmenistan','tuvalu','uganda','ukraine','united arab emirates','united kingdom','great britain',
+    'england','scotland','wales','northern ireland','united states','usa','uruguay','uzbekistan','vanuatu','venezuela','vietnam','yemen','zambia','zimbabwe'
+  ]);
+
+  function normalizeQuery(q){
+    return String(q||'')
+      .replace(/\bCenrtal\b/ig,'Central')
+      .replace(/\bCity\b\s*$/i,'')
+      .replace(/\s*,\s*/g, ', ')
+      .replace(/[.\s]+$/,'')
+      .replace(/^\s+|\s+$/g,'')
+      .replace(/\s{2,}/g,' ');
+  }
+
+  const POI_WORDS = /\b(University|College|School|High School|Polytechnic|Institute|Campus|Church|Cathedral|Temple|Mosque|Hospital|Clinic|Center|Centre|Theatre|Theater|Museum|Library|Hotel|Restaurant|Cafe|Airport|Station|Mall|St(reet)?|Rd|Road|Ave|Avenue|Hwy|Highway|NH-?\d+|No\.?\s*\d+)\b/i;
+  const AREA_HINTS = /\b(country|state|region|province|county|district|city|town|village|hamlet|suburb|quarter|neighbou?rhood|island)\b/i;
+
+  function looksPoiQuery(q){ return POI_WORDS.test(q); }
+  function looksAreaQuery(q){
+    if (looksPoiQuery(q)) return false;
+    const parts = q.split(',').map(s=>s.trim()).filter(Boolean);
+    return parts.length >= 2 || AREA_HINTS.test(q);
+  }
+
+  function classifyFromHit(hit){
+    const cls  = (hit.class||'').toLowerCase();
+    const typ  = (hit.type||'').toLowerCase();
+    const addr = (hit.addresstype||'').toLowerCase();
+    const areaSet = /^(country|state|region|province|county|district|state_district|city|city_district|borough|municipality|local_authority|locality|subdivision|town|village|hamlet|suburb|quarter|neighbou?rhood|island)$/;
+    if (cls === 'boundary') return 'area';
+    if (cls === 'place' && areaSet.test(typ)) return 'area';
+    if (areaSet.test(addr)) return 'area';
+    const a = hit.address || {};
+    if (a.city || a.town || a.village || a.municipality || a.locality) return 'area';
+    return 'poi';
+  }
+
+  function classifyHit(hit, originalQuery){
+    const fromHit = classifyFromHit(hit);
+    if (fromHit === 'poi'  && looksAreaQuery(originalQuery)) return 'area';
+    if (fromHit === 'area' && looksPoiQuery(originalQuery))  return 'poi';
+    return fromHit;
+  }
+
+  function partsAndCountryGuess(q){
+    const parts = q.split(',').map(s=>s.trim()).filter(Boolean);
+    const last = (parts[parts.length-1]||'').toLowerCase();
+    return { parts, lastLooksCountry: countriesSet.has(last) };
+  }
+
+  const JOKE_PLACE_PATTERNS = [
+    /university\s+of\s+life/i,
+    /\bschool\s+of\s+hard\s+knocks\b/i,
+    /\buniversity\s+of\s+hard\s+knocks\b/i,
+    /\bthe?\s*school\s+of\s+life\b/i
+  ];
+  function isJokePlace(place){
+    return JOKE_PLACE_PATTERNS.some(rx => rx.test(place || ''));
+  }
+
+  // ---- Seed detection ----
+  function isSeedLike(obj){
+    if (!obj) return false;
+    if (obj.seed === true || obj.type === 'seed') return true; // explicit
+    const noMeta = !Array.isArray(obj.meta) || obj.meta.length === 0;
+    const noUrl  = !obj.url && !obj.profileUrl;
+    return noMeta && noUrl;
+  }
+
+  // Manual placement
+  function startPlacement(entry){
+    cancelPlacement();
+    map.getContainer().style.cursor = 'crosshair';
+    onMapPlaceClick = function(ev){
+      try { placeEntryAt(entry, ev.latlng); }
+      finally { cancelPlacement(); } // ALWAYS exit placement mode
+    };
+    map.on('click', onMapPlaceClick);
+    onKeyCancel = function(ev){ if (ev.key === 'Escape') cancelPlacement(); };
+    window.addEventListener('keydown', onKeyCancel);
+  }
+  function cancelPlacement(){
+    if (onMapPlaceClick) map.off('click', onMapPlaceClick);
+    if (onKeyCancel) window.removeEventListener('keydown', onKeyCancel);
+    map.getContainer().style.cursor = '';
+    onMapPlaceClick = null; onKeyCancel = null;
+  }
+  function placeEntryAt(entry, latlng){
+    if (entry._marker) cluster.removeLayer(entry._marker);
+    const m = L.marker([latlng.lat, latlng.lng]).bindPopup(
+      `<strong>${entry.name||'—'}</strong><br>${entry.place||''}<br><span class="small">manual placement</span>`
+    );
+    m._kind = 'poi';
+    cluster.addLayer(m);
+    entry._marker = m;
+    if (entry._tick)  entry._tick.textContent = '✓';
+    if (entry._cross) entry._cross.textContent = '';
+    if (entry._fix){ entry._fix.style.display = 'inline'; entry._fix.title = 'Correct location'; }
+    m.openPopup();
+    applyFilterToMap(); // respect current filter/toggle
+    renderList();       // update ✓/✗ and ensure row visibility under "only mapped"
+  }
+
+  function computeFbUrl(e){
+    if (e.url) return e.url;
+    const id = e.id || '';
+    if (!id) return null;
+    if (/^\d{5,}$/.test(id)) return 'https://www.facebook.com/profile.php?id=' + id;
+    if (/^[A-Za-z0-9.\-]+$/.test(id)) return 'https://www.facebook.com/' + id;
+    return null;
+  }
+
+  // ------ Filtering logic (text + "only mapped") ------
+  function entryMatchesText(e, f){
+    if (!f) return true;
+    const hay = `${e.name||''} ${e.place||''}`.toLowerCase();
+    return hay.includes(f);
+  }
+  function visibleByCurrentFilters(e){
+    const f = (searchEl.value||'').toLowerCase().trim();
+    if (!entryMatchesText(e, f)) return false;
+    if (onlyMappedEl.checked && !e._marker) return false;
+    return true;
+  }
+
+  function renderList(){
+    listEl.innerHTML = '';
+    for(const e of entries){
+      if(!visibleByCurrentFilters(e)) continue;
+
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.style.cssText = 'justify-content:space-between; border:1px solid var(--border); border-radius:10px; padding:6px 8px; margin:6px 0; background:#0d1220;';
+
+      const left = document.createElement('div');
+      left.style.display = 'flex';
+      left.style.alignItems = 'center';
+
+      const fbUrl = computeFbUrl(e);
+      if (fbUrl){
+        const a = document.createElement('a');
+        a.className = 'fb-link';
+        a.href = fbUrl; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        a.title = 'Open Facebook profile';
+        a.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.5 9.9v-7h-2.3v-2.9h2.3V9.5c0-2.3 1.4-3.6 3.5-3.6 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.4v1.8h2.6l-.4 2.9h-2.2v7A10 10 0 0 0 22 12z"></path></svg>';
+        a.addEventListener('click', ev => ev.stopPropagation());
+        left.appendChild(a);
+      }
+
+      const textWrap = document.createElement('div');
+      const seedMark = e.seed ? '<span class="seed-dot" title="Seed (no profile URL available)">🌱</span>' : '';
+      textWrap.innerHTML = `<strong>${e.name||'—'}${seedMark}</strong><div class="small muted">${e.place||''}</div>`;
+      left.appendChild(textWrap);
+
+      const right = document.createElement('div');
+      right.style.display='flex'; right.style.alignItems='center';
+      const tick  = document.createElement('span'); tick.className = 'tick';
+      const cross = document.createElement('span'); cross.className = 'cross';
+      const fix   = document.createElement('button'); fix.className = 'fix'; fix.type='button'; fix.textContent='?';
+
+      // Always allow correction via "?"
+      fix.style.display = 'inline';
+      fix.addEventListener('click', (ev)=>{ ev.stopPropagation(); startPlacement(e); });
+
+      // Set current status (✓ / ✗)
+      if (e._marker){
+        tick.textContent = '✓';
+        cross.textContent = '';
+        fix.title = 'Correct location';
+      } else {
+        tick.textContent = '';
+        cross.textContent = '✗';
+        fix.title = 'Place manually';
+      }
+
+      right.appendChild(tick);
+      right.appendChild(cross);
+      right.appendChild(fix);
+
+      row.appendChild(left);
+      row.appendChild(right);
+
+      row.addEventListener('click', ()=>{ if(e._marker && cluster.hasLayer(e._marker)){ map.panTo(e._marker.getLatLng()); e._marker.openPopup(); } });
+
+      e._row = row; e._tick = tick; e._cross = cross; e._fix = fix;
+      listEl.appendChild(row);
+    }
+  }
+
+  // Show/hide markers on the map based on current filters
+  function applyFilterToMap(){
+    const visibleMarkers = [];
+    for (const e of entries){
+      const m = e._marker;
+      if (!m) continue;
+      const match = visibleByCurrentFilters(e);
+      const onMap = cluster.hasLayer(m);
+      if (match && !onMap) { cluster.addLayer(m); visibleMarkers.push(m); }
+      else if (match && onMap) { visibleMarkers.push(m); }
+      else if (!match && onMap) { cluster.removeLayer(m); }
+    }
+    if (visibleMarkers.length){
+      try {
+        const group = L.featureGroup(visibleMarkers);
+        map.fitBounds(group.getBounds().pad(0.2));
+      } catch {}
+    }
+  }
+
+  async function plot(entriesIn){
+    cluster.clearLayers();
+    markers.length = 0;
+    cancelPlacement();
+    for (const e of entriesIn){
+      e._marker = null;
+      if (e._tick)  e._tick.textContent = '';
+      if (e._cross) e._cross.textContent = '';
+      if (e._fix)   { e._fix.style.display = 'inline'; e._fix.title = 'Place manually'; }
+    }
+    setProgress(0, entriesIn.length);
+
+    let done = 0;
+
+    for (const e of entriesIn){
+      const noMeta = !Array.isArray(e.meta) || e.meta.length === 0;
+      const place  = e.place || '';
+
+      // default: show ✗ until we map
+      if (e._cross) { e._cross.textContent = '✗'; e._cross.title = 'Not mapped'; }
+      if (noMeta && e._fix){ e._fix.style.display = 'inline'; e._fix.title = 'Place manually (No meta)'; }
+
+      // nothing to geocode
+      if (!place) {
+        if (e._fix){ e._fix.style.display = 'inline'; e._fix.title = 'Place manually (No place text)'; }
+        done++; setProgress(done, entriesIn.length);
+        continue;
+      }
+
+      // ignore joke places for auto, but allow manual
+      if (isJokePlace(place)) {
+        if (e._fix){ e._fix.style.display = 'inline'; e._fix.title = 'Place manually (Ignored joke place)'; }
+        done++; setProgress(done, entriesIn.length);
+        continue;
+      }
+
+      // Try geocoding
+      const { hit } = await geocodeSmart(place, countryHintEl.value || '');
+      if (hit){
+        const kind = classifyHit(hit, place);
+        const opts = (kind === 'area') ? { icon: areaIcon } : {};
+        const m = L.marker([hit.lat, hit.lon], opts).bindPopup(
+          `<strong>${e.name||'—'}</strong><br>${place||''}<br><span class="small">${hit.display}</span>`
+        );
+        m._kind = kind;
+        cluster.addLayer(m);
+        e._marker = m;
+        markers.push(m);
+        if (e._tick)  e._tick.textContent = '✓';
+        if (e._cross) e._cross.textContent = '';
+        if (e._fix){ e._fix.style.display = 'inline'; e._fix.title = 'Correct location'; }
+      } else {
+        if (e._fix){ e._fix.style.display = 'inline'; e._fix.title = `Place manually (Couldn't geocode)`; }
+        if (e._cross){ e._cross.textContent = '✗'; e._cross.title = `Not mapped`; }
+      }
+
+      done++; setProgress(done, entriesIn.length);
+    }
+
+    if (markers.length){
+      try { map.fitBounds(cluster.getBounds().pad(0.2)); } catch {}
+    }
+
+    applyFilterToMap(); // enforce current text + mapped filters
+  }
+
+  // Geocoder (Nominatim with polite delay + memo)
+  async function geocodeSmart(qOriginal, userHintCode=''){
+    if (!qOriginal) return { hit:null, tried:[] };
+    let q = normalizeQuery(qOriginal);
+    const tried = [];
+    const ccParamBase = userHintCode || '';
+
+    const attempt = async (qq, ccParam = ccParamBase) => {
+      const key = qq + '||' + ccParam;
+      if (MEM.has(key)) return MEM.get(key);
+      tried.push(qq + (ccParam ? ` [cc=${ccParam}]` : ''));
+      await sleep(1100);
+      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(qq)}${ccParam ? `&countrycodes=${ccParam}` : ''}`;
+      try{
+        const res = await fetch(url, { headers:{'Accept':'application/json'} });
+        const js  = await res.json();
+        const j0  = js && js[0];
+        const hit = j0 ? {
+          lat:+j0.lat, lon:+j0.lon, display:j0.display_name,
+          class:j0.class, type:j0.type, addresstype:j0.addresstype, address:j0.address||null
+        } : null;
+        MEM.set(key, hit); saveCache(key, hit);
+        return hit;
+      }catch{
+        MEM.set(key, null); saveCache(key, null);
+        return null;
+      }
+    };
+
+    let hit = await attempt(q);
+    if (hit) return { hit, tried };
+
+    const { parts, lastLooksCountry } = partsAndCountryGuess(q);
+
+    if (parts.length >= 2 && !lastLooksCountry){
+      const lastOnly = parts[parts.length-1];
+      let probe = await attempt(lastOnly, '');
+      const countryName = probe && probe.address && (probe.address.country || probe.address.country_name);
+      if (countryName){
+        const qWithCountry = q + ', ' + countryName;
+        hit = await attempt(qWithCountry);
+        if (hit) return { hit, tried };
+      }
+    }
+
+    if (parts.length >= 2){
+      const last2 = parts.slice(-2).join(', ');
+      hit = await attempt(last2);
+      if (hit) return { hit, tried };
+    }
+
+    if (/\b(University|College|School|High School|Polytechnic|Institute|Campus|Church|Hospital|Ministry|Department|Diocese|Grammar School)\b/i.test(q)){
+      const locOnly = parts.slice(1).join(', ').trim();
+      if (locOnly){
+        hit = await attempt(locOnly);
+        if (hit) return { hit, tried };
+      }
+    }
+
+    if (parts.length >= 1){
+      const last1 = parts.slice(-1)[0];
+      hit = await attempt(last1);
+      if (hit) return { hit, tried };
+    }
+
+    return { hit:null, tried };
+  }
+
+  // ---------------- JSON LOADER (robust shapes) ----------------
+  function findBestNodes(obj){
+    if (!obj || typeof obj !== 'object') return null;
+
+    const preferredKeys = [
+      'nodes','entities','people','items','results','profiles','records','list','rows'
+    ];
+
+    for (const key of preferredKeys){
+      if (Array.isArray(obj[key])) return obj[key];
+    }
+    if (obj.data){
+      for (const key of preferredKeys){
+        if (Array.isArray(obj.data[key])) return obj.data[key];
+      }
+      if (Array.isArray(obj.data)) return obj.data;
+    }
+    if (obj.graph){
+      for (const key of preferredKeys){
+        if (Array.isArray(obj.graph[key])) return obj.graph[key];
+      }
+      if (Array.isArray(obj.graph)) return obj.graph;
+    }
+    let best = null, bestScore = -1;
+
+    function scoreArray(arr){
+      if (!Array.isArray(arr) || arr.length === 0) return -1;
+      let hits = 0;
+      for (const el of arr){
+        if (el && typeof el === 'object' && (el.name || el.id || el.title || el.meta || el.place || el.location)) hits++;
+      }
+      const ratio = hits / arr.length;
+      return (arr.length >= 3 && ratio >= 0.3) ? (arr.length * ratio) : -1;
+    }
+
+    function walk(o, depth=0){
+      if (!o || depth > 5) return;
+      if (Array.isArray(o)){
+        const s = scoreArray(o);
+        if (s > bestScore){ best = o; bestScore = s; }
+        return;
+      }
+      if (typeof o === 'object'){
+        for (const k in o){
+          if (!Object.prototype.hasOwnProperty.call(o,k)) continue;
+          walk(o[k], depth+1);
+        }
+      }
+    }
+    walk(obj);
+    return best || null;
+  }
+
+  function extractPlaceFromMetas(metas){
+    if (!metas || metas.length === 0) return '';
+    const lines = tryAllEl.checked ? metas : [metas[0]];
+
+    for (const raw of lines){
+      if (!raw) continue;
+      let t = String(raw).trim();
+
+      const parts = t.split(/\bat\b/i);
+      if (parts.length > 1) t = parts[parts.length - 1].trim().replace(/^the\s+/i,'');
+      t = t.replace(/\b\d{4}\s*[-–]\s*\d{4}\b/g, '').replace(/\bsince\s+\d{4}\b/ig,'').trim();
+
+      if (isJokePlace(t)) continue;
+
+      if (/,/.test(t) || /\b(University|College|School|High School|Polytechnic|Institute|Campus|Diocese|Hospital|Church|Grammar School|City|District|Province)\b/i.test(t)) {
+        return t;
+      }
+    }
+    return '';
+  }
+
+  function normalizeArray(rawArr){
+    return rawArr.map(x => {
+      const metas = (
+        Array.isArray(x?.meta) ? x.meta :
+        (typeof x?.meta === 'string' ? [x.meta] :
+        Array.isArray(x?.meta_lines) ? x.meta_lines :
+        Array.isArray(x?.metas) ? x.metas :
+        (typeof x?.metaLine === 'string' ? [x.metaLine] :
+        Array.isArray(x?.details) ? x.details :
+        Array.isArray(x?.info) ? x.info :
+        (typeof x?.details === 'string' ? [x.details] :
+        (typeof x?.info === 'string' ? [x.info] : [])))))
+      .filter(Boolean);
+
+      let place = x.place || x.location || x.city || x.hometown || '';
+      if (!place) place = extractPlaceFromMetas(metas);
+
+      const url = x.url || x.profileUrl || x.link || x.href || null;
+
+      const item = {
+        name:  x.name || x.title || x.fullname || x.full_name || x.id || '',
+        id:    x.id || x.username || x.handle || '',
+        url,
+        place,
+        meta: metas
+      };
+      item.seed = isSeedLike(item);
+      return item;
+    });
+  }
+
+  function normalizeFromUnknown(raw){
+    if (Array.isArray(raw)) return normalizeArray(raw);
+
+    if (raw && typeof raw === 'object'){
+      if (Array.isArray(raw.nodes)) return normalizeArray(raw.nodes);
+      if (Array.isArray(raw.entities)) return normalizeArray(raw.entities);
+      if (Array.isArray(raw.people)) return normalizeArray(raw.people);
+      if (Array.isArray(raw.items)) return normalizeArray(raw.items);
+      if (Array.isArray(raw.results)) return normalizeArray(raw.results);
+      if (Array.isArray(raw.profiles)) return normalizeArray(raw.profiles);
+      if (Array.isArray(raw.records)) return normalizeArray(raw.records);
+      if (Array.isArray(raw.list)) return normalizeArray(raw.list);
+      if (Array.isArray(raw.rows)) return normalizeArray(raw.rows);
+
+      const best = findBestNodes(raw);
+      if (best) return normalizeArray(best);
+    }
+    return [];
+  }
+
+  // --------------- FILE LOAD HANDLER ---------------
+  fileEl.addEventListener('change', async (ev) => {
+    const f = ev.target.files[0];
+    if (!f) return;
+
+    let text = '';
+    try { text = await f.text(); }
+    catch { alert('Could not read file.'); return; }
+
+    let raw;
+    try { raw = JSON.parse(text); }
+    catch(err){
+      try {
+        const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+        if (lines.length > 1){
+          raw = lines.map(l => JSON.parse(l));
+        } else {
+          throw err;
+        }
+      } catch(e2){
+        alert('Invalid JSON (parse error): ' + err.message);
+        fileEl.value = '';
+        return;
+      }
+    }
+
+    const normalized = normalizeFromUnknown(raw);
+    if (!normalized.length){
+      alert('Could not find any person nodes inside that JSON.\nExpected an array of people/objects, or a container with nodes/entities/etc.');
+      fileEl.value = '';
+      return;
+    }
+
+    entries = normalized;
+    renderList();
+    await plot(entries);
+    applyFilterToMap();
+    fileEl.value = '';
+  });
+
+  // Clear
+  $('#btnClear').addEventListener('click', () => {
+    clearMap();
+    entries = [];
+    fileEl.value = '';
+  });
+
+  // ------- Export helpers (only current filter/toggle) -------
+  function currentVisibleEntries(){
+    return entries.filter(e => visibleByCurrentFilters(e));
+  }
+
+  // Export JSON (filtered)
+  $('#btnExport').addEventListener('click', () => {
+    const filtered = currentVisibleEntries();
+    const out = { meta:{ generatedAt:new Date().toISOString(), filtered:true }, items:[] };
+    for(const e of filtered){
+      const p = e._marker ? e._marker.getLatLng() : null;
+      out.items.push({
+        name: e.name || null,
+        place: e.place || null,
+        mapped: !!e._marker,
+        location: p ? { lat: p.lat, lon: p.lng } : null,
+        seed: !!e.seed
+      });
+    }
+    const blob = new Blob([JSON.stringify(out,null,2)], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'fb-meta-mapper-export.json'; a.click(); a.remove();
+  });
+
+  // Export CSV (filtered)
+  $('#btnExportCsv').addEventListener('click', () => {
+    const filtered = currentVisibleEntries();
+    const rows = [['name','place','mapped','lat','lon','seed']];
+    for(const e of filtered){
+      const p = e._marker ? e._marker.getLatLng() : null;
+      rows.push([ e.name||'', e.place||'', e._marker?'1':'0', p?p.lat:'', p?p.lng:'', e.seed?'1':'0' ]);
+    }
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'fb-meta-mapper-export.csv'; a.click(); a.remove();
+  });
+
+  // Debounced filter
+  const onFilterChange = debounce(() => { renderList(); applyFilterToMap(); }, 250);
+  searchEl.addEventListener('input', onFilterChange);
+
+  // “Show only mapped” toggle
+  onlyMappedEl.addEventListener('change', () => { renderList(); applyFilterToMap(); });
+
+  // Re-run with settings
+  tryAllEl.addEventListener('change', async ()=>{ if(entries.length){ renderList(); await plot(entries); applyFilterToMap(); } });
+  countryHintEl.addEventListener('change', async ()=>{ if(entries.length){ await plot(entries); applyFilterToMap(); } });
+  </script>
+</body>
+</html>

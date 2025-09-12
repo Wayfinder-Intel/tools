@@ -1,25 +1,218 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Wayfinder Tools</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wayfinder Intelligence · Tools</title>
+  <meta name="description" content="Wayfinder Intelligence — OSINT utilities: Graph Builder, Facebook Mapper, and Email Guesser." />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; background:#f5f5f5; padding:2rem; }
-    h1 { color:#333; }
-    ul { list-style:none; padding:0; }
-    li { margin:0.5rem 0; }
-    a { text-decoration:none; color:#0066cc; }
-    a:hover { text-decoration:underline; }
+    :root {
+      --bg: #0b1020;            /* deep navy */
+      --panel: #0f162f;         /* slightly lighter */
+      --panel-2: #121a38;
+      --text: #e6ebff;          /* off-white */
+      --muted: #a7b0d6;         /* soft slate */
+      --brand: #2ea8ff;         /* bright wayfinder blue */
+      --brand-2: #6bd4ff;       /* light accent */
+      --ok: #23c55e;
+      --shadow: 0 10px 30px rgba(0,0,0,.45), 0 2px 10px rgba(0,0,0,.25);
+      --radius-lg: 18px;
+    }
+
+    /* Reset-ish */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text); background: radial-gradient(1200px 800px at 85% -10%, rgba(46,168,255,.25), transparent 30%),
+                           radial-gradient(1200px 800px at 10% 120%, rgba(107,212,255,.18), transparent 30%),
+                           linear-gradient(180deg, #0b1020, #0b1020 60%, #0a0f1f 100%);
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 24px 56px; }
+
+    /* Top Bar */
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .logo { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 999px; background: linear-gradient(145deg, #122147, #0e1a36); box-shadow: inset 0 1px 0 rgba(255,255,255,.06), var(--shadow); }
+    .wordmark { font-weight: 700; letter-spacing: .2px; }
+    .wordmark small { display: block; font-size: 12px; color: var(--muted); font-weight: 500; margin-top: -2px; }
+
+    .cta-row { display:flex; align-items:center; gap:10px; }
+    .cta { display:inline-flex; align-items:center; gap:10px; padding:10px 14px; border-radius:12px; background: #0f1a35; border:1px solid rgba(255,255,255,.06); color: var(--text); box-shadow: var(--shadow); }
+    .cta:hover { border-color: rgba(107,212,255,.35); box-shadow: 0 10px 28px rgba(46,168,255,.18), var(--shadow); }
+
+    /* Hero */
+    .hero { margin-top: 28px; background: linear-gradient(180deg, rgba(17,27,58,.75), rgba(14,22,47,.8)); border: 1px solid rgba(255,255,255,.07); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: clip; }
+    .hero-in { padding: 28px 24px; display:grid; grid-template-columns: 1.2fr .8fr; gap: 18px; align-items: center; }
+    .hero h1 { font-size: clamp(26px, 3vw, 36px); line-height: 1.1; margin: 0 0 8px; }
+    .hero p { margin: 0; color: var(--muted); max-width: 60ch; }
+    .badge { display:inline-flex; align-items:center; gap:8px; background: rgba(46,168,255,.12); color: #bde7ff; border: 1px solid rgba(46,168,255,.35); padding: 6px 10px; border-radius: 999px; font-size: 12px; letter-spacing:.2px; }
+
+    .hero-art { position: relative; min-height: 160px; }
+    .orb { position:absolute; inset:auto auto 8px 8px; width: 160px; height: 160px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, var(--brand-2), var(--brand) 50%, #0e1a36 70%); box-shadow: 0 0 60px rgba(46,168,255,.35), inset 0 0 30px rgba(0,0,0,.5); filter: saturate(1.1); }
+    .ring { position:absolute; inset:32px 0 0 auto; width: 160px; height: 160px; border-radius: 50%; border: 2px dashed rgba(190, 232, 255, .25); transform: rotate(-10deg); }
+
+    /* Grid */
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 18px; margin-top: 24px; }
+    .card { grid-column: span 12; background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid rgba(255,255,255,.06); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: clip; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+    .card:hover { transform: translateY(-2px); border-color: rgba(46,168,255,.4); box-shadow: 0 18px 42px rgba(0,0,0,.55), 0 6px 24px rgba(46,168,255,.18); }
+    .card-in { display:flex; gap: 20px; padding: 18px; align-items: center; }
+
+    .ico { width: 44px; height: 44px; display:grid; place-items:center; border-radius: 12px; background: linear-gradient(145deg, #122147, #0e1a36); border: 1px solid rgba(255,255,255,.06); }
+    .card h3 { margin: 0; font-size: 18px; letter-spacing:.2px; }
+    .card p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+    .spacer { flex: 1; }
+    .btn { display:inline-flex; align-items:center; gap:10px; padding:10px 14px; border-radius: 12px; background: linear-gradient(180deg, rgba(46,168,255,.15), rgba(46,168,255,.09)); color: #dff3ff; border: 1px solid rgba(46,168,255,.45); font-weight: 600; }
+    .btn:hover { background: linear-gradient(180deg, rgba(46,168,255,.22), rgba(46,168,255,.12)); box-shadow: 0 8px 20px rgba(46,168,255,.18); }
+
+    /* Responsive */
+    @media (min-width: 680px) {
+      .card { grid-column: span 6; }
+    }
+    @media (min-width: 980px) {
+      .card { grid-column: span 4; }
+    }
+
+    /* Footer */
+    footer { margin-top: 36px; color: var(--muted); font-size: 12px; text-align: center; opacity: .9; }
+
+    /* Prefers light scheme (optional) */
+    @media (prefers-color-scheme: light) {
+      :root{ --bg:#f7fbff; --panel:#ffffff; --panel-2:#f4f7ff; --text:#0b1020; --muted:#51608a; }
+      body{ background: radial-gradient(1200px 800px at 85% -10%, rgba(46,168,255,.15), transparent 30%),
+                         radial-gradient(1200px 800px at 10% 120%, rgba(107,212,255,.16), transparent 30%),
+                         linear-gradient(180deg,#f7fbff,#f7fbff 40%,#eef6ff 100%); }
+      .logo, .ico{ background: linear-gradient(145deg, #e9f3ff, #ddecff); }
+      .hero { background: linear-gradient(180deg, #ffffff, #f5f9ff); }
+      .badge { color: #074a76; }
+      .btn { color: #063b5e; }
+    }
   </style>
 </head>
 <body>
-  <h1>Wayfinder Intelligence – Tools</h1>
-  <p>Pick a tool to try out:</p>
-  <ul>
-    <li><a href="graph.html">Facebook Graph Builder</a></li>
-    <li><a href="map.html">Facebook Map</a></li>
-    <li><a href="email.html">Email Guesser</a></li>
-    <!-- add more as needed -->
-  </ul>
+  <div class="wrap">
+    <!-- Topbar / Brand -->
+    <header class="topbar" role="banner">
+      <div class="brand" aria-label="Wayfinder Intelligence">
+        <div class="logo" aria-hidden="true">
+          <!-- Compass + Pin mark (inline SVG) -->
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#6bd4ff"/>
+                <stop offset="100%" stop-color="#2ea8ff"/>
+              </linearGradient>
+            </defs>
+            <circle cx="12" cy="12" r="10" stroke="url(#g)" stroke-width="1.6" fill="none"/>
+            <path d="M12 6.2a4.6 4.6 0 0 1 4.6 4.6c0 2.58-3.04 6.47-4.2 7.9a.5.5 0 0 1-.8 0c-1.16-1.43-4.2-5.32-4.2-7.9A4.6 4.6 0 0 1 12 6.2Z" fill="url(#g)" opacity=".85"/>
+            <circle cx="12" cy="10.9" r="1.4" fill="#0b1020"/>
+          </svg>
+        </div>
+        <div class="wordmark">Wayfinder Intelligence<small>OSINT Utilities</small></div>
+      </div>
+      <div class="cta-row">
+        <a class="cta" href="https://wayfinderintelligence.co.nz" target="_blank" rel="noreferrer noopener" aria-label="Visit Wayfinder Intelligence website">Visit Site
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 3h7v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M21 3l-9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 7v12h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".5"/></svg>
+        </a>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero" aria-labelledby="intro">
+      <div class="hero-in">
+        <div>
+          <span class="badge" aria-label="Utilities count">3 tools · lightweight · client‑side</span>
+          <h1 id="intro">Explore the Wayfinder toolset</h1>
+          <p>Quick, focused utilities to support investigative work. These run locally in your browser — no installs, no logins. Pick a tool below to get started.</p>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="orb"></div>
+          <div class="ring"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cards Grid -->
+    <main class="grid" role="main">
+      <!-- Graph Builder -->
+      <article class="card">
+        <div class="card-in">
+          <div class="ico" aria-hidden="true">
+            <!-- network/graph icon -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="6" cy="6" r="3" stroke="url(#g)" stroke-width="1.6"/>
+              <circle cx="18" cy="6" r="3" stroke="url(#g)" stroke-width="1.6"/>
+              <circle cx="12" cy="18" r="3" stroke="url(#g)" stroke-width="1.6"/>
+              <path d="M8.7 7.3 10.9 9m4.4-1.7L13.1 9m-1.1 1.2v4.4" stroke="#bde7ff" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <h3>Facebook Graph Builder</h3>
+            <p>Paste profile data and build an interactive network. Tag nodes, add edges, export/import JSON, and explore connections.</p>
+          </div>
+          <div class="spacer"></div>
+          <a class="btn" href="graph.html" aria-label="Open Facebook Graph Builder">Open
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 3h7v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M21 3l-9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </a>
+        </div>
+      </article>
+
+      <!-- Facebook Mapper -->
+      <article class="card">
+        <div class="card-in">
+          <div class="ico" aria-hidden="true">
+            <!-- map pin icon -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2.8a7.2 7.2 0 0 1 7.2 7.2c0 4.04-4.18 9.28-6.25 11.7a1.3 1.3 0 0 1-1.9 0C9.98 19.28 5.8 14.04 5.8 10A7.2 7.2 0 0 1 12 2.8Z" stroke="url(#g)" stroke-width="1.6"/>
+              <circle cx="12" cy="10" r="2.2" fill="#bde7ff"/>
+            </svg>
+          </div>
+          <div>
+            <h3>Facebook Mapper</h3>
+            <p>Drop, tag, and filter locations on a clean map. Import/export, show‑only‑mapped toggle, and quick review helpers.</p>
+          </div>
+          <div class="spacer"></div>
+          <a class="btn" href="map.html" aria-label="Open Facebook Mapper">Open
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 3h7v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M21 3l-9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </a>
+        </div>
+      </article>
+
+      <!-- Email Guesser -->
+      <article class="card">
+        <div class="card-in">
+          <div class="ico" aria-hidden="true">
+            <!-- @ icon -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M17.5 12.3c0 2.1 1.2 3.3 2.9 3.3 2 0 3.2-1.7 3.2-4.9C23.6 6.7 19.8 3 14.3 3 8.2 3 4 7.7 4 12.7 4 17.2 7.3 21 12.9 21c2.7 0 4.8-.8 6.2-2.5" stroke="url(#g)" stroke-width="1.6" stroke-linecap="round"/>
+              <circle cx="12.2" cy="12.2" r="2.4" stroke="#bde7ff" stroke-width="1.6"/>
+            </svg>
+          </div>
+          <div>
+            <h3>Email Guesser</h3>
+            <p>Generate likely formats and enumerate options from a name and domain. Copy clean lists or JSON for downstream tools.</p>
+          </div>
+          <div class="spacer"></div>
+          <a class="btn" href="email.html" aria-label="Open Email Guesser">Open
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 3h7v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M21 3l-9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </a>
+        </div>
+      </article>
+    </main>
+
+    <footer>
+      <p>© <span id="yr"></span> Wayfinder Intelligence · Built for quick, local‑first analysis.</p>
+    </footer>
+  </div>
+
+  <script>
+    // set year
+    document.getElementById('yr').textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>

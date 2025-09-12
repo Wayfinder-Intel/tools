@@ -43,6 +43,10 @@
     .wordmark small { display: block; font-size: 12px; color: var(--muted); font-weight: 500; margin-top: -2px; }
 
     .cta-row { display:flex; align-items:center; gap:10px; }
+    
+    .mastimg{display:flex; align-items:center;}
+    .mastimg img{height:38px; width:auto; display:block; opacity:.95; filter: drop-shadow(0 2px 12px rgba(0,0,0,.35));}
+    @media (max-width: 540px){ .mastimg{ display:none; } }
     .cta { display:inline-flex; align-items:center; gap:10px; padding:10px 14px; border-radius:12px; background: #0f1a35; border:1px solid rgba(255,255,255,.06); color: var(--text); box-shadow: var(--shadow); }
     .cta:hover { border-color: rgba(107,212,255,.35); box-shadow: 0 10px 28px rgba(46,168,255,.18), var(--shadow); }
 
@@ -83,7 +87,9 @@
 
     /* Prefers light scheme (optional) */
     @media (prefers-color-scheme: light) {
-      :root{ --bg:#f7fbff; --panel:#ffffff; --panel-2:#f4f7ff; --text:#0b1020; --muted:#51608a; }
+      :root{ --bg:#f7fbff; --panel:#ffffff; --panel-2:#f4f7ff; --text:#0b1020; --muted:#51608a; 
+      .mastimg img{ filter: invert(1) drop-shadow(0 1px 0 rgba(0,0,0,.25)); opacity:.8; }
+    }
       body{ background: radial-gradient(1200px 800px at 85% -10%, rgba(46,168,255,.15), transparent 30%),
                          radial-gradient(1200px 800px at 10% 120%, rgba(107,212,255,.16), transparent 30%),
                          linear-gradient(180deg,#f7fbff,#f7fbff 40%,#eef6ff 100%); }
@@ -116,6 +122,7 @@
         <div class="wordmark">Wayfinder Intelligence<small>OSINT Utilities</small></div>
       </div>
       <div class="cta-row">
+        <div class="mastimg"><img src="Wayfinder.png" alt="Wayfinder Intelligence logo"></div>
         <a class="cta" href="https://wayfinderintelligence.co.nz" target="_blank" rel="noreferrer noopener" aria-label="Visit Wayfinder Intelligence website">Visit Site
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 3h7v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M21 3l-9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 7v12h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".5"/></svg>
         </a>

@@ -42,12 +42,12 @@
 
     .grid{ max-width:980px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
 
-    a.card{ display:flex; flex-direction:column; gap:10px; text-decoration:none; color:inherit; background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease; position:relative; outline:none; }
-    a.card:hover{ transform:translateY(-2px); border-color:#2d3547; box-shadow:0 10px 24px rgba(0,0,0,.25); }
-    a.card:focus-visible{ box-shadow:0 0 0 3px var(--ring); }
+    .card{ display:flex; flex-direction:column; gap:10px; text-decoration:none; color:inherit; background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease; position:relative; outline:none; cursor:pointer; }
+    .card:hover{ transform:translateY(-2px); border-color:#2d3547; box-shadow:0 10px 24px rgba(0,0,0,.25); }
+    .card:focus-within{ box-shadow:0 0 0 3px var(--ring); }
 
     .card .emoji{ font-size:28px; line-height:1; }
-    .card h2{ margin:0; font-size:18px; }
+    .card h2{ margin:0; font-size:18px; } .actions{ display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; } .btn{ display:inline-flex; align-items:center; justify-content:center; padding:8px 10px; border-radius:10px; border:1px solid var(--border); text-decoration:none; font-size:13px; line-height:1; } .btn.primary{ background:linear-gradient(180deg,#1b2437,#141b2b); border-color:#2b3242; } .btn.ghost{ background:transparent; } .btn.disabled{ opacity:.55; pointer-events:none; } .btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
     .card p{ margin:0; color:var(--muted); font-size:14px; }
 
     .badge{ position:absolute; top:10px; right:10px; font-size:11px; color:#cbd5e1; border:1px solid var(--border); background:#0e1220; padding:2px 6px; border-radius:999px; display:none; }
@@ -73,7 +73,7 @@
     <header>
       <div class="brand">
         <div class="brand-left">
-          <img id="logo" class="logo" src="Wayfinder.png" alt="Wayfinder Intelligence logo" />
+          <a href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener" class="logo-link"><img id="logo" class="logo" src="Wayfinder.png" alt="Wayfinder Intelligence logo" /></a>
           <div>
             <h1 class="title">Wayfinder Intelligence · Tools</h1>
             <div class="help">OSINT utilities — runs entirely in your browser.</div>
@@ -86,31 +86,43 @@
       <p class="intro">Pick a tool to begin. Your paste/files stay local to this tab; no data is uploaded.</p>
 
       <div class="grid">
-        <a class="card" href="graph.html">
+        <div class="card" data-href="graph.html" data-video="">
           <span class="emoji" aria-hidden="true">📊</span>
           <h2>Facebook Graph Builder</h2>
           <p>Paste friends → detect seed → add edges → explore, filter, and export.</p>
           <span class="badge" data-badge-for="graph.html">Missing</span>
-        </a>
+          <div class="actions">
+            <a class="btn primary" href="graph.html">Open tool</a>
+            <a class="btn ghost video" href="#">Watch training</a>
+          </div>
+        </div>
 
-        <a class="card" href="map.html">
+        <div class="card" data-href="map.html" data-video="">
           <span class="emoji" aria-hidden="true">🗺️</span>
           <h2>Facebook Meta Mapper</h2>
           <p>Load JSON of people → parse places → clustered Leaflet map → export CSV/JSON.</p>
           <span class="badge" data-badge-for="map.html">Missing</span>
-        </a>
+          <div class="actions">
+            <a class="btn primary" href="map.html">Open tool</a>
+            <a class="btn ghost video" href="#">Watch training</a>
+          </div>
+        </div>
 
-        <a class="card" href="email.html">
+        <div class="card" data-href="email.html" data-video="">
           <span class="emoji" aria-hidden="true">📧</span>
           <h2>Email Guesser</h2>
           <p>Enumerate likely email addresses from masked patterns and names.</p>
           <span class="badge" data-badge-for="email.html">Missing</span>
-        </a>
+          <div class="actions">
+            <a class="btn primary" href="email.html">Open tool</a>
+            <a class="btn ghost video" href="#">Watch training</a>
+          </div>
+        </div>
       </div>
     </main>
 
     <footer>
-      © 2025 Wayfinder Intelligence · Experimental tools
+      © 2025 <a href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener" style="color:inherit; text-decoration:underline; text-underline-offset:2px;">Wayfinder Intelligence</a> · Experimental tools
     </footer>
   </div>
 
@@ -130,16 +142,26 @@
     // 2) Optional: mark cards whose targets are missing (same-origin only)
     // This helps when publishing to GitHub Pages / other static hosts.
     (function(){
-      const cards = document.querySelectorAll('a.card');
+      const cards = document.querySelectorAll('.card');
       cards.forEach(card => {
-        try {
-          const href = card.getAttribute('href');
-          const badge = card.querySelector(`[data-badge-for="${href}"]`);
-          if (!href || !badge) return;
-          fetch(href, { method:'HEAD' }).then(r => {
-            if (!r.ok) badge.classList.add('bad-missing');
-          }).catch(() => badge.classList.add('bad-missing'));
-        } catch { /* ignore */ }
+        // Missing-file badge check
+        try{
+          const href = card.dataset.href; const badge = card.querySelector(`[data-badge-for="${href}"]`);
+          if (href && badge){ fetch(href,{method:'HEAD'}).then(r=>{ if(!r.ok) badge.classList.add('bad-missing'); }).catch(()=> badge.classList.add('bad-missing')); }
+        }catch{}
+        // Make whole card open the tool (except when clicking buttons)
+        card.addEventListener('click', (e)=>{
+          const isButton = e.target.closest('.btn');
+          if (isButton) return; // let buttons handle their own clicks
+          const url = card.dataset.href; if (url) window.location.href = url;
+        });
+        // Training link handling
+        const v = card.getAttribute('data-video');
+        const link = card.querySelector('.btn.video');
+        if (link){
+          if (!v){ link.classList.add('disabled'); link.setAttribute('aria-disabled','true'); link.textContent = 'Training (soon)'; link.addEventListener('click', e=> e.preventDefault()); }
+          else { link.href = v; link.target = '_blank'; link.rel = 'noopener'; }
+        }
       });
     })();
   </script>

@@ -1,169 +1,175 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8">
+  <title>Wayfinder Tools</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Wayfinder Intelligence · Tools</title>
-  <meta name="description" content="Wayfinder Intelligence — OSINT utilities: Graph Builder, Facebook Mapper, and Email Guesser. Nothing leaves your browser." />
-  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Wayfinder Intelligence — OSINT utilities: Graph Builder, Facebook Mapper, and Email Guesser." />
   <style>
-    :root{
-      --bg:#0f1115;        /* deep navy (matches tools) */
-      --bg-2:#0b0d12;
-      --panel:#151923;     /* card */
-      --panel-2:#121a38;   /* hover */
-      --text:#e6e9f2;      /* off-white */
-      --muted:#8a93a6;     /* slate */
-      --brand:#2ea8ff;     /* Wayfinder blue */
-      --border:#242a37;
-      --ring:#4da3ff99;
+    :root {
+      --bg: #f9fafb;
+      --panel: #ffffff;
+      --ink: #333;
+      --muted: #666;
+      --brand: #0066cc;
+      --shadow-sm: 0 2px 4px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 10px rgba(0,0,0,0.06);
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial,"Noto Sans";
-      color:var(--text);
-      background:linear-gradient(180deg,var(--bg) 0%, var(--bg-2) 100%);
-      -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
     }
-    .page{min-height:100%; display:flex; flex-direction:column}
 
-    /* Header */
-    header{ padding:10px 16px 8px; border-bottom:1px solid var(--border); }
-    .brand{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
-    .brand-left{ display:flex; align-items:center; gap:12px; min-width:0; }
-    .logo{ width:64px; height:64px; display:block; object-fit:contain; filter:drop-shadow(0 8px 12px rgba(0,0,0,.35)); }
-    .title{ margin:0; font-size:20px; letter-spacing:.2px; }
-    .help{ color:var(--muted); font-size:13px; margin-top:2px; }
+    header {
+      background: var(--panel);
+      box-shadow: var(--shadow-sm);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
 
-    /* Main */
-    main{ flex:1; padding:18px 16px 24px; }
-    .intro{ max-width:980px; margin:0 auto 16px; color:var(--muted); }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: .875rem;
+      text-decoration: none;
+      color: inherit;
+    }
 
-    .grid{ max-width:980px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
+    header img {
+      height: 48px;
+      width: auto;
+      display: block;
+    }
 
-    .card{ display:flex; flex-direction:column; gap:10px; text-decoration:none; color:inherit; background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease; position:relative; outline:none; cursor:pointer; }
-    .card:hover{ transform:translateY(-2px); border-color:#2d3547; box-shadow:0 10px 24px rgba(0,0,0,.25); }
-    .card:focus-within{ box-shadow:0 0 0 3px var(--ring); }
+    header h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      color: #004080;
+      font-weight: 700;
+    }
 
-    .card .emoji{ font-size:28px; line-height:1; }
-    .card h2{ margin:0; font-size:18px; } .actions{ display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; } .btn{ display:inline-flex; align-items:center; justify-content:center; padding:8px 10px; border-radius:10px; border:1px solid var(--border); text-decoration:none; font-size:13px; line-height:1; } .btn.primary{ background:linear-gradient(180deg,#1b2437,#141b2b); border-color:#2b3242; } .btn.ghost{ background:transparent; } .btn.disabled{ opacity:.55; pointer-events:none; } .btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
-    .card p{ margin:0; color:var(--muted); font-size:14px; }
+    main {
+      max-width: 980px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
 
-    .badge{ position:absolute; top:10px; right:10px; font-size:11px; color:#cbd5e1; border:1px solid var(--border); background:#0e1220; padding:2px 6px; border-radius:999px; display:none; }
-    .badge.bad-missing{ display:inline-block; color:#ffd4d9; border-color:#3c171e; background:#2b1116; }
+    .intro {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
 
-    /* Footer */
-    footer{ color:var(--muted); text-align:center; padding:18px 12px 28px; border-top:1px solid var(--border); }
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.5rem;
+    }
 
-    /* Light-mode fallback (if user forces light) */
-    @media (prefers-color-scheme: light){
-      body{ background:#f7f8fb; color:#111; }
-      header{ background:#fff; border-bottom:1px solid #e5e7eb; }
-      .help{ color:#667085 }
-      a.card{ background:#fff; border-color:#e5e7eb; }
-      a.card:hover{ border-color:#cbd5e1; box-shadow:0 8px 16px rgba(0,0,0,.08); }
-      .badge{ background:#fff; border-color:#e5e7eb; color:#475467; }
-      footer{ color:#667085; border-top:1px solid #e5e7eb; }
+    .tool-card {
+      background: var(--panel);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow-md);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      text-align: center;
+    }
+
+    .tool-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+
+    .tool-card a {
+      display: block;
+      text-decoration: none;
+      color: var(--brand);
+      font-weight: 600;
+      font-size: 1.1rem;
+      margin-top: 0.5rem;
+    }
+
+    .notice {
+      margin-top: 1.25rem;
+      padding: 1rem 1.25rem;
+      background: #eef6ff;
+      color: #0b3a66;
+      border: 1px solid #cfe6ff;
+      border-radius: 10px;
+      font-size: .95rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .notice a {
+      color: var(--brand);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 1rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    /* Small helper row under each card for quick privacy badges (optional) */
+    .badge {
+      display: inline-block;
+      font-size: .8rem;
+      color: #0b3a66;
+      background: #e8f2ff;
+      border: 1px solid #cfe2ff;
+      padding: .25rem .5rem;
+      border-radius: 999px;
+      margin-top: .75rem;
     }
   </style>
 </head>
 <body>
-  <div class="page">
-    <header>
-      <div class="brand">
-        <div class="brand-left">
-          <a href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener" class="logo-link"><img id="logo" class="logo" src="Wayfinder.png" alt="Wayfinder Intelligence logo" /></a>
-          <div>
-            <h1 class="title">Wayfinder Intelligence · Tools</h1>
-            <div class="help">OSINT utilities — runs entirely in your browser.</div>
-          </div>
-        </div>
+  <header>
+    <a class="brand" href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener">
+      <img src="Wayfinder.png" alt="Wayfinder Intelligence Logo">
+      <h1>Wayfinder Intelligence – Tools</h1>
+    </a>
+  </header>
+
+  <main>
+    <div class="intro">
+      <p>Select one of the tools below to get started:</p>
+    </div>
+
+    <div class="tool-grid">
+      <div class="tool-card">
+        <div aria-hidden="true" style="font-size:2rem">📊</div>
+        <a href="graph.html">Facebook Graph Builder</a>
+        <div class="badge" title="No data leaves your browser">Local-only</div>
       </div>
-    </header>
-
-    <main>
-      <p class="intro">Pick a tool to begin. Your paste/files stay local to this tab; no data is uploaded.</p>
-
-      <div class="grid">
-        <div class="card" data-href="graph.html" data-video="">
-          <span class="emoji" aria-hidden="true">📊</span>
-          <h2>Facebook Graph Builder</h2>
-          <p>Paste friends → detect seed → add edges → explore, filter, and export.</p>
-          <span class="badge" data-badge-for="graph.html">Missing</span>
-          <div class="actions">
-            <a class="btn primary" href="graph.html">Open tool</a>
-            <a class="btn ghost video" href="#">Watch training</a>
-          </div>
-        </div>
-
-        <div class="card" data-href="map.html" data-video="">
-          <span class="emoji" aria-hidden="true">🗺️</span>
-          <h2>Facebook Meta Mapper</h2>
-          <p>Load JSON of people → parse places → clustered Leaflet map → export CSV/JSON.</p>
-          <span class="badge" data-badge-for="map.html">Missing</span>
-          <div class="actions">
-            <a class="btn primary" href="map.html">Open tool</a>
-            <a class="btn ghost video" href="#">Watch training</a>
-          </div>
-        </div>
-
-        <div class="card" data-href="email.html" data-video="">
-          <span class="emoji" aria-hidden="true">📧</span>
-          <h2>Email Guesser</h2>
-          <p>Enumerate likely email addresses from masked patterns and names.</p>
-          <span class="badge" data-badge-for="email.html">Missing</span>
-          <div class="actions">
-            <a class="btn primary" href="email.html">Open tool</a>
-            <a class="btn ghost video" href="#">Watch training</a>
-          </div>
-        </div>
+      <div class="tool-card">
+        <div aria-hidden="true" style="font-size:2rem">🗺️</div>
+        <a href="map.html">Facebook Map</a>
+        <div class="badge" title="Sends place names to OpenStreetMap for geocoding">Sends place names to OSM</div>
       </div>
-    </main>
+      <div class="tool-card">
+        <div aria-hidden="true" style="font-size:2rem">📧</div>
+        <a href="email.html">Email Guesser</a>
+        <div class="badge" title="No data leaves your browser">Local-only</div>
+      </div>
+    </div>
 
-    <footer>
-      © 2025 <a href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener" style="color:inherit; text-decoration:underline; text-underline-offset:2px;">Wayfinder Intelligence</a> · Experimental tools
-    </footer>
-  </div>
+    <div class="notice">
+      Privacy & Data Use: Graph Builder and Email Guesser run entirely in your browser and do not transmit data. The Map tool requests coordinates for <em>place names</em> from OpenStreetMap’s Nominatim service and loads OSM map tiles. See the full details on the
+      <a href="privacy.html">Privacy & Data Use page</a>.
+    </div>
+  </main>
 
-  <script>
-    // 1) Logo fallback (in case Wayfinder.png isn't present / case-sensitive on GitHub Pages)
-    (function(){
-      const img = document.getElementById('logo');
-      if (!img) return;
-      let swapped = false;
-      img.addEventListener('error', () => {
-        if (swapped) return; // avoid loops
-        swapped = true;
-        img.src = 'https://i.imgur.com/q3oovaN.png'; // fallback mark used in other tools
-      }, { once:true });
-    })();
-
-    // 2) Optional: mark cards whose targets are missing (same-origin only)
-    // This helps when publishing to GitHub Pages / other static hosts.
-    (function(){
-      const cards = document.querySelectorAll('.card');
-      cards.forEach(card => {
-        // Missing-file badge check
-        try{
-          const href = card.dataset.href; const badge = card.querySelector(`[data-badge-for="${href}"]`);
-          if (href && badge){ fetch(href,{method:'HEAD'}).then(r=>{ if(!r.ok) badge.classList.add('bad-missing'); }).catch(()=> badge.classList.add('bad-missing')); }
-        }catch{}
-        // Make whole card open the tool (except when clicking buttons)
-        card.addEventListener('click', (e)=>{
-          const isButton = e.target.closest('.btn');
-          if (isButton) return; // let buttons handle their own clicks
-          const url = card.dataset.href; if (url) window.location.href = url;
-        });
-        // Training link handling
-        const v = card.getAttribute('data-video');
-        const link = card.querySelector('.btn.video');
-        if (link){
-          if (!v){ link.classList.add('disabled'); link.setAttribute('aria-disabled','true'); link.textContent = 'Training (soon)'; link.addEventListener('click', e=> e.preventDefault()); }
-          else { link.href = v; link.target = '_blank'; link.rel = 'noopener'; }
-        }
-      });
-    })();
-  </script>
+  <footer>
+    © 2025 <a href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener" style="color:inherit; text-decoration:none;">Wayfinder Intelligence</a> – Experimental Tools
+  </footer>
 </body>
 </html>

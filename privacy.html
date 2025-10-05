@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Privacy & Data Use · Wayfinder Tools</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Privacy and data use information for Wayfinder Intelligence tools." />
+  <style>
+    :root {
+      --bg: #f9fafb;
+      --panel: #ffffff;
+      --ink: #222;
+      --muted: #555;
+      --brand: #0066cc;
+      --border: #e6e6e6;
+      --shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+    }
+    header, main, footer {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .brand {
+      display: inline-flex; align-items: center; gap: .75rem;
+      text-decoration: none; color: inherit;
+    }
+    .brand img { height: 40px; width: auto; display:block; }
+    h1 { font-size: 1.6rem; margin: .25rem 0 0; }
+    .back a { color: var(--brand); text-decoration: none; font-weight: 600; }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin: 1rem 0;
+      box-shadow: var(--shadow);
+    }
+    h2 { font-size: 1.15rem; margin: 0 0 .5rem; }
+    .meta { color: var(--muted); font-size: .95rem; }
+    ul { margin: .5rem 0 .25rem 1.2rem; }
+    code { background: #f1f5f9; padding: .1rem .35rem; border-radius: 6px; }
+
+    footer {
+      color: var(--muted);
+      font-size: .9rem;
+      text-align: center;
+      margin: 2rem auto 3rem;
+    }
+    .ext { color: var(--brand); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener">
+      <img src="Wayfinder.png" alt="Wayfinder Intelligence Logo">
+      <div>
+        <div style="font-weight:700">Wayfinder Intelligence</div>
+        <div class="meta">Privacy & Data Use</div>
+      </div>
+    </a>
+    <div class="back"><a href="index.html">← Back to Tools</a></div>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>Overview</h2>
+      <p>
+        These tools are designed to run client-side in your browser. Two of them are local-only; the Map tool makes limited network
+        requests for geocoding and map tiles.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Facebook Graph Builder (<code>graph.html</code>)</h2>
+      <ul>
+        <li><strong>Data sent externally:</strong> <em>None</em>. All parsing and graph operations occur locally.</li>
+        <li><strong>Local storage:</strong> Uses <code>localStorage</code> for saving “Sessions” and your graph state.</li>
+        <li><strong>Exports:</strong> JSON/CSV/PNG exports are generated in-browser for download.</li>
+        <li><strong>Third-party assets:</strong> D3 library (CDN). No tracking, no API calls.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Facebook Meta Mapper (<code>map.html</code>)</h2>
+      <ul>
+        <li><strong>Data sent externally:</strong> <em>Place-name text only</em> is sent to OpenStreetMap’s Nominatim service to obtain coordinates (geocoding).</li>
+        <li><strong>Map tiles:</strong> Loads OpenStreetMap tiles to display the map.</li>
+        <li><strong>Local storage:</strong> Geocoding results are cached in <code>localStorage</code> to reduce repeat lookups.</li>
+        <li><strong>Exports:</strong> JSON/CSV exports are generated locally based on your filtered/mapped view.</li>
+        <li><strong>Third-party assets:</strong> Leaflet + MarkerCluster (CDN), OpenStreetMap tiles, OpenStreetMap Nominatim for geocoding.</li>
+        <li><strong>Tip:</strong> Avoid including personal identifiers in the <em>place</em> text if you do not want them sent to OSM geocoding.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Email Guesser (<code>email.html</code>)</h2>
+      <ul>
+        <li><strong>Data sent externally:</strong> <em>None</em>. Address generation and copy/export happen locally.</li>
+        <li><strong>Third-party assets:</strong> None.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>CDNs & Services Used</h2>
+      <ul>
+        <li><strong>D3 (Graph Builder):</strong> JavaScript charting library served from a CDN.</li>
+        <li><strong>Leaflet & MarkerCluster (Meta Mapper):</strong> Map libraries served from a CDN.</li>
+        <li><strong>OpenStreetMap Tiles (Meta Mapper):</strong> Basemap imagery.</li>
+        <li><strong>OpenStreetMap Nominatim (Meta Mapper):</strong> Geocoding service for place-name queries.</li>
+      </ul>
+      <p class="meta">No analytics beacons or tracking scripts are embedded in these pages.</p>
+    </div>
+  </main>
+
+  <footer>
+    © 2025 Wayfinder Intelligence · <a class="ext" href="index.html">Tools</a>
+  </footer>
+</body>
+</html>

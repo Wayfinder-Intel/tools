@@ -1,134 +1,145 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Privacy & Data Use · Wayfinder Tools</title>
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy & Data Use · Wayfinder Intelligence Tools</title>
   <meta name="description" content="Privacy and data use information for Wayfinder Intelligence tools." />
+  <meta name="color-scheme" content="dark light" />
   <style>
-    :root {
-      --bg: #f9fafb;
-      --panel: #ffffff;
-      --ink: #222;
-      --muted: #555;
-      --brand: #0066cc;
-      --border: #e6e6e6;
-      --shadow: 0 2px 8px rgba(0,0,0,0.06);
+    :root{
+      --bg:#0f1115;        /* deep navy (matches index.html) */
+      --bg-2:#0b0d12;
+      --panel:#151923;     /* card */
+      --panel-2:#121a38;   /* hover */
+      --text:#e6e9f2;      /* off-white */
+      --muted:#8a93a6;     /* slate */
+      --brand:#2ea8ff;     /* Wayfinder blue */
+      --border:#242a37;
+      --ring:#4da3ff99;
     }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Segoe UI", Arial, sans-serif;
-      background: var(--bg);
-      color: var(--ink);
-      line-height: 1.55;
-    }
-    header, main, footer {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 1rem;
-    }
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-    }
-    .brand {
-      display: inline-flex; align-items: center; gap: .75rem;
-      text-decoration: none; color: inherit;
-    }
-    .brand img { height: 40px; width: auto; display:block; }
-    h1 { font-size: 1.6rem; margin: .25rem 0 0; }
-    .back a { color: var(--brand); text-decoration: none; font-weight: 600; }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial,"Noto Sans"; color:var(--text); background:linear-gradient(180deg,var(--bg) 0%, var(--bg-2) 100%); -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+    .page{min-height:100%; display:flex; flex-direction:column}
 
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.25rem;
-      margin: 1rem 0;
-      box-shadow: var(--shadow);
-    }
-    h2 { font-size: 1.15rem; margin: 0 0 .5rem; }
-    .meta { color: var(--muted); font-size: .95rem; }
-    ul { margin: .5rem 0 .25rem 1.2rem; }
-    code { background: #f1f5f9; padding: .1rem .35rem; border-radius: 6px; }
+    /* Header */
+    header{ padding:10px 16px 8px; border-bottom:1px solid var(--border); }
+    .brand{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .brand-left{ display:flex; align-items:center; gap:12px; min-width:0; }
+    .logo{ width:56px; height:56px; display:block; object-fit:contain; filter:drop-shadow(0 8px 12px rgba(0,0,0,.35)); }
+    .title{ margin:0; font-size:20px; letter-spacing:.2px; }
+    .help{ color:var(--muted); font-size:13px; margin-top:2px; }
 
-    footer {
-      color: var(--muted);
-      font-size: .9rem;
-      text-align: center;
-      margin: 2rem auto 3rem;
+    /* Main */
+    main{ flex:1; padding:18px 16px 48px; }
+    .wrap{ max-width:980px; margin:0 auto; }
+    h2{ margin:22px 0 10px; font-size:18px; }
+    p{ color:var(--muted); line-height:1.65; }
+    ul{ color:var(--muted); margin:10px 0 18px 18px; }
+    li{ margin:6px 0; }
+
+    .note{ margin:18px 0; padding:14px 16px; border-radius:12px; background:rgba(46,168,255,0.06); border:1px solid var(--border); }
+    .card{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; margin:14px 0; }
+
+    .btn{ display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid var(--border); text-decoration:none; font-size:13px; line-height:1; color:var(--text); background:linear-gradient(180deg,#1b2437,#141b2b); border-color:#2b3242; }
+    .btn:hover{ transform:translateY(-1px); }
+
+    footer{ color:var(--muted); text-align:center; padding:18px 12px 28px; border-top:1px solid var(--border); }
+
+    /* Light-mode fallback */
+    @media (prefers-color-scheme: light){
+      body{ background:#f7f8fb; color:#111 }
+      header{ background:#fff; border-bottom:1px solid #e5e7eb }
+      .help{ color:#667085 }
+      .card{ background:#fff; border-color:#e5e7eb }
+      .note{ background:#eef6ff; border-color:#dbeafe; color:#1f2937 }
+      footer{ color:#667085; border-top:1px solid #e5e7eb }
     }
-    .ext { color: var(--brand); text-decoration: none; }
   </style>
 </head>
 <body>
-  <header>
-    <a class="brand" href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener">
-      <img src="Wayfinder.png" alt="Wayfinder Intelligence Logo">
-      <div>
-        <div style="font-weight:700">Wayfinder Intelligence</div>
-        <div class="meta">Privacy & Data Use</div>
+  <div class="page">
+    <header>
+      <div class="brand">
+        <div class="brand-left">
+          <a href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener" class="logo-link"><img class="logo" src="Wayfinder.png" alt="Wayfinder Intelligence logo" /></a>
+          <div>
+            <h1 class="title">Privacy & Data Use</h1>
+            <div class="help">How these tools handle your data</div>
+          </div>
+        </div>
+        <div>
+          <a class="btn" href="index.html">← Back to Tools</a>
+        </div>
       </div>
-    </a>
-    <div class="back"><a href="index.html">← Back to Tools</a></div>
-  </header>
+    </header>
 
-  <main>
-    <div class="card">
-      <h2>Overview</h2>
-      <p>
-        These tools are designed to run client-side in your browser. Two of them are local-only; the Map tool makes limited network
-        requests for geocoding and map tiles.
-      </p>
-    </div>
+    <main>
+      <div class="wrap">
+        <div class="note">
+          <p style="margin:0">All tools are static pages with no accounts and no analytics. Except where noted for map lookups/tiles, your inputs remain in your browser and are not transmitted.</p>
+        </div>
 
-    <div class="card">
-      <h2>Facebook Graph Builder (<code>graph.html</code>)</h2>
-      <ul>
-        <li><strong>Data sent externally:</strong> <em>None</em>. All parsing and graph operations occur locally.</li>
-        <li><strong>Local storage:</strong> Uses <code>localStorage</code> for saving “Sessions” and your graph state.</li>
-        <li><strong>Exports:</strong> JSON/CSV/PNG exports are generated in-browser for download.</li>
-        <li><strong>Third-party assets:</strong> D3 library (CDN). No tracking, no API calls.</li>
-      </ul>
-    </div>
+        <div class="card">
+          <h2>Facebook Graph Builder (<code>graph.html</code>)</h2>
+          <ul>
+            <li><strong>Data sent externally:</strong> <em>None.</em> Parsing and graph operations run locally in your browser.</li>
+            <li><strong>Local storage:</strong> uses <code>localStorage</code> to persist Sessions/graph state (you can clear this any time).</li>
+            <li><strong>Exports:</strong> JSON/CSV/PNG exports are generated in-browser for download.</li>
+            <li><strong>Third‑party assets:</strong> D3 library via CDN. No tracking and no API calls.</li>
+          </ul>
+        </div>
 
-    <div class="card">
-      <h2>Facebook Meta Mapper (<code>map.html</code>)</h2>
-      <ul>
-        <li><strong>Data sent externally:</strong> <em>Place-name text only</em> is sent to OpenStreetMap’s Nominatim service to obtain coordinates (geocoding).</li>
-        <li><strong>Map tiles:</strong> Loads OpenStreetMap tiles to display the map.</li>
-        <li><strong>Local storage:</strong> Geocoding results are cached in <code>localStorage</code> to reduce repeat lookups.</li>
-        <li><strong>Exports:</strong> JSON/CSV exports are generated locally based on your filtered/mapped view.</li>
-        <li><strong>Third-party assets:</strong> Leaflet + MarkerCluster (CDN), OpenStreetMap tiles, OpenStreetMap Nominatim for geocoding.</li>
-        <li><strong>Tip:</strong> Avoid including personal identifiers in the <em>place</em> text if you do not want them sent to OSM geocoding.</li>
-      </ul>
-    </div>
+        <div class="card">
+          <h2>Facebook Meta Mapper (<code>map.html</code>)</h2>
+          <ul>
+            <li><strong>Data sent externally:</strong> <em>place‑name text only</em> is sent to OpenStreetMap’s Nominatim service for geocoding (converting names to coordinates).</li>
+            <li><strong>Map tiles:</strong> basemap imagery loads from OpenStreetMap (OSM) tile servers.</li>
+            <li><strong>Local storage:</strong> geocoding results are cached in <code>localStorage</code> to minimise repeat lookups.</li>
+            <li><strong>Exports:</strong> JSON/CSV exports are generated locally from your filtered/mapped data.</li>
+            <li><strong>Third‑party assets:</strong> Leaflet + MarkerCluster via CDN; OSM Tiles; OSM Nominatim.</li>
+            <li><strong>Tip:</strong> avoid personal identifiers in the <em>place</em> text if you don’t want them sent to the geocoder.</li>
+          </ul>
+        </div>
 
-    <div class="card">
-      <h2>Email Guesser (<code>email.html</code>)</h2>
-      <ul>
-        <li><strong>Data sent externally:</strong> <em>None</em>. Address generation and copy/export happen locally.</li>
-        <li><strong>Third-party assets:</strong> None.</li>
-      </ul>
-    </div>
+        <div class="card">
+          <h2>Email Guesser (<code>email.html</code>)</h2>
+          <ul>
+            <li><strong>Data sent externally:</strong> <em>None.</em> Address permutations are generated locally; copy/export happens in your browser.</li>
+            <li><strong>Third‑party assets:</strong> None.</li>
+          </ul>
+        </div>
 
-    <div class="card">
-      <h2>CDNs & Services Used</h2>
-      <ul>
-        <li><strong>D3 (Graph Builder):</strong> JavaScript charting library served from a CDN.</li>
-        <li><strong>Leaflet & MarkerCluster (Meta Mapper):</strong> Map libraries served from a CDN.</li>
-        <li><strong>OpenStreetMap Tiles (Meta Mapper):</strong> Basemap imagery.</li>
-        <li><strong>OpenStreetMap Nominatim (Meta Mapper):</strong> Geocoding service for place-name queries.</li>
-      </ul>
-      <p class="meta">No analytics beacons or tracking scripts are embedded in these pages.</p>
-    </div>
-  </main>
+        <div class="card">
+          <h2>CDNs & Services Used</h2>
+          <ul>
+            <li><strong>D3 (Graph Builder):</strong> served from a CDN.</li>
+            <li><strong>Leaflet & MarkerCluster (Meta Mapper):</strong> served from a CDN.</li>
+            <li><strong>OpenStreetMap Tiles (Meta Mapper):</strong> basemap imagery.</li>
+            <li><strong>OpenStreetMap Nominatim (Meta Mapper):</strong> geocoding service for place‑name queries.</li>
+          </ul>
+          <p class="help" style="margin-top:10px">No analytics beacons or tracking scripts are embedded in these pages.</p>
+          <p class="help" style="margin-top:6px">Last updated: <span id="updated">—</span></p>
+        </div>
+      </div>
+    </main>
 
-  <footer>
-    © 2025 Wayfinder Intelligence · <a class="ext" href="index.html">Tools</a>
-  </footer>
+    <footer>
+      © 2025 <a href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener" style="color:inherit; text-decoration:underline; text-underline-offset:2px;">Wayfinder Intelligence</a>
+    </footer>
+  </div>
+
+  <script>
+    // Graceful logo fallback (case-sensitive hosting)
+    (function(){
+      const img = document.querySelector('.logo');
+      if(!img) return; let swapped=false; img.addEventListener('error',()=>{ if(swapped) return; swapped=true; img.src='https://i.imgur.com/q3oovaN.png'; },{once:true});
+    })();
+    // Last-updated from file metadata (fallback to today)
+    (function(){
+      const el = document.getElementById('updated'); if(!el) return; try{ el.textContent = new Date(document.lastModified).toLocaleDateString(); }catch{ el.textContent = new Date().toLocaleDateString(); }
+    })();
+  </script>
 </body>
 </html>

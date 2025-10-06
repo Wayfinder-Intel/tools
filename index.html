@@ -4,13 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Wayfinder Intelligence · Tools</title>
-  <meta name="description" content="Wayfinder Intelligence — OSINT utilities: Graph Builder, Facebook Mapper, and Email Guesser. Nothing leaves your browser." />
-  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Wayfinder Intelligence — OSINT utilities: Graph Builder, Facebook Mapper, Email Guesser, and Metadata Mapper. Nothing leaves your browser." />
+  <meta name="color-scheme" content="dark" />
   <style>
-    :root{
-      --bg:#0f1115;        /* deep navy (matches tools) */
+    :root {
+      --bg:#0f1115;        /* deep navy */
       --bg-2:#0b0d12;
-      --panel:#151923;     /* card */
+      --panel:#151923;     /* card background */
       --panel-2:#121a38;   /* hover */
       --text:#e6e9f2;      /* off-white */
       --muted:#8a93a6;     /* slate */
@@ -18,65 +18,112 @@
       --border:#242a37;
       --ring:#4da3ff99;
     }
-    *{box-sizing:border-box}
-    html,body{
-      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial,"Noto Sans";
-      color:var(--text);
-      background-color:#0f1115; /* fallback for old browsers */
-      background:linear-gradient(180deg,var(--bg, #0f1115) 0%, var(--bg-2, #0b0d12) 100%);
-      -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    * { box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans";
+      color: var(--text);
+      background-color: #0f1115; /* fallback for older browsers */
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
     }
-    body{
-      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,"Helvetica Neue",Arial,"Noto Sans";
-      color:var(--text);
-      background:linear-gradient(180deg,var(--bg) 0%, var(--bg-2) 100%);
-      -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
-    }
-    .page{min-height:100%; display:flex; flex-direction:column}
+
+    .page { min-height: 100%; display: flex; flex-direction: column; }
 
     /* Header */
-    header{ padding:10px 16px 8px; border-bottom:1px solid var(--border); }
-    .brand{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
-    .brand-left{ display:flex; align-items:center; gap:12px; min-width:0; }
-    .logo{ width:64px; height:64px; display:block; object-fit:contain; filter:drop-shadow(0 8px 12px rgba(0,0,0,.35)); }
-    .title{ margin:0; font-size:20px; letter-spacing:.2px; }
-    .help{ color:var(--muted); font-size:13px; margin-top:2px; }
+    header { padding: 10px 16px 8px; border-bottom: 1px solid var(--border); }
+    .brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .brand-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .logo { width: 64px; height: 64px; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(0,0,0,.35)); }
+    .title { margin: 0; font-size: 20px; letter-spacing: .2px; }
+    .help { color: var(--muted); font-size: 13px; margin-top: 2px; }
 
     /* Main */
-    main{ flex:1; padding:18px 16px 24px; }
-    .intro{ max-width:980px; margin:0 auto 16px; color:var(--muted); }
+    main { flex: 1; padding: 18px 16px 24px; }
+    .intro { max-width: 980px; margin: 0 auto 16px; color: var(--muted); }
 
-    .grid{ max-width:980px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
+    .grid {
+      max-width: 980px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
 
-    .card{ display:flex; flex-direction:column; gap:10px; color:inherit; background:#151923; /* fallback */ background:var(--panel, #151923); border:1px solid var(--border, #242a37); border-radius:14px; padding:16px; transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease; position:relative; outline:none; cursor:pointer; text-decoration:none; }
-    .card:hover{ transform:translateY(-2px); border-color:#2d3547; box-shadow:0 10px 24px rgba(0,0,0,.25); }
-    .card:focus-within{ box-shadow:0 0 0 3px var(--ring); }
+    .card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      color: inherit;
+      background: var(--panel, #151923);
+      border: 1px solid var(--border, #242a37);
+      border-radius: 14px;
+      padding: 16px;
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+      position: relative;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: #2d3547;
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+    }
+    .card:focus-within { box-shadow: 0 0 0 3px var(--ring); }
 
-    .card .emoji{ font-size:28px; line-height:1; }
-    .card h2{ margin:0; font-size:18px; }
-    .card p{ margin:0; color:var(--muted); font-size:14px; }
+    .card .emoji { font-size: 28px; line-height: 1; }
+    .card h2 { margin: 0; font-size: 18px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14px; }
 
-    .actions{ display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; }
-    .btn{ display:inline-flex; align-items:center; justify-content:center; padding:8px 10px; border-radius:10px; border:1px solid var(--border); text-decoration:none; font-size:13px; line-height:1; color:var(--text); }
-    .btn.primary{ background:linear-gradient(180deg,#1b2437,#141b2b); border-color:#2b3242; }
-    .btn.ghost{ background:transparent; }
-    .btn.disabled{ opacity:.55; pointer-events:none; }
-    .btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+    .actions { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      text-decoration: none;
+      font-size: 13px;
+      line-height: 1;
+      color: var(--text);
+    }
+    .btn.primary {
+      background: linear-gradient(180deg, #1b2437, #141b2b);
+      border-color: #2b3242;
+    }
+    .btn.ghost { background: transparent; }
+    .btn.disabled { opacity: .55; pointer-events: none; }
+    .btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
-    .badge{ position:absolute; top:10px; right:10px; font-size:11px; color:#cbd5e1; border:1px solid var(--border, #242a37); background:#0e1220; padding:2px 6px; border-radius:999px; display:none; }
-    .badge.bad-missing{ display:inline-block; color:#ffd4d9; border-color:#3c171e; background:#2b1116; }
+    .badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 11px;
+      color: #cbd5e1;
+      border: 1px solid var(--border, #242a37);
+      background: #0e1220;
+      padding: 2px 6px;
+      border-radius: 999px;
+      display: none;
+    }
+    .badge.bad-missing {
+      display: inline-block;
+      color: #ffd4d9;
+      border-color: #3c171e;
+      background: #2b1116;
+    }
 
     /* Footer */
-    footer{ color:var(--muted); text-align:center; padding:18px 12px 28px; border-top:1px solid var(--border); }
-
-    /* Light-mode fallback (if user forces light) */
-    /* Light-mode fallback intentionally removed to keep a consistent dark theme across devices. */
-      header{ background:#fff; border-bottom:1px solid #e5e7eb; }
-      .help{ color:#667085 }
-      .card{ background:#fff; border-color:#e5e7eb; }
-      .card:hover{ border-color:#cbd5e1; box-shadow:0 8px 16px rgba(0,0,0,.08); }
-      .badge{ background:#fff; border-color:#e5e7eb; color:#475467; }
-      footer{ color:#667085; border-top:1px solid #e5e7eb; }
+    footer {
+      color: var(--muted);
+      text-align: center;
+      padding: 18px 12px 28px;
+      border-top: 1px solid var(--border);
     }
   </style>
 </head>
@@ -85,7 +132,9 @@
     <header>
       <div class="brand">
         <div class="brand-left">
-          <a href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener" class="logo-link"><img id="logo" class="logo" src="Wayfinder.png" alt="Wayfinder Intelligence logo" /></a>
+          <a href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener">
+            <img id="logo" class="logo" src="Wayfinder.png" alt="Wayfinder Intelligence logo" />
+          </a>
           <div>
             <h1 class="title">Wayfinder Intelligence · Tools</h1>
             <div class="help">OSINT utilities — runs entirely in your browser.</div>
@@ -95,7 +144,9 @@
     </header>
 
     <main>
-      <p class="intro">Pick a tool to begin. Your paste/files stay local to this tab; no data is uploaded.</p>
+      <p class="intro">
+        Pick a tool to begin. Your paste/files stay local to this tab; no data is uploaded.
+      </p>
 
       <div class="grid">
         <div class="card" data-href="graph.html" data-video="">
@@ -133,7 +184,7 @@
 
         <div class="card" data-href="metadata_mapper.html" data-video="">
           <span class="emoji" aria-hidden="true">🧩</span>
-          <h2>Metadata Mapper</h2>
+          <h2>EXIF Metadata Mapper</h2>
           <p>Extract, inspect, and map EXIF/metadata from images. Export CSV/JSON.</p>
           <span class="badge" data-badge-for="metadata_mapper.html">Missing</span>
           <div class="actions">
@@ -144,7 +195,12 @@
       </div>
 
       <div class="privacy-box" style="max-width:980px;margin:24px auto 0;padding:16px 18px;border-radius:12px;background:rgba(46,168,255,0.06);border:1px solid var(--border);color:var(--text);">
-        <p style="margin:0;font-size:14px;color:var(--muted);">Privacy & Data Use: Graph Builder and Email Guesser run entirely in your browser and do not transmit data. The Map tool requests coordinates for <em>place names</em> from OpenStreetMap’s Nominatim service and loads OSM map tiles. See the full details on the <a href="privacy.html" style="color:var(--brand);text-decoration:underline;text-underline-offset:2px;">Privacy & Data Use page</a>.</p>
+        <p style="margin:0;font-size:14px;color:var(--muted);">
+          Privacy & Data Use: Graph Builder and Email Guesser run entirely in your browser and do not transmit data.
+          The Map tool requests coordinates for <em>place names</em> from OpenStreetMap’s Nominatim service and loads OSM map tiles.
+          See the full details on the
+          <a href="privacy.html" style="color:var(--brand);text-decoration:underline;text-underline-offset:2px;">Privacy & Data Use page</a>.
+        </p>
       </div>
     </main>
 
@@ -160,9 +216,9 @@
       if (!img) return;
       let swapped = false;
       img.addEventListener('error', () => {
-        if (swapped) return; // avoid loops
+        if (swapped) return;
         swapped = true;
-        img.src = 'https://i.imgur.com/q3oovaN.png'; // fallback mark used in other tools
+        img.src = 'https://i.imgur.com/q3oovaN.png';
       }, { once:true });
     })();
 
@@ -172,23 +228,37 @@
       cards.forEach(card => {
         // Missing-file badge check
         try {
-          const href = card.dataset.href; const badge = card.querySelector(`[data-badge-for="${href}"]`);
-          if (href && badge){
-            fetch(href, { method:'HEAD' }).then(r => { if (!r.ok) badge.classList.add('bad-missing'); }).catch(() => badge.classList.add('bad-missing'));
+          const href = card.dataset.href;
+          const badge = card.querySelector(`[data-badge-for=\"${href}\"]`);
+          if (href && badge) {
+            fetch(href, { method: 'HEAD' })
+              .then(r => { if (!r.ok) badge.classList.add('bad-missing'); })
+              .catch(() => badge.classList.add('bad-missing'));
           }
         } catch {}
+
         // Make whole card open the tool (unless clicking a button)
-        card.addEventListener('click', (e)=>{
+        card.addEventListener('click', (e) => {
           const isButton = e.target.closest('.btn');
           if (isButton) return;
-          const url = card.dataset.href; if (url) window.location.href = url;
+          const url = card.dataset.href;
+          if (url) window.location.href = url;
         });
+
         // Training link handling
         const v = card.getAttribute('data-video');
         const link = card.querySelector('.btn.video');
-        if (link){
-          if (!v){ link.classList.add('disabled'); link.setAttribute('aria-disabled','true'); link.textContent = 'Training (soon)'; link.addEventListener('click', e=> e.preventDefault()); }
-          else { link.href = v; link.target = '_blank'; link.rel = 'noopener'; }
+        if (link) {
+          if (!v) {
+            link.classList.add('disabled');
+            link.setAttribute('aria-disabled', 'true');
+            link.textContent = 'Training (soon)';
+            link.addEventListener('click', e => e.preventDefault());
+          } else {
+            link.href = v;
+            link.target = '_blank';
+            link.rel = 'noopener';
+          }
         }
       });
     })();

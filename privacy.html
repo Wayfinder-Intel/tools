@@ -111,6 +111,28 @@
           </ul>
         </div>
 
+
+        <div class="card">
+  <h2>Metadata Mapper (<code>metadata_mapper.html</code>)</h2>
+  <ul>
+    <li><strong>Local files:</strong> When you drag-and-drop or select a file from your computer, the file is read <em>entirely in your browser</em>. It is <em>not</em> uploaded or sent anywhere.</li>
+
+    <li><strong>Image URLs (if used):</strong> If you enter an image URL, your browser will request that image from its host so it can be analyzed locally. In that case, the host serving the image will see a normal web request from your browser (as with any page image load). No other data is transmitted.</li>
+
+    <li><strong>EXIF/metadata parsing:</strong> All parsing runs client-side via JavaScript. The tool does not call any cloud or third-party analysis API.</li>
+
+    <li><strong>Timezone & display helpers:</strong> Conversions (e.g., “local time +0100”) are computed in-browser using your device’s time zone and offset. No lookups are sent to external services.</li>
+
+    <li><strong>Storage:</strong> The page may use <code>localStorage</code> for small UX preferences (e.g., dismissed tips). No files or extracted metadata are saved unless you export or copy them yourself.</li>
+
+    <li><strong>Third-party assets:</strong> The page may load static JS/CSS libraries from a CDN (e.g., an EXIF reader or date library) purely to <em>serve the code</em>. These CDNs do <em>not</em> receive your images or parsed metadata.</li>
+
+    <li><strong>Analytics & tracking:</strong> No analytics scripts are embedded. No tracking beacons are used.</li>
+  </ul>
+
+  <p class="meta"><strong>Tip for OPSEC-sensitive use:</strong> Prefer local file uploads over URLs. If you must analyze by URL, consider saving the image locally first, then loading the file to keep all processing offline.</p>
+</div>
+
         <div class="card">
           <h2>CDNs & Services Used</h2>
           <ul>

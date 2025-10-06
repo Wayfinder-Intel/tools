@@ -42,13 +42,20 @@
 
     .grid{ max-width:980px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; }
 
-    .card{ display:flex; flex-direction:column; gap:10px; text-decoration:none; color:inherit; background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease; position:relative; outline:none; cursor:pointer; }
+    .card{ display:flex; flex-direction:column; gap:10px; color:inherit; background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease; position:relative; outline:none; cursor:pointer; text-decoration:none; }
     .card:hover{ transform:translateY(-2px); border-color:#2d3547; box-shadow:0 10px 24px rgba(0,0,0,.25); }
     .card:focus-within{ box-shadow:0 0 0 3px var(--ring); }
 
     .card .emoji{ font-size:28px; line-height:1; }
-    .card h2{ margin:0; font-size:18px; } .actions{ display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; } .btn{ display:inline-flex; align-items:center; justify-content:center; padding:8px 10px; border-radius:10px; border:1px solid var(--border); text-decoration:none; font-size:13px; line-height:1; } .btn.primary{ background:linear-gradient(180deg,#1b2437,#141b2b); border-color:#2b3242; } .btn.ghost{ background:transparent; } .btn.disabled{ opacity:.55; pointer-events:none; } .btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+    .card h2{ margin:0; font-size:18px; }
     .card p{ margin:0; color:var(--muted); font-size:14px; }
+
+    .actions{ display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; }
+    .btn{ display:inline-flex; align-items:center; justify-content:center; padding:8px 10px; border-radius:10px; border:1px solid var(--border); text-decoration:none; font-size:13px; line-height:1; color:var(--text); }
+    .btn.primary{ background:linear-gradient(180deg,#1b2437,#141b2b); border-color:#2b3242; }
+    .btn.ghost{ background:transparent; }
+    .btn.disabled{ opacity:.55; pointer-events:none; }
+    .btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
 
     .badge{ position:absolute; top:10px; right:10px; font-size:11px; color:#cbd5e1; border:1px solid var(--border); background:#0e1220; padding:2px 6px; border-radius:999px; display:none; }
     .badge.bad-missing{ display:inline-block; color:#ffd4d9; border-color:#3c171e; background:#2b1116; }
@@ -57,12 +64,11 @@
     footer{ color:var(--muted); text-align:center; padding:18px 12px 28px; border-top:1px solid var(--border); }
 
     /* Light-mode fallback (if user forces light) */
-    @media (prefers-color-scheme: light){
-      body{ background:#f7f8fb; color:#111; }
+    /* Light-mode fallback intentionally removed to keep a consistent dark theme across devices. */
       header{ background:#fff; border-bottom:1px solid #e5e7eb; }
       .help{ color:#667085 }
-      a.card{ background:#fff; border-color:#e5e7eb; }
-      a.card:hover{ border-color:#cbd5e1; box-shadow:0 8px 16px rgba(0,0,0,.08); }
+      .card{ background:#fff; border-color:#e5e7eb; }
+      .card:hover{ border-color:#cbd5e1; box-shadow:0 8px 16px rgba(0,0,0,.08); }
       .badge{ background:#fff; border-color:#e5e7eb; color:#475467; }
       footer{ color:#667085; border-top:1px solid #e5e7eb; }
     }
@@ -118,11 +124,23 @@
             <a class="btn ghost video" href="#">Watch training</a>
           </div>
         </div>
+
+        <div class="card" data-href="metadata_mapper.html" data-video="">
+          <span class="emoji" aria-hidden="true">🧩</span>
+          <h2>Metadata Mapper</h2>
+          <p>Extract, inspect, and map EXIF/metadata from images. Export CSV/JSON.</p>
+          <span class="badge" data-badge-for="metadata_mapper.html">Missing</span>
+          <div class="actions">
+            <a class="btn primary" href="metadata_mapper.html">Open tool</a>
+            <a class="btn ghost video" href="#">Watch training</a>
+          </div>
+        </div>
       </div>
-    <div class="privacy-box" style="max-width:980px;margin:24px auto 0;padding:16px 18px;border-radius:12px;background:rgba(46,168,255,0.06);border:1px solid var(--border);color:var(--text);">
-  <p style="margin:0;font-size:14px;color:var(--muted);">Privacy & Data Use: Graph Builder and Email Guesser run entirely in your browser and do not transmit data. The Map tool requests coordinates for <em>place names</em> from OpenStreetMap’s Nominatim service and loads OSM map tiles. See the full details on the <a href="privacy.html" style="color:var(--brand);text-decoration:underline;text-underline-offset:2px;">Privacy & Data Use page</a>.</p>
-</div>
-</main>
+
+      <div class="privacy-box" style="max-width:980px;margin:24px auto 0;padding:16px 18px;border-radius:12px;background:rgba(46,168,255,0.06);border:1px solid var(--border);color:var(--text);">
+        <p style="margin:0;font-size:14px;color:var(--muted);">Privacy & Data Use: Graph Builder and Email Guesser run entirely in your browser and do not transmit data. The Map tool requests coordinates for <em>place names</em> from OpenStreetMap’s Nominatim service and loads OSM map tiles. See the full details on the <a href="privacy.html" style="color:var(--brand);text-decoration:underline;text-underline-offset:2px;">Privacy & Data Use page</a>.</p>
+      </div>
+    </main>
 
     <footer>
       © 2025 <a href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener" style="color:inherit; text-decoration:underline; text-underline-offset:2px;">Wayfinder Intelligence</a> · Experimental tools
@@ -142,20 +160,21 @@
       }, { once:true });
     })();
 
-    // 2) Optional: mark cards whose targets are missing (same-origin only)
-    // This helps when publishing to GitHub Pages / other static hosts.
+    // 2) Badges + interactions
     (function(){
       const cards = document.querySelectorAll('.card');
       cards.forEach(card => {
         // Missing-file badge check
-        try{
+        try {
           const href = card.dataset.href; const badge = card.querySelector(`[data-badge-for="${href}"]`);
-          if (href && badge){ fetch(href,{method:'HEAD'}).then(r=>{ if(!r.ok) badge.classList.add('bad-missing'); }).catch(()=> badge.classList.add('bad-missing')); }
-        }catch{}
-        // Make whole card open the tool (except when clicking buttons)
+          if (href && badge){
+            fetch(href, { method:'HEAD' }).then(r => { if (!r.ok) badge.classList.add('bad-missing'); }).catch(() => badge.classList.add('bad-missing'));
+          }
+        } catch {}
+        // Make whole card open the tool (unless clicking a button)
         card.addEventListener('click', (e)=>{
           const isButton = e.target.closest('.btn');
-          if (isButton) return; // let buttons handle their own clicks
+          if (isButton) return;
           const url = card.dataset.href; if (url) window.location.href = url;
         });
         // Training link handling

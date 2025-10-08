@@ -34,6 +34,23 @@
     .page { min-height: 100%; display: flex; flex-direction: column; }
 
     /* Header */
+    header {
+      padding: 10px 16px 8px;
+      border-bottom: 1px solid var(--border);
+      max-width: 980px;        /* added to match your main content width */
+      margin-left: auto;       /* centers the header horizontally */
+      margin-right: auto;      /* centers the header horizontally */
+    }
+    .brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .brand-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .logo { width: 64px; height: 64px; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(0,0,0,.35)); }
+    .title { margin: 0; font-size: 20px; letter-spacing: .2px; }
+    .help { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  </style>
+  <!-- the rest of your <head> and body markup continues here -->
+
+
+    /* Header */
     header { padding: 10px 16px 8px; border-bottom: 1px solid var(--border); }
     .brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .brand-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -289,6 +306,7 @@
   </script>
 </body>
 </html>
+
 
 
 

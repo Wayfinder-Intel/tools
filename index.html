@@ -35,7 +35,15 @@
 
     /* Header */
     header { padding: 10px 16px 8px; border-bottom: 1px solid var(--border); }
-    .brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+   .brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 980px;   /* same max‑width as your .grid and .intro sections */
+  margin: 0 auto;     /* centers the header content */
+}
+
     .brand-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .logo { width: 64px; height: 64px; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(0,0,0,.35)); }
     .title { margin: 0; font-size: 20px; letter-spacing: .2px; }
@@ -289,6 +297,7 @@
   </script>
 </body>
 </html>
+
 
 
 

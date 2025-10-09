@@ -231,6 +231,28 @@
 </style>
 
 
+<script>
+document.querySelectorAll('.card').forEach(card => {
+  const a = card.querySelector('a.video');
+  if (!a) return;
+  const url = card.dataset.video || a.getAttribute('href');
+  if (url) {
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.classList.remove('disabled');
+    a.textContent = 'Watch training';
+  } else {
+    a.removeAttribute('href');
+    a.classList.add('disabled');
+    a.textContent = 'Training (coming soon)';
+  }
+});
+</script>
+
+
+
+      
       
       <div class="privacy-box" style="max-width:980px;margin:24px auto 0;padding:16px 18px;border-radius:12px;background:rgba(46,168,255,0.06);border:1px solid var(--border);color:var(--text);">
         <p style="margin:0;font-size:14px;color:var(--muted);">
@@ -301,6 +323,7 @@
   </script>
 </body>
 </html>
+
 
 
 

@@ -240,8 +240,10 @@ document.querySelectorAll('.card').forEach(card => {
     a.href = url;
     a.target = '_blank';
     a.rel = 'noopener';
-    a.classList.remove('disabled');
-    a.textContent = 'Watch training';
+a.classList.remove('disabled');
+a.classList.add('primary');  // <-- add this line
+a.textContent = 'Watch training';
+
   } else {
     a.removeAttribute('href');
     a.classList.add('disabled');
@@ -323,6 +325,7 @@ document.querySelectorAll('.card').forEach(card => {
   </script>
 </body>
 </html>
+
 
 
 

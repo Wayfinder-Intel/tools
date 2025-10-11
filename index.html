@@ -260,6 +260,67 @@
 }
 </style>
 
+      <style>
+/* Card styling that matches but feels cleaner */
+#bookmarklets-new.bookmarklets-card {
+  max-width: 980px;
+  margin: 32px auto 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(46,168,255,0.06), rgba(46,168,255,0.03));
+}
+
+/* Header row: title left, blurb right; stacks on small screens */
+#bookmarklets-new .bookmarklets-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px 16px;
+  align-items: center;
+}
+#bookmarklets-new .bookmarklets-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+#bookmarklets-new .bookmarklets-blurb {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+  text-align: right;
+  line-height: 1.4;
+}
+#bookmarklets-new code {
+  background: rgba(255,255,255,0.06);
+  padding: 0 .3em;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.95em;
+}
+
+/* Subtle divider */
+#bookmarklets-new .bookmarklets-sep {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 10px 0 12px;
+  opacity: .6;
+}
+
+/* Respect your existing list spacing, but add a bit more breathing room */
+#bookmarklets-new .bookmarklets-list .bookmarklet-item {
+  margin: 0.35rem 0;
+}
+
+/* Responsive: stack the header if narrow */
+@media (max-width: 720px) {
+  #bookmarklets-new .bookmarklets-head {
+    grid-template-columns: 1fr;
+  }
+  #bookmarklets-new .bookmarklets-blurb {
+    text-align: left;
+  }
+}
+</style>
+
 
 <script>
 document.querySelectorAll('.card').forEach(card => {
@@ -282,9 +343,7 @@ a.textContent = 'Watch training';
 });
 </script>
 
-
-
-      
+   
       
       <div class="privacy-box" style="max-width:980px;margin:24px auto 0;padding:16px 18px;border-radius:12px;background:rgba(46,168,255,0.06);border:1px solid var(--border);color:var(--text);">
         <p style="margin:0;font-size:14px;color:var(--muted);">
@@ -355,6 +414,7 @@ a.textContent = 'Watch training';
   </script>
 </body>
 </html>
+
 
 
 

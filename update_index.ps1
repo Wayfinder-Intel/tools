@@ -1,8 +1,9 @@
 $indexFile = "index.html"
 $encodedFile = "encoded_bookmarklets.txt"
 
-$html = Get-Content $indexFile -Raw
-$encodedContent = Get-Content $encodedFile -Raw
+# Force UTF-8 reading for both files
+$html = Get-Content $indexFile -Raw -Encoding UTF8
+$encodedContent = Get-Content $encodedFile -Raw -Encoding UTF8
 
 # Parse encoded bookmarklets
 $bookmarklets = @{}
@@ -27,9 +28,9 @@ foreach ($key in $mappings.Keys) {
     if ($bookmarklets.ContainsKey($key)) {
         $name = $mappings[$key]
         $code = $bookmarklets[$key]
-        # Escape special regex characters in the name if necessary (none here really)
         
-        # Target string to replace
+        # Target string to replace - matching the placeholder in index.html
+        # Note: The placeholder has single quotes inside the alert
         $target = "<a class=""btn primary"" href=""javascript:alert\('Please run the build script to populate this!'\)"">$name</a>"
         $replacement = "<a class=""btn primary"" href=""$code"">$name</a>"
         
@@ -41,5 +42,9 @@ foreach ($key in $mappings.Keys) {
     }
 }
 
-Set-Content -Path $indexFile -Value $html -Encoding UTF8
+# Save with UTF-8 encoding (No BOM is often better for web, but PowerShell 5.1 'UTF8' adds BOM. 
+# 'Default' is usually ANSI. We want UTF-8. 
+# To be safe and avoid BOM issues if possible, we can use [System.IO.File]::WriteAllText)
+
+[System.IO.File]::WriteAllText($indexFile, $html, [System.Text.Encoding]::UTF8)
 Write-Host "index.html updated successfully."

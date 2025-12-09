@@ -6,134 +6,17 @@
   <title>Wayfinder Intelligence · Tools</title>
   <meta name="description" content="Wayfinder Intelligence — OSINT utilities: Graph Builder, Facebook Mapper, Email Guesser, and Metadata Mapper. Nothing leaves your browser." />
   <meta name="color-scheme" content="dark" />
-  <style>
-    :root {
-      --bg:#0f1115;        /* deep navy */
-      --bg-2:#0b0d12;
-      --panel:#151923;     /* card background */
-      --panel-2:#121a38;   /* hover */
-      --text:#e6e9f2;      /* off-white */
-      --muted:#8a93a6;     /* slate */
-      --brand:#2ea8ff;     /* Wayfinder blue */
-      --border:#242a37;
-      --ring:#4da3ff99;
-    }
-    * { box-sizing: border-box; }
-
-    html, body {
-      height: 100%;
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans";
-      color: var(--text);
-      background-color: #0f1115; /* fallback for older browsers */
-      background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
-      -webkit-font-smoothing: antialiased;
-      text-rendering: optimizeLegibility;
-    }
-
-    .page { min-height: 100%; display: flex; flex-direction: column; }
-
-    /* Header */
-    header { padding: 10px 16px 8px; border-bottom: 1px solid var(--border); }
-   .brand {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  max-width: 980px;   /* same max‑width as your .grid and .intro sections */
-  margin: 0 auto;     /* centers the header content */
-}
-
-    .brand-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
-    .logo { width: 64px; height: 64px; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(0,0,0,.35)); }
-    .title { margin: 0; font-size: 20px; letter-spacing: .2px; }
-    .help { color: var(--muted); font-size: 13px; margin-top: 2px; }
-
-    /* Main */
-    main { flex: 1; padding: 18px 16px 24px; }
-    .intro { max-width: 980px; margin: 0 auto 16px; color: var(--muted); }
-
-    .grid {
-      max-width: 980px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 16px;
-    }
-
-    .card {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      color: inherit;
-      background: var(--panel, #151923);
-      border: 1px solid var(--border, #242a37);
-      border-radius: 14px;
-      padding: 16px;
-      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
-      position: relative;
-      cursor: pointer;
-      text-decoration: none;
-    }
-    .card:hover {
-      transform: translateY(-2px);
-      border-color: #2d3547;
-      box-shadow: 0 10px 24px rgba(0,0,0,.25);
-    }
-    .card:focus-within { box-shadow: 0 0 0 3px var(--ring); }
-
-    .card .emoji { font-size: 28px; line-height: 1; }
-    .card h2 { margin: 0; font-size: 18px; }
-    .card p { margin: 0; color: var(--muted); font-size: 14px; }
-
-    .actions { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      text-decoration: none;
-      font-size: 13px;
-      line-height: 1;
-      color: var(--text);
-    }
-    .btn.primary {
-      background: linear-gradient(180deg, #1b2437, #141b2b);
-      border-color: #2b3242;
-    }
-    .btn.ghost { background: transparent; }
-    .btn.disabled { opacity: .55; pointer-events: none; }
-    .btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-
-    .badge {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      font-size: 11px;
-      color: #cbd5e1;
-      border: 1px solid var(--border, #242a37);
-      background: #0e1220;
-      padding: 2px 6px;
-      border-radius: 999px;
-      display: none;
-    }
-    .badge.bad-missing {
-      display: inline-block;
-      color: #ffd4d9;
-      border-color: #3c171e;
-      background: #2b1116;
-    }
-
-    /* Footer */
-    footer {
-      color: var(--muted);
-      text-align: center;
-      padding: 18px 12px 28px;
-      border-top: 1px solid var(--border);
-    }
-  </style>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Shared CSS -->
+  <link rel="stylesheet" href="css/style.css">
+  
+  <!-- Shared JS -->
+  <script src="js/common.js" defer></script>
 </head>
 <body>
   <div class="page">
@@ -141,7 +24,7 @@
       <div class="brand">
         <div class="brand-left">
           <a href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener">
-            <img id="logo" class="logo" src="Wayfinder.png" alt="Wayfinder Intelligence logo" />
+            <img class="logo" src="Wayfinder.png" alt="Wayfinder Intelligence logo" />
           </a>
           <div>
             <h1 class="title">Wayfinder Intelligence · Tools</h1>
@@ -152,285 +35,97 @@
     </header>
 
     <main>
-      <p class="intro">
+      <p class="intro text-center">
         Pick a tool to begin. Your paste/files stay local to this tab; no data is uploaded.
       </p>
 
       <div class="grid">
-        <div class="card" data-href="graph.html" data-video="https://www.youtube.com/watch?v=Sm4i-zpXh_Q">
-          <span class="emoji" aria-hidden="true">📊</span>
+        <!-- Graph Builder -->
+        <div class="card" data-href="graph.html">
+          <div class="emoji">📊</div>
           <h2>Facebook Graph Builder</h2>
           <p>Paste friends → detect seed → add edges → explore, filter, and export.</p>
-          <span class="badge" data-badge-for="graph.html">Missing</span>
+          <span class="badge" style="display:none">Missing</span>
           <div class="actions">
             <a class="btn primary" href="graph.html">Open tool</a>
-            <a class="btn primary video" href="https://www.youtube.com/watch?v=Sm4i-zpXh_Q">Watch training</a>
+            <a class="btn" href="https://www.youtube.com/watch?v=Sm4i-zpXh_Q" target="_blank">Watch training</a>
           </div>
         </div>
 
-        <div class="card" data-href="map.html" data-video="https://www.youtube.com/watch?v=XBKt_i__u78">
-          <span class="emoji" aria-hidden="true">🗺️</span>
+        <!-- Meta Mapper -->
+        <div class="card" data-href="map.html">
+          <div class="emoji">🗺️</div>
           <h2>Facebook Meta Mapper</h2>
           <p>Load JSON of people → parse places → clustered Leaflet map → export CSV/JSON.</p>
-          <span class="badge" data-badge-for="map.html">Missing</span>
+          <span class="badge" style="display:none">Missing</span>
           <div class="actions">
             <a class="btn primary" href="map.html">Open tool</a>
-            <a class="btn primary video" href="https://www.youtube.com/watch?v=XBKt_i__u78">Watch training</a>
+            <a class="btn" href="https://www.youtube.com/watch?v=XBKt_i__u78" target="_blank">Watch training</a>
           </div>
         </div>
 
-        <div class="card" data-href="email.html" data-video="https://www.youtube.com/watch?v=YopmSvpVBmo">
-          <span class="emoji" aria-hidden="true">📧</span>
+        <!-- Email Guesser -->
+        <div class="card" data-href="email.html">
+          <div class="emoji">📧</div>
           <h2>Email Guesser</h2>
           <p>Enumerate likely email addresses from masked patterns and names.</p>
-          <span class="badge" data-badge-for="email.html">Missing</span>
+          <span class="badge" style="display:none">Missing</span>
           <div class="actions">
             <a class="btn primary" href="email.html">Open tool</a>
-            <a class="btn primary video" href="https://www.youtube.com/watch?v=YopmSvpVBmo">Watch training</a>
+            <a class="btn" href="https://www.youtube.com/watch?v=YopmSvpVBmo" target="_blank">Watch training</a>
           </div>
         </div>
 
-        <div class="card" data-href="metadata_mapper.html" data-video="https://www.youtube.com/watch?v=9rUqgYCRuIw">
-          <span class="emoji" aria-hidden="true">🧩</span>
+        <!-- Metadata Inspector -->
+        <div class="card" data-href="metadata_mapper.html">
+          <div class="emoji">🧩</div>
           <h2>EXIF Metadata Inspector</h2>
           <p>Extract, inspect, and map EXIF/metadata from images. Export CSV/JSON.</p>
-          <span class="badge" data-badge-for="metadata_mapper.html">Missing</span>
+          <span class="badge" style="display:none">Missing</span>
           <div class="actions">
             <a class="btn primary" href="metadata_mapper.html">Open tool</a>
-            <a class="btn primary video" href="https://www.youtube.com/watch?v=9rUqgYCRuIw">Watch training</a>
+            <a class="btn" href="https://www.youtube.com/watch?v=9rUqgYCRuIw" target="_blank">Watch training</a>
           </div>
         </div>
       </div>
 
-<!-- Bookmarklets section -->
-<section id="bookmarklets" style="max-width:980px;margin:32px auto 0;padding:16px;border:1px solid var(--border);border-radius:12px;background:rgba(46,168,255,0.06);">
-  <h2 style="margin-top:0;font-size:18px;">Bookmarklets</h2>
-  <p style="font-size:14px;color:var(--muted);margin-bottom:12px;">Drag these bookmarklets to your bookmarks bar to install them. If dragging doesn't work, right‑click a button, copy the link, and create a new bookmark with that URL.</p>
-  <!-- Training video button: update the href with your video URL when the training video is available -->
-  <div style="margin-bottom:12px;">
-    <a class="btn primary" href="https://www.youtube.com/watch?v=NNFE_NM8hK0" target="_blank">Watch training video</a>
-  </div>
-  <div class="bookmarklets-list">
-    <div class="bookmarklet-item"><span class="icon">&#127760;</span><a class="btn primary" href="javascript:%0A%28function%28%29%7B%0A%20%20try%20%7B%0A%20%20%20%20var%20html%20%3D%20document.documentElement.innerHTML%20%7C%7C%20%27%27%3B%0A%20%20%20%20var%20ids%20%3D%20%5B%5D%3B%0A%20%20%20%20var%20m%3B%0A%20%20%20%20var%20r%20%3D%20/%22userID%22%5Cs%2A%3A%5Cs%2A%22%28%5Cd%7B5%2C20%7D%29%22/g%3B%0A%20%20%20%20while%20%28%28m%20%3D%20r.exec%28html%29%29%29%20%7B%0A%20%20%20%20%20%20ids.push%28m%5B1%5D%29%3B%0A%20%20%20%20%20%20if%20%28ids.length%20%3E%204%29%20break%3B%0A%20%20%20%20%7D%0A%20%20%20%20if%20%28ids.length%20%3C%202%29%20%7B%0A%20%20%20%20%20%20alert%28%27Did%20not%20find%20a%20second%20%22userID%22%20on%20this%20page.%27%29%3B%0A%20%20%20%20%20%20return%3B%0A%20%20%20%20%7D%0A%20%20%20%20var%20id%20%3D%20ids%5B1%5D%3B%0A%20%20%20%20var%20b%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20b.style.cssText%20%3D%20%27position%3Afixed%3Btop%3A0%3Bleft%3A0%3Bwidth%3A100%25%3Bheight%3A100%25%3Bz-index%3A2147483647%3Bdisplay%3Aflex%3Balign-items%3Aflex-start%3Bjustify-content%3Acenter%3Bbackground%3Argba%280%2C0%2C0%2C0.08%29%27%3B%0A%20%20%20%20var%20s%20%3D%20b.attachShadow%28%7Bmode%3A%27open%27%7D%29%3B%0A%20%20%20%20var%20st%20%3D%20document.createElement%28%27style%27%29%3B%0A%20%20%20%20st.textContent%20%3D%0A%20%20%20%20%20%20%27%3Ahost%7Ball%3Ainitial%3Bfont-family%3Asystem-ui%2CSegoe%20UI%2CArial%2Csans-serif%7D%27%20%2B%0A%20%20%20%20%20%20%27%2A%7Bbox-sizing%3Aborder-box%7D%27%20%2B%0A%20%20%20%20%20%20%27.c%7Bmargin%3A12vh%200%3Bbackground%3A%23111%3Bcolor%3A%23eee%3Bmin-width%3A320px%3Bmax-width%3A560px%3Bborder%3A1px%20solid%20%23333%3Bborder-radius%3A10px%3Bbox-shadow%3A0%2010px%2030px%20rgba%280%2C0%2C0%2C.5%29%3Bpadding%3A14px%7D%27%20%2B%0A%20%20%20%20%20%20%27.t%7Bdisplay%3Aflex%3Bjustify-content%3Aspace-between%3Balign-items%3Acenter%3Bmargin-bottom%3A.5rem%7D%27%20%2B%0A%20%20%20%20%20%20%27.x%7Bbackground%3A%23333%3Bborder%3A0%3Bcolor%3A%23eee%3Bpadding%3A.35rem%20.6rem%3Bborder-radius%3A8px%3Bcursor%3Apointer%7D%27%20%2B%0A%20%20%20%20%20%20%27.l%7Bopacity%3A.8%3Bfont-size%3A12px%3Bmargin%3A.25rem%200%7D%27%20%2B%0A%20%20%20%20%20%20%27.r%7Bdisplay%3Aflex%3Bgap%3A8px%3Balign-items%3Acenter%7D%27%20%2B%0A%20%20%20%20%20%20%27.i%7Bflex%3A1%3Bpadding%3A.5rem%20.6rem%3Bborder%3A1px%20solid%20%23333%3Bborder-radius%3A8px%3Bbackground%3A%230b0b0b%3Bcolor%3A%23eee%3Bfont%3A14px/1.2%20monospace%7D%27%20%2B%0A%20%20%20%20%20%20%27.b%7Bbackground%3A%232a2a2a%3Bborder%3A0%3Bcolor%3A%23eee%3Bpadding%3A.45rem%20.7rem%3Bborder-radius%3A8px%3Bcursor%3Apointer%7D%27%20%2B%0A%20%20%20%20%20%20%27.p%7Bbackground%3A%232d6cdf%3Bcolor%3A%23fff%7D%27%3B%0A%20%20%20%20var%20c%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20c.className%20%3D%20%27c%27%3B%0A%20%20%20%20var%20top%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20top.className%20%3D%20%27t%27%3B%0A%20%20%20%20var%20ttl%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20ttl.textContent%20%3D%20%27Facebook%20userID%27%3B%0A%20%20%20%20var%20cls%20%3D%20document.createElement%28%27button%27%29%3B%0A%20%20%20%20cls.className%20%3D%20%27x%27%3B%0A%20%20%20%20cls.textContent%20%3D%20%27Close%27%3B%0A%20%20%20%20cls.onclick%20%3D%20function%28%29%20%7B%20b.remove%28%29%3B%20%7D%3B%0A%20%20%20%20top.appendChild%28ttl%29%3B%0A%20%20%20%20top.appendChild%28cls%29%3B%0A%20%20%20%20c.appendChild%28top%29%3B%0A%20%20%20%20var%20lbl%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20lbl.className%20%3D%20%27l%27%3B%0A%20%20%20%20lbl.textContent%20%3D%20%272nd%20%22userID%22%20found%3A%27%3B%0A%20%20%20%20c.appendChild%28lbl%29%3B%0A%20%20%20%20var%20row%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20row.className%20%3D%20%27r%27%3B%0A%20%20%20%20var%20inp%20%3D%20document.createElement%28%27input%27%29%3B%0A%20%20%20%20inp.className%20%3D%20%27i%27%3B%0A%20%20%20%20inp.readOnly%20%3D%20true%3B%0A%20%20%20%20inp.value%20%3D%20id%3B%0A%20%20%20%20var%20cp%20%3D%20document.createElement%28%27button%27%29%3B%0A%20%20%20%20cp.className%20%3D%20%27b%27%3B%0A%20%20%20%20cp.textContent%20%3D%20%27Copy%27%3B%0A%20%20%20%20cp.onclick%20%3D%20function%28%29%20%7B%0A%20%20%20%20%20%20navigator.clipboard.writeText%28id%29.then%28function%28%29%20%7B%0A%20%20%20%20%20%20%20%20cp.textContent%20%3D%20%27Copied%27%3B%0A%20%20%20%20%20%20%20%20setTimeout%28function%28%29%20%7B%20cp.textContent%20%3D%20%27Copy%27%3B%20%7D%2C%20900%29%3B%0A%20%20%20%20%20%20%7D%29.catch%28function%28e%29%20%7B%0A%20%20%20%20%20%20%20%20alert%28%27Copy%20failed%3A%27%20%2B%20e%29%3B%0A%20%20%20%20%20%20%7D%29%3B%0A%20%20%20%20%7D%3B%0A%20%20%20%20var%20go%20%3D%20document.createElement%28%27button%27%29%3B%0A%20%20%20%20go.className%20%3D%20%27b%20p%27%3B%0A%20%20%20%20go.textContent%20%3D%20%27Marketplace%27%3B%0A%20%20%20%20go.onclick%20%3D%20function%28%29%20%7B%0A%20%20%20%20%20%20window.open%28%27https%3A//www.facebook.com/marketplace/profile/%27%20%2B%20id%2C%20%27_blank%27%2C%20%27noopener%27%29%3B%0A%20%20%20%20%7D%3B%0A%20%20%20%20row.appendChild%28inp%29%3B%0A%20%20%20%20row.appendChild%28cp%29%3B%0A%20%20%20%20row.appendChild%28go%29%3B%0A%20%20%20%20c.appendChild%28row%29%3B%0A%20%20%20%20var%20lbl2%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20lbl2.className%20%3D%20%27l%27%3B%0A%20%20%20%20lbl2.textContent%20%3D%20%27Search%20this%20profile%3A%27%3B%0A%20%20%20%20c.appendChild%28lbl2%29%3B%0A%20%20%20%20var%20row2%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20row2.className%20%3D%20%27r%27%3B%0A%20%20%20%20var%20kw%20%3D%20document.createElement%28%27input%27%29%3B%0A%20%20%20%20kw.className%20%3D%20%27i%27%3B%0A%20%20%20%20kw.placeholder%20%3D%20%27Enter%20keyword%27%3B%0A%20%20%20%20var%20sowBtn%20%3D%20document.createElement%28%27button%27%29%3B%0A%20%20%20%20sowBtn.className%20%3D%20%27b%20p%27%3B%0A%20%20%20%20sowBtn.textContent%20%3D%20%27Sowsearch%27%3B%0A%20%20%20%20sowBtn.onclick%20%3D%20function%28%29%20%7B%0A%20%20%20%20%20%20var%20innerObj%20%3D%20%7Bname%3A%27author%27%2C%20args%3Aid%7D%3B%0A%20%20%20%20%20%20var%20filterObj%20%3D%20%7Brp_author%3A%20JSON.stringify%28innerObj%29%7D%3B%0A%20%20%20%20%20%20var%20filterStr%20%3D%20btoa%28JSON.stringify%28filterObj%29%29%3B%0A%20%20%20%20%20%20var%20url%20%3D%20%27https%3A//www.facebook.com/search/top/%3Fq%3D%27%20%2B%20encodeURIComponent%28kw.value%29%20%2B%20%27%26filters%3D%27%20%2B%20filterStr%20%2B%20%27%26epa%3DFILTERS%26_rdr%27%3B%0A%20%20%20%20%20%20window.open%28url%2C%20%27_blank%27%29%3B%0A%20%20%20%20%7D%3B%0A%20%20%20%20var%20profileBtn%20%3D%20document.createElement%28%27button%27%29%3B%0A%20%20%20%20profileBtn.className%20%3D%20%27b%20p%27%3B%0A%20%20%20%20profileBtn.textContent%20%3D%20%27Profile%20Search%27%3B%0A%20%20%20%20profileBtn.onclick%20%3D%20function%28%29%20%7B%0A%20%20%20%20%20%20var%20url%20%3D%20%27https%3A//www.facebook.com/profile/%27%20%2B%20id%20%2B%20%27/search/%3Fq%3D%27%20%2B%20encodeURIComponent%28kw.value%29%3B%0A%20%20%20%20%20%20window.open%28url%2C%20%27_blank%27%29%3B%0A%20%20%20%20%7D%3B%0A%20%20%20%20row2.appendChild%28kw%29%3B%0A%20%20%20%20row2.appendChild%28sowBtn%29%3B%0A%20%20%20%20row2.appendChild%28profileBtn%29%3B%0A%20%20%20%20c.appendChild%28row2%29%3B%0A%20%20%20%20s.appendChild%28st%29%3B%0A%20%20%20%20s.appendChild%28c%29%3B%0A%20%20%20%20document.body.appendChild%28b%29%3B%0A%20%20%7D%20catch%20%28e%29%20%7B%0A%20%20%20%20alert%28%27userID%20finder%20error%3A%27%20%2B%20e.message%29%3B%0A%20%20%7D%0A%7D%29%28%29%3B%0A">Facebook ID finder and search aid</a></div>
-    <div class="bookmarklet-item"><span class="icon">&#127760;</span><a class="btn primary" href="javascript:%0A%28function%28%29%7B%0A%20%20const%20min%20%3D%20300%2C%20max%20%3D%20800%3B%20//%20adjust%20delay%20between%20clicks%20in%20milliseconds%0A%20%20let%20running%20%3D%20true%3B%0A%20%20function%20rand%28%29%20%7B%0A%20%20%20%20return%20Math.floor%28Math.random%28%29%20%2A%20%28max%20-%20min%20%2B%201%29%29%20%2B%20min%3B%0A%20%20%7D%0A%20%20function%20clickNext%28%29%20%7B%0A%20%20%20%20if%20%28%21running%29%20return%3B%0A%20%20%20%20var%20btn%20%3D%20Array.prototype.slice.call%28document.querySelectorAll%28%27a%2Cbutton%2Cdiv%5Brole%3D%22button%22%5D%27%29%29.find%28function%28el%29%7B%20return%20/view/i.test%28el.textContent%29%20%26%26%20el.offsetParent%20%21%3D%3D%20null%3B%20%7D%29%3B%0A%20%20%20%20if%20%28btn%29%20%7B%0A%20%20%20%20%20%20btn.scrollIntoView%28%7B%20behavior%3A%20%27smooth%27%2C%20block%3A%20%27center%27%20%7D%29%3B%0A%20%20%20%20%20%20btn.click%28%29%3B%0A%20%20%20%20%20%20console.log%28%27Clicked%3A%27%2C%20btn.textContent.trim%28%29%29%3B%0A%20%20%20%20%20%20window.scrollBy%280%2C%20200%29%3B%0A%20%20%20%20%20%20setTimeout%28clickNext%2C%20rand%28%29%29%3B%0A%20%20%20%20%7D%20else%20%7B%0A%20%20%20%20%20%20alert%28%27No%20more%20%22view%22%20buttons%20found.%27%29%3B%0A%20%20%20%20%20%20panel.remove%28%29%3B%0A%20%20%20%20%7D%0A%20%20%7D%0A%20%20var%20panel%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20panel.style.cssText%20%3D%20%27position%3Afixed%3Bbottom%3A15px%3Bright%3A15px%3Bz-index%3A999999%3Bpadding%3A6px%2010px%3Bbackground%3A%23111%3Bcolor%3A%23eee%3Bborder%3A1px%20solid%20%23333%3Bborder-radius%3A8px%3Bfont%3A13px%20system-ui%3Bbox-shadow%3A0%204px%2014px%20rgba%280%2C0%2C0%2C.4%29%3Bdisplay%3Aflex%3Bgap%3A6px%3Balign-items%3Acenter%27%3B%0A%20%20var%20btnPause%20%3D%20document.createElement%28%27button%27%29%3B%0A%20%20btnPause.textContent%20%3D%20%27Pause%27%3B%0A%20%20var%20btnStop%20%3D%20document.createElement%28%27button%27%29%3B%0A%20%20btnStop.textContent%20%3D%20%27Stop%27%3B%0A%20%20%5BbtnPause%2C%20btnStop%5D.forEach%28function%28b%29%7B%0A%20%20%20%20b.style.cssText%20%3D%20%27background%3A%232a2a2a%3Bborder%3A0%3Bcolor%3A%23eee%3Bpadding%3A4px%208px%3Bborder-radius%3A6px%3Bcursor%3Apointer%3Bfont%3A13px%20system-ui%27%3B%0A%20%20%7D%29%3B%0A%20%20btnPause.onclick%20%3D%20function%28%29%7B%0A%20%20%20%20running%20%3D%20%21running%3B%0A%20%20%20%20if%20%28running%29%20%7B%0A%20%20%20%20%20%20btnPause.textContent%20%3D%20%27Pause%27%3B%0A%20%20%20%20%20%20clickNext%28%29%3B%0A%20%20%20%20%7D%20else%20%7B%0A%20%20%20%20%20%20btnPause.textContent%20%3D%20%27Resume%27%3B%0A%20%20%20%20%7D%0A%20%20%7D%3B%0A%20%20btnStop.onclick%20%3D%20function%28%29%7B%0A%20%20%20%20running%20%3D%20false%3B%0A%20%20%20%20panel.remove%28%29%3B%0A%20%20%20%20alert%28%27Stopped.%27%29%3B%0A%20%20%7D%3B%0A%20%20panel.append%28%27Auto-View%3A%27%2C%20btnPause%2C%20btnStop%29%3B%0A%20%20document.body.appendChild%28panel%29%3B%0A%20%20clickNext%28%29%3B%0A%7D%29%28%29%3B%0A">Facebook comment expander</a></div>
-    <div class="bookmarklet-item"><span class="icon">&#127760;</span><a class="btn primary" href="javascript:(function(){%0Atry%20%7B%0A%20%20%20%20var%20add%20%3D%20function%28set%2C%20u%29%20%7B%0A%20%20%20%20%20%20%20%20if%20%28%21u%29%20return%3B%0A%20%20%20%20%20%20%20%20try%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20var%20x%20%3D%20new%20URL%28u%2C%20location.href%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20x.hash%20%3D%20%27%27%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20set.add%28x.toString%28%29%29%3B%0A%20%20%20%20%20%20%20%20%7D%20catch%28e%29%20%7B%7D%0A%20%20%20%20%7D%3B%0A%0A%20%20%20%20var%20found%20%3D%20new%20Set%28%29%3B%0A%20%20%20%20document.querySelectorAll%28%27img%27%29.forEach%28function%28img%29%20%7B%0A%20%20%20%20%20%20%20%20add%28found%2C%20img.getAttribute%28%27src%27%29%20%7C%7C%20img.src%29%3B%0A%20%20%20%20%20%20%20%20%28img.getAttribute%28%27srcset%27%29%20%7C%7C%20%27%27%29.split%28%27%2C%27%29.forEach%28function%28v%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20var%20a%20%3D%20v.trim%28%29.split%28%27%20%27%29%5B0%5D%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20if%20%28a%29%20add%28found%2C%20a%29%3B%0A%20%20%20%20%20%20%20%20%7D%29%3B%0A%20%20%20%20%20%20%20%20%5B%27data-src%27%2C%27data-original%27%2C%27data-lazy%27%2C%27data-echo%27%2C%27data-iesrc%27%5D.forEach%28function%28k%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20add%28found%2C%20img.getAttribute%28k%29%29%3B%0A%20%20%20%20%20%20%20%20%7D%29%3B%0A%20%20%20%20%7D%29%3B%0A%0A%20%20%20%20Array.prototype.forEach.call%28document.querySelectorAll%28%27%2A%27%29%2C%20function%28el%29%20%7B%0A%20%20%20%20%20%20%20%20var%20bg%20%3D%20getComputedStyle%28el%29.backgroundImage%3B%0A%20%20%20%20%20%20%20%20if%20%28bg%20%26%26%20bg%20%21%3D%3D%20%27none%27%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20var%20re%20%3D%20/url%5C%28%28%5B%27%22%5D%3F%29%28.%2A%3F%29%01%5C%29/g%2C%20m%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20while%20%28%28m%20%3D%20re.exec%28bg%29%29%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20add%28found%2C%20m%5B2%5D%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%29%3B%0A%0A%20%20%20%20var%20list%20%3D%20Array.from%28found%29%3B%0A%20%20%20%20var%20host%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20host.style.cssText%20%3D%20%27position%3Afixed%3Btop%3A0%3Bleft%3A0%3Bwidth%3A100%25%3Bheight%3A100%25%3Bz-index%3A2147483647%3Boverflow%3Aauto%3Bbackground%3Argba%280%2C0%2C0%2C0.02%29%27%3B%0A%20%20%20%20var%20sh%20%3D%20host.attachShadow%28%7Bmode%3A%27open%27%7D%29%3B%0A%20%20%20%20var%20style%20%3D%20document.createElement%28%27style%27%29%3B%0A%20%20%20%20style.textContent%20%3D%20%27%3Ahost%7Ball%3Ainitial%3Bfont-family%3Asystem-ui%2CSegoe%20UI%2CArial%2Csans-serif%7D%2A%7Bbox-sizing%3Aborder-box%7D.wrap%7Bmin-height%3A100%25%3Bbackground%3A%230f0f10%3Bcolor%3A%23eaeaea%3Bdisplay%3Aflex%3Bflex-direction%3Acolumn%7D.top%7Bposition%3Asticky%3Btop%3A0%3Bz-index%3A1%3Bpadding%3A.6rem%20.9rem%3Bbackground%3A%230f0f10%3Bborder-bottom%3A1px%20solid%20%232a2a2a%3Bdisplay%3Aflex%3Balign-items%3Acenter%3Bjustify-content%3Aspace-between%3Bgap%3A.5rem%7D.btn%7Bbackground%3A%232a2a2a%3Bborder%3A0%3Bcolor%3A%23eee%3Bpadding%3A.35rem%20.6rem%3Bborder-radius%3A6px%3Bcursor%3Apointer%7D.grid%7Bpadding%3A.7rem%20.9rem%3Bdisplay%3Agrid%3Bgrid-template-columns%3Arepeat%28auto-fill%2Cminmax%28240px%2C1fr%29%29%3Bgap%3A.9rem%7D.card%7Bposition%3Arelative%3Bbackground%3A%23151518%3Bborder%3A1px%20solid%20%232a2a2a%3Bborder-radius%3A8px%3Boverflow%3Ahidden%3Bdisplay%3Aflex%3Bflex-direction%3Acolumn%7D.thumb%7Bdisplay%3Ablock%3Bwidth%3A100%25%3Bheight%3A180px%3Bobject-fit%3Acover%3Bbackground%3A%230b0b0c%7D.meta%7Bpadding%3A.45rem%20.5rem%7D.url%7Bword-break%3Abreak-all%3Bopacity%3A.85%3Bfont-size%3A12px%3Bline-height%3A1.2%3Bmax-height%3A3.4em%3Boverflow%3Ahidden%7D.dims%7Bopacity%3A.65%3Bfont-size%3A11px%3Bmargin-top%3A.2rem%7D.bar%7Bposition%3Aabsolute%3Bleft%3A8px%3Bright%3A8px%3Bbottom%3A8px%3Bdisplay%3Aflex%3Bgap%3A.4rem%3Bjustify-content%3Aflex-end%7D.chip%7Bbackground%3Argba%280%2C0%2C0%2C.55%29%3Bcolor%3A%23fff%3Bborder%3A1px%20solid%20rgba%28255%2C255%2C255%2C.15%29%3Bpadding%3A.25rem%20.45rem%3Bborder-radius%3A6px%3Bfont-size%3A12px%3Bcursor%3Apointer%7D.toast%7Bposition%3Afixed%3Bright%3A12px%3Bbottom%3A12px%3Bbackground%3A%232d6cdf%3Bcolor%3A%23fff%3Bpadding%3A.4rem%20.6rem%3Bborder-radius%3A6px%3Bbox-shadow%3A0%206px%2020px%20rgba%280%2C0%2C0%2C.3%29%3Bfont%3A12px/1%20system-ui%7D%27%3B%0A%20%20%20%20var%20wrap%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20wrap.className%20%3D%20%27wrap%27%3B%0A%20%20%20%20var%20topDiv%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20topDiv.className%20%3D%20%27top%27%3B%0A%20%20%20%20var%20left%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20var%20title%20%3D%20document.createElement%28%27strong%27%29%3B%0A%20%20%20%20title.textContent%20%3D%20%27Image%20Scraper%27%3B%0A%20%20%20%20var%20count%20%3D%20document.createElement%28%27span%27%29%3B%0A%20%20%20%20count.id%20%3D%20%27count%27%3B%0A%20%20%20%20count.style.opacity%20%3D%20%270.75%27%3B%0A%20%20%20%20count.style.marginLeft%20%3D%20%27.4rem%27%3B%0A%20%20%20%20left.appendChild%28title%29%3B%0A%20%20%20%20left.appendChild%28count%29%3B%0A%20%20%20%20var%20right%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20var%20closeBtn%20%3D%20document.createElement%28%27button%27%29%3B%0A%20%20%20%20closeBtn.className%20%3D%20%27btn%27%3B%0A%20%20%20%20closeBtn.id%20%3D%20%27close%27%3B%0A%20%20%20%20closeBtn.textContent%20%3D%20%27Close%27%3B%0A%20%20%20%20right.appendChild%28closeBtn%29%3B%0A%20%20%20%20topDiv.appendChild%28left%29%3B%0A%20%20%20%20topDiv.appendChild%28right%29%3B%0A%20%20%20%20var%20grid%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20grid.className%20%3D%20%27grid%27%3B%0A%20%20%20%20grid.id%20%3D%20%27grid%27%3B%0A%20%20%20%20wrap.appendChild%28topDiv%29%3B%0A%20%20%20%20wrap.appendChild%28grid%29%3B%0A%20%20%20%20sh.appendChild%28style%29%3B%0A%20%20%20%20sh.appendChild%28wrap%29%3B%0A%20%20%20%20document.body.appendChild%28host%29%3B%0A%20%20%20%20count.textContent%20%3D%20%27%20%28%27%20%2B%20list.length%20%2B%20%27%20found%29%27%3B%0A%20%20%20%20var%20toast%20%3D%20function%28msg%29%20%7B%0A%20%20%20%20%20%20%20%20var%20n%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20%20%20%20%20n.className%20%3D%20%27toast%27%3B%0A%20%20%20%20%20%20%20%20n.textContent%20%3D%20msg%3B%0A%20%20%20%20%20%20%20%20sh.appendChild%28n%29%3B%0A%20%20%20%20%20%20%20%20setTimeout%28function%28%29%7B%20n.remove%28%29%3B%20%7D%2C%201200%29%3B%0A%20%20%20%20%7D%3B%0A%20%20%20%20var%20makeCard%20%3D%20function%28u%29%20%7B%0A%20%20%20%20%20%20%20%20var%20card%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20%20%20%20%20card.className%20%3D%20%27card%27%3B%0A%20%20%20%20%20%20%20%20var%20img%20%3D%20document.createElement%28%27img%27%29%3B%0A%20%20%20%20%20%20%20%20img.className%20%3D%20%27thumb%27%3B%0A%20%20%20%20%20%20%20%20img.loading%20%3D%20%27lazy%27%3B%0A%20%20%20%20%20%20%20%20img.referrerPolicy%20%3D%20%27no-referrer%27%3B%0A%20%20%20%20%20%20%20%20img.src%20%3D%20u%3B%0A%20%20%20%20%20%20%20%20var%20meta%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20%20%20%20%20meta.className%20%3D%20%27meta%27%3B%0A%20%20%20%20%20%20%20%20var%20urlDiv%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20%20%20%20%20urlDiv.className%20%3D%20%27url%27%3B%0A%20%20%20%20%20%20%20%20urlDiv.textContent%20%3D%20u%3B%0A%20%20%20%20%20%20%20%20var%20dims%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20%20%20%20%20dims.className%20%3D%20%27dims%27%3B%0A%20%20%20%20%20%20%20%20dims.textContent%20%3D%20%27...%27%3B%0A%20%20%20%20%20%20%20%20img.addEventListener%28%27load%27%2C%20function%28%29%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20dims.textContent%20%3D%20%28img.naturalWidth%20%7C%7C%20%27%3F%27%29%20%2B%20%27x%27%20%2B%20%28img.naturalHeight%20%7C%7C%20%27%3F%27%29%3B%0A%20%20%20%20%20%20%20%20%7D%2C%20%7B%20once%3A%20true%20%7D%29%3B%0A%20%20%20%20%20%20%20%20var%20bar%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20%20%20%20%20bar.className%20%3D%20%27bar%27%3B%0A%20%20%20%20%20%20%20%20var%20copyBtn%20%3D%20document.createElement%28%27button%27%29%3B%0A%20%20%20%20%20%20%20%20copyBtn.className%20%3D%20%27chip%27%3B%0A%20%20%20%20%20%20%20%20copyBtn.textContent%20%3D%20%27Copy%27%3B%0A%20%20%20%20%20%20%20%20copyBtn.onclick%20%3D%20function%28%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20navigator.clipboard.writeText%28u%29.then%28function%28%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20toast%28%27Copied%27%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%29.catch%28function%28e%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20alert%28%27Copy%20failed%3A%20%27%20%2B%20e%29%3B%0A%20%20%20%20%20%20%20%20%20%20%20%20%7D%29%3B%0A%20%20%20%20%20%20%20%20%7D%3B%0A%20%20%20%20%20%20%20%20var%20openBtn%20%3D%20document.createElement%28%27button%27%29%3B%0A%20%20%20%20%20%20%20%20openBtn.className%20%3D%20%27chip%27%3B%0A%20%20%20%20%20%20%20%20openBtn.textContent%20%3D%20%27Open%27%3B%0A%20%20%20%20%20%20%20%20openBtn.onclick%20%3D%20function%28%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20window.open%28u%2C%20%27_blank%27%2C%20%27noopener%27%29%3B%0A%20%20%20%20%20%20%20%20%7D%3B%0A%20%20%20%20%20%20%20%20bar.appendChild%28copyBtn%29%3B%0A%20%20%20%20%20%20%20%20bar.appendChild%28openBtn%29%3B%0A%20%20%20%20%20%20%20%20meta.appendChild%28urlDiv%29%3B%0A%20%20%20%20%20%20%20%20meta.appendChild%28dims%29%3B%0A%20%20%20%20%20%20%20%20card.appendChild%28img%29%3B%0A%20%20%20%20%20%20%20%20card.appendChild%28meta%29%3B%0A%20%20%20%20%20%20%20%20card.appendChild%28bar%29%3B%0A%20%20%20%20%20%20%20%20return%20card%3B%0A%20%20%20%20%7D%3B%0A%20%20%20%20var%20i%20%3D%200%3B%0A%20%20%20%20%28function%20batch%28%29%20%7B%0A%20%20%20%20%20%20%20%20var%20end%20%3D%20Math.min%28i%20%2B%2060%2C%20list.length%29%3B%0A%20%20%20%20%20%20%20%20for%20%28%3B%20i%20%3C%20end%3B%20i%2B%2B%29%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20grid.appendChild%28makeCard%28list%5Bi%5D%29%29%3B%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20if%20%28i%20%3C%20list.length%29%20requestAnimationFrame%28batch%29%3B%0A%20%20%20%20%7D%29%28%29%3B%0A%20%20%20%20closeBtn.onclick%20%3D%20function%28%29%20%7B%0A%20%20%20%20%20%20%20%20host.remove%28%29%3B%0A%20%20%20%20%7D%3B%0A%7D%20catch%28e%29%20%7B%0A%20%20%20%20alert%28%27Image%20scraper%20error%3A%20%27%20%2B%20%28e%20%26%26%20e.message%20%3F%20e.message%20%3A%20e%29%29%3B%0A%7D%0A})();">Show all images on a page</a></div>
-    <div class="bookmarklet-item"><span class="icon">&#127760;</span><a class="btn primary" href="javascript:%0A%28function%28%29%7B%0A%20%20try%20%7B%0A%20%20%20%20var%20raw%20%3D%20Array.prototype.slice.call%28document.links%29.map%28function%28a%29%7B%20return%20a.getAttribute%28%27href%27%29%20%7C%7C%20a.href%3B%20%7D%29.filter%28Boolean%29%3B%0A%20%20%20%20var%20links%20%3D%20raw.map%28function%28h%29%7B%0A%20%20%20%20%20%20try%20%7B%0A%20%20%20%20%20%20%20%20var%20u%20%3D%20new%20URL%28h%2C%20location.href%29%3B%0A%20%20%20%20%20%20%20%20u.hash%20%3D%20%27%27%3B%0A%20%20%20%20%20%20%20%20%5B%27utm_source%27%2C%27utm_medium%27%2C%27utm_campaign%27%2C%27utm_term%27%2C%27utm_content%27%2C%27fbclid%27%2C%27gclid%27%5D.forEach%28function%28p%29%7B%20u.searchParams.delete%28p%29%3B%20%7D%29%3B%0A%20%20%20%20%20%20%20%20return%20u.toString%28%29%3B%0A%20%20%20%20%20%20%7D%20catch%28e%29%20%7B%0A%20%20%20%20%20%20%20%20return%20null%3B%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%29.filter%28Boolean%29%3B%0A%20%20%20%20var%20uniq%20%3D%20Array.from%28new%20Set%28links%29%29%3B%0A%20%20%20%20var%20hostCounts%20%3D%20uniq.reduce%28function%28a%2C%20u%29%7B%0A%20%20%20%20%20%20try%20%7B%0A%20%20%20%20%20%20%20%20var%20d%20%3D%20new%20URL%28u%29.hostname%3B%0A%20%20%20%20%20%20%20%20a%5Bd%5D%20%3D%20%28a%5Bd%5D%20%7C%7C%200%29%20%2B%201%3B%0A%20%20%20%20%20%20%7D%20catch%28e%29%20%7B%7D%0A%20%20%20%20%20%20return%20a%3B%0A%20%20%20%20%7D%2C%20%7B%7D%29%3B%0A%20%20%20%20var%20wrap%20%3D%20document.createElement%28%27div%27%29%3B%0A%20%20%20%20wrap.style.cssText%20%3D%20%27position%3Afixed%3Binset%3A10%25%2010%25%3Bz-index%3A2147483647%3Bbackground%3A%23111%3Bcolor%3A%23eee%3Bborder%3A1px%20solid%20%23444%3Bborder-radius%3A8px%3Bbox-shadow%3A0%208px%2024px%20rgba%280%2C0%2C0%2C.5%29%3Bdisplay%3Aflex%3Bflex-direction%3Acolumn%27%3B%0A%20%20%20%20wrap.innerHTML%20%3D%20%27%3Cdiv%20style%3D%22padding%3A.6rem%20.9rem%3Bborder-bottom%3A1px%20solid%20%23333%3Bdisplay%3Aflex%3Bjustify-content%3Aspace-between%3Balign-items%3Acenter%22%3E%3Cstrong%3EExtracted%20links%20%28%27%20%2B%20uniq.length%20%2B%20%27%29%3C/strong%3E%3Cbutton%20id%3D%22x%22%20style%3D%22background%3A%23333%3Bborder%3A0%3Bcolor%3A%23eee%3Bpadding%3A.3rem%20.6rem%3Bborder-radius%3A6px%3Bcursor%3Apointer%22%3EClose%3C/button%3E%3C/div%3E%27%20%2B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%27%3Cdiv%20style%3D%22padding%3A.6rem%20.9rem%3Bdisplay%3Agrid%3Bgrid-template-columns%3A1fr%3Bgap%3A.5rem%3Bflex%3A1%3Bmin-height%3A0%22%3E%27%20%2B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%27%3Cdiv%20style%3D%22font%3A12px/1.4%20monospace%3Bwhite-space%3Apre%3Boverflow%3Aauto%3Bborder%3A1px%20solid%20%23333%3Bborder-radius%3A6px%3Bpadding%3A.5rem%22%20id%3D%22domains%22%3E%3C/div%3E%27%20%2B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%27%3Ctextarea%20id%3D%22out%22%20style%3D%22flex%3A1%3Bmin-height%3A0%3Bwidth%3A100%25%3Bresize%3Anone%3Bfont%3A12px/1.4%20monospace%3Bbackground%3A%230b0b0b%3Bcolor%3A%23eee%3Bborder%3A1px%20solid%20%23333%3Bborder-radius%3A6px%3Bpadding%3A.5rem%22%3E%3C/textarea%3E%27%20%2B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%27%3C/div%3E%27%20%2B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%27%3Cdiv%20style%3D%22padding%3A.6rem%20.9rem%3Bborder-top%3A1px%20solid%20%23333%3Bdisplay%3Aflex%3Bgap%3A.5rem%22%3E%27%20%2B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%27%3Cbutton%20id%3D%22copy%22%20style%3D%22background%3A%232d6cdf%3Bborder%3A0%3Bcolor%3Awhite%3Bpadding%3A.4rem%20.7rem%3Bborder-radius%3A6px%3Bcursor%3Apointer%22%3ECopy%3C/button%3E%27%20%2B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%27%3Cbutton%20id%3D%22csv%22%20style%3D%22background%3A%23444%3Bborder%3A0%3Bcolor%3A%23eee%3Bpadding%3A.4rem%20.7rem%3Bborder-radius%3A6px%3Bcursor%3Apointer%22%3EDownload%20CSV%3C/button%3E%27%20%2B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%27%3C/div%3E%27%3B%0A%20%20%20%20document.body.appendChild%28wrap%29%3B%0A%20%20%20%20var%20txt%20%3D%20uniq.join%28%27%5Cn%27%29%3B%0A%20%20%20%20wrap.querySelector%28%27%23out%27%29.value%20%3D%20txt%3B%0A%20%20%20%20wrap.querySelector%28%27%23domains%27%29.textContent%20%3D%20Object.keys%28hostCounts%29.map%28function%28d%29%7B%20return%20d%20%2B%20%27%3A%20%27%20%2B%20hostCounts%5Bd%5D%3B%20%7D%29.join%28%27%5Cn%27%29%3B%0A%20%20%20%20wrap.querySelector%28%27%23x%27%29.onclick%20%3D%20function%28%29%7B%20wrap.remove%28%29%3B%20%7D%3B%0A%20%20%20%20wrap.querySelector%28%27%23copy%27%29.onclick%20%3D%20function%28%29%7B%0A%20%20%20%20%20%20try%20%7B%0A%20%20%20%20%20%20%20%20navigator.clipboard.writeText%28txt%29.then%28function%28%29%7B%20alert%28%27Copied%27%29%3B%20%7D%29.catch%28function%28e%29%7B%20alert%28%27Copy%20failed%3A%20%27%20%2B%20e%29%3B%20%7D%29%3B%0A%20%20%20%20%20%20%7D%20catch%28e%29%20%7B%0A%20%20%20%20%20%20%20%20alert%28%27Copy%20failed%3A%20%27%20%2B%20e%29%3B%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%3B%0A%20%20%20%20wrap.querySelector%28%27%23csv%27%29.onclick%20%3D%20function%28%29%7B%0A%20%20%20%20%20%20var%20csv%20%3D%20%27URL%5Cn%27%20%2B%20uniq.map%28function%28u%29%7B%20return%20%27%22%27%20%2B%20u.replace%28/%22/g%2C%20%27%22%22%27%29%20%2B%20%27%22%27%3B%20%7D%29.join%28%27%5Cn%27%29%3B%0A%20%20%20%20%20%20var%20a%20%3D%20document.createElement%28%27a%27%29%3B%0A%20%20%20%20%20%20a.href%20%3D%20%27data%3Atext/csv%3Bcharset%3Dutf-8%2C%27%20%2B%20encodeURIComponent%28csv%29%3B%0A%20%20%20%20%20%20a.download%20%3D%20%27links.csv%27%3B%0A%20%20%20%20%20%20a.click%28%29%3B%0A%20%20%20%20%7D%3B%0A%20%20%7D%20catch%28e%29%20%7B%0A%20%20%20%20console.error%28e%29%3B%0A%20%20%20%20alert%28%27Extractor%20error%3A%20%27%20%2B%20e%29%3B%0A%20%20%7D%0A%7D%29%28%29%3B%0A">Page links list</a></div>
-  
-  </div>
-</section>
+      <!-- Bookmarklets Section -->
+      <div class="mt-4">
+        <div class="card">
+          <h2>Bookmarklets</h2>
+          <p class="mb-4">Drag these buttons to your bookmarks bar to install them.</p>
+          
+          <div class="actions" style="flex-wrap: wrap;">
+             <!-- These hrefs will be populated by the build script. For now, they are placeholders or manual copies if needed. 
+                  Since we are in a dev environment, I will leave them as # or point to the source for now, 
+                  but in a real build they would be javascript:... -->
+            
+            <a class="btn primary" href="javascript:alert('Please run the build script to populate this!')">Facebook ID Finder</a>
+            <a class="btn primary" href="javascript:alert('Please run the build script to populate this!')">Comment Expander</a>
+            <a class="btn primary" href="javascript:alert('Please run the build script to populate this!')">Image Scraper</a>
+            <a class="btn primary" href="javascript:alert('Please run the build script to populate this!')">Link Extractor</a>
+            <a class="btn primary" href="javascript:alert('Please run the build script to populate this!')">Marketplace Time</a>
+          </div>
+          
+          <div class="mt-4 text-center">
+             <a class="btn" href="https://www.youtube.com/watch?v=NNFE_NM8hK0" target="_blank">Watch bookmarklet training</a>
+          </div>
+        </div>
+      </div>
 
-<!-- New bookmarklets section (bookmarklet + blurb aligned) -->
-<section id="bookmarklets-new" class="bookmarklets-card">
-  <h2 class="bookmarklets-title">New bookmarklets</h2>
-  <hr class="bookmarklets-sep">
-
-  <div class="bookmarklets-row">
-    <div class="bookmarklet-item">
-      <span class="icon">&#127760;</span>
-      <a class="btn primary" href='javascript:(function(){try{var re=/"creation_time"\s*:\s*(\d{10,13})\b/;function scanScripts(){var s=document.scripts;for(var i=0;i<s.length;i++){var t=s[i].textContent||"";var m=re.exec(t);if(m)return m[1]}return null}var raw=scanScripts();if(!raw){var txt=document.documentElement.textContent||"";var m=re.exec(txt);raw=m?m[1]:null}if(!raw){alert("No \"creation_time\" found.");return}var sec=(raw.length>10)?Math.floor(parseInt(raw,10)/1000):parseInt(raw,10);if(!isFinite(sec)){alert("Invalid creation_time: "+raw);return}var ms=sec*1000,dL=new Date(ms),dU=new Date(ms),months=["January","February","March","April","May","June","July","August","September","October","November","December"],z=function(n){return(n<10?"0":"")+n},fmtLocal=function(d){return d.getDate()+" "+months[d.getMonth()]+" "+d.getFullYear()+", "+z(d.getHours())+":"+z(d.getMinutes())+":"+z(d.getSeconds())},fmtUTC=function(d){return d.getUTCDate()+" "+months[d.getUTCMonth()]+" "+d.getUTCFullYear()+", "+z(d.getUTCHours())+":"+z(d.getUTCMinutes())+":"+z(d.getUTCSeconds())},box=document.createElement("div");box.style.cssText="position:fixed;top:12vh;left:12vw;z-index:2147483647;background:#0f0f10;color:#eaeaea;border:1px solid #2a2a2a;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);min-width:320px;max-width:90vw;font:14px/1.45 system-ui,Segoe UI,Arial,sans-serif";var header=document.createElement("div");header.style.cssText="cursor:move;padding:10px 14px;background:#151518;border-bottom:1px solid #2a2a2a;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:space-between;gap:.5rem";var title=document.createElement("div");title.textContent="Marketplace listing creation time";var close=document.createElement("button");close.textContent="×";close.style.cssText="all:unset;cursor:pointer;font-size:18px;line-height:1;background:#2a2a2a;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:2px 8px";close.onclick=function(){box.remove()};header.appendChild(title);header.appendChild(close);var body=document.createElement("div");body.style.cssText="padding:12px 14px 14px";function row(label,value){var p=document.createElement("div");p.style.margin="6px 0";var b=document.createElement("div");b.style.opacity=".85";b.textContent=label;var v=document.createElement("div");v.style.cssText="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;font-weight:600";v.textContent=value;p.appendChild(b);p.appendChild(v);return p}var note=document.createElement("div");note.style.cssText="margin-bottom:10px;font-size:13px;opacity:.8";note.textContent="Note: Refresh the listing with Ctrl+R before using this bookmarklet!";body.appendChild(note);body.appendChild(row("Epoch (seconds)",String(sec)));body.appendChild(row("UTC",fmtUTC(dU)));body.appendChild(row("Browser local time",fmtLocal(dL)));var actions=document.createElement("div");actions.style.cssText="margin-top:10px;display:flex;gap:8px;justify-content:flex-start;align-items:center";var copy=document.createElement("button");copy.textContent="Copy details";copy.style.cssText="all:unset;cursor:pointer;font-size:13px;line-height:1;background:#2d6cdf;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:6px 10px";copy.onclick=function(){var txt="Epoch (seconds): "+sec+"\nUTC: "+fmtUTC(dU)+"\nBrowser local time: "+fmtLocal(dL);navigator.clipboard.writeText(txt).then(function(){copy.textContent="Copied";setTimeout(function(){copy.textContent="Copy details"},1200)}).catch(function(e){alert("Copy failed: "+e)})};actions.appendChild(copy);body.appendChild(actions);box.appendChild(header);box.appendChild(body);document.body.appendChild(box);(function(){var ox=0,oy=0,dx=0,dy=0,drag=false;header.addEventListener("mousedown",function(e){drag=true;dx=e.clientX;dy=e.clientY;var r=box.getBoundingClientRect();ox=r.left;oy=r.top;e.preventDefault()});document.addEventListener("mousemove",function(e){if(!drag)return;var nx=ox+(e.clientX-dx),ny=oy+(e.clientY-dy);box.style.left=Math.max(0,Math.min(innerWidth-60,nx))+"px";box.style.top=Math.max(0,Math.min(innerHeight-40,ny))+"px"});document.addEventListener("mouseup",function(){drag=false})})();}catch(e){alert("Bookmarklet error: "+(e&&e.message?e.message:e))}})();'
-'>Marketplace listing creation time</a>
-    </div>
-
-    <p class="bookmarklet-desc">
-      Bookmarklet to give you the time a Facebook Marketplace item was listed based on
-      <code>creation_time</code> in the source code. <strong>Refresh all listings <em>before</em> using the bookmarklet or you will get a false reading!</strong>
-    </p>
-  </div>
-</section>
-
-
-      
-      
-<style>
-/* Style the vertical list of bookmarklets */
-.bookmarklets-list .bookmarklet-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0.3rem 0;
-}
-.bookmarklets-list .icon {
-  font-size: 1.2rem;
-}
-</style>
-
-<style>
-#bookmarklets-new.bookmarklets-card {
-  max-width: 980px;
-  margin: 32px auto 0;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgba(46,168,255,0.06), rgba(46,168,255,0.03));
-}
-#bookmarklets-new .bookmarklets-title {
-  margin: 0 0 4px 0;
-  font-size: 18px;
-}
-#bookmarklets-new .bookmarklets-sep {
-  border: none;
-  border-top: 1px solid var(--border);
-  margin: 10px 0 14px;
-  opacity: .6;
-}
-
-/* Two-column row: left button, right blurb */
-#bookmarklets-new .bookmarklets-row {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 12px 16px;
-  align-items: center;
-}
-
-/* Reuse your existing list/button look */
-#bookmarklets-new .bookmarklets-list .bookmarklet-item { margin: 0; }
-#bookmarklets-new .bookmarklet-desc {
-  margin: 0;
-  font-size: 14px;
-  color: var(--muted);
-  text-align: right;
-  line-height: 1.45;
-}
-#bookmarklets-new code {
-  background: rgba(255,255,255,0.06);
-  padding: 0 .3em;
-  border-radius: 4px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: 0.95em;
-}
-
-/* Responsive: stack on narrow screens */
-@media (max-width: 720px) {
-  #bookmarklets-new .bookmarklets-row {
-    grid-template-columns: 1fr;
-  }
-  #bookmarklets-new .bookmarklet-desc {
-    text-align: left;
-  }
-}
-</style>
-
-
-
-<script>
-document.querySelectorAll('.card').forEach(card => {
-  const a = card.querySelector('a.video');
-  if (!a) return;
-  const url = card.dataset.video || a.getAttribute('href');
-  if (url) {
-    a.href = url;
-    a.target = '_blank';
-    a.rel = 'noopener';
-a.classList.remove('disabled');
-a.classList.add('primary');  // <-- add this line
-a.textContent = 'Watch training';
-
-  } else {
-    a.removeAttribute('href');
-    a.classList.add('disabled');
-    a.textContent = 'Training (coming soon)';
-  }
-});
-</script>
-
-   
-      
-      <div class="privacy-box" style="max-width:980px;margin:24px auto 0;padding:16px 18px;border-radius:12px;background:rgba(46,168,255,0.06);border:1px solid var(--border);color:var(--text);">
-        <p style="margin:0;font-size:14px;color:var(--muted);">
-          See the full details of the data handled by each tool on the
-          <a href="privacy.html" style="color:var(--brand);text-decoration:underline;text-underline-offset:2px;">Privacy & Data Use page</a>.
-        </p>
+      <div class="mt-4">
+        <div class="card" style="background: rgba(46, 168, 255, 0.05); border-color: rgba(46, 168, 255, 0.1);">
+          <p class="text-center">
+            See the full details of the data handled by each tool on the
+            <a href="privacy.html" style="color: var(--brand); text-decoration: underline;">Privacy & Data Use page</a>.
+          </p>
+        </div>
       </div>
     </main>
 
     <footer>
-      © 2025 <a href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener" style="color:inherit; text-decoration:underline; text-underline-offset:2px;">Wayfinder Intelligence</a> · Experimental tools
+      © 2025 <a href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener">Wayfinder Intelligence</a> · Experimental tools
     </footer>
   </div>
-
-  <script>
-    // 1) Logo fallback (in case Wayfinder.png isn't present / case-sensitive on GitHub Pages)
-    (function(){
-      const img = document.getElementById('logo');
-      if (!img) return;
-      let swapped = false;
-      img.addEventListener('error', () => {
-        if (swapped) return;
-        swapped = true;
-        img.src = 'https://i.imgur.com/q3oovaN.png';
-      }, { once:true });
-    })();
-
-    // 2) Badges + interactions
-    (function(){
-      const cards = document.querySelectorAll('.card');
-      cards.forEach(card => {
-        // Missing-file badge check
-        try {
-          const href = card.dataset.href;
-          const badge = card.querySelector(`[data-badge-for=\"${href}\"]`);
-          if (href && badge) {
-            fetch(href, { method: 'HEAD' })
-              .then(r => { if (!r.ok) badge.classList.add('bad-missing'); })
-              .catch(() => badge.classList.add('bad-missing'));
-          }
-        } catch {}
-
-        // Make whole card open the tool (unless clicking a button)
-        card.addEventListener('click', (e) => {
-          const isButton = e.target.closest('.btn');
-          if (isButton) return;
-          const url = card.dataset.href;
-          if (url) window.location.href = url;
-        });
-
-        // Training link handling
-        const v = card.getAttribute('data-video');
-        const link = card.querySelector('.btn.video');
-        if (link) {
-          if (!v) {
-            link.classList.add('disabled');
-            link.setAttribute('aria-disabled', 'true');
-            link.textContent = 'Training (soon)';
-            link.addEventListener('click', e => e.preventDefault());
-          } else {
-            link.href = v;
-            link.target = '_blank';
-            link.rel = 'noopener';
-          }
-        }
-      });
-    })();
-  </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,544 +1,436 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Wayfinder EXIF Metadata Inspector</title>
-  <meta name="description" content="Extract image metadata (EXIF/IPTC/XMP), preview, and map GPS EXIF coordinates. All processing happens in your browser." />
-  <meta name="color-scheme" content="dark light" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
 
-  <!-- Metadata parsers -->
+  <!-- EXIF Reader -->
   <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/exifreader@4.22.1/dist/exif-reader.min.js"></script>
+
+  <!-- Shared CSS -->
+  <link rel="stylesheet" href="css/style.css">
 
   <style>
-    :root{ --bg:#0f1115; --panel:#151923; --text:#e6e9f2; --muted:#8a93a6; --brand:#2ea8ff; --border:#242a37; }
-    *{box-sizing:border-box}
-    body{margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,"Noto Sans"; color:var(--text); background:linear-gradient(180deg,#0f1115 0%, #0b0d12 100%);}
-    header{padding:10px 16px; border-bottom:1px solid var(--border);}
-    .brand{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
-    .brand-left{ display:flex; align-items:center; gap:12px; }
-    .logo-left,.logo-right{ width:56px; height:56px; object-fit:contain; }
-    .logo-right{ filter:drop-shadow(0 8px 12px rgba(0,0,0,.35)); }
-    main{padding:20px;}
-
-    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;}
-    .drop{border:1px dashed var(--border);border-radius:12px;padding:14px;text-align:center;color:var(--muted);background:#0c0f15;}
-    .drop.drag{ outline:2px dashed var(--brand); outline-offset:3px; }
-
-    /* Summary at the top */
-    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:10px}
-    .hl{background:#0c0f15;border:1px solid var(--border);border-radius:10px;padding:10px}
-    .hl b{display:block;font-size:12px;color:#cbd5e1;margin-bottom:4px}
-    .hl span{font-size:13px;color:var(--text);word-break:break-word}
-
-    /* Inline tooltip */
-    .info-wrap{display:inline-flex; align-items:center; gap:4px; position:relative;}
-    .info-btn{
-      display:inline-flex; align-items:center; justify-content:center;
-      width:18px; height:18px; border:none; background:transparent; padding:0;
-      color:var(--muted); cursor:pointer; vertical-align:middle;
+    /* Tool-specific overrides */
+    :root {
+      --logo-size: 72px;
     }
-    .info-btn svg{width:16px; height:16px; stroke:currentColor; opacity:.9}
-    .info-wrap .tip{
-      position:absolute; top:100%; left:0; margin-top:6px; min-width:260px; max-width:320px;
-      background:#0c0f15; color:var(--muted); border:1px solid var(--border);
-      border-radius:8px; padding:8px 10px; font-size:12px; line-height:1.4; z-index:10;
-      box-shadow:0 8px 24px rgba(0,0,0,.35);
-      opacity:0; visibility:hidden; transform:translateY(-2px); transition:opacity .15s, transform .15s, visibility .15s;
+
+    .twocol {
+      display: grid;
+      grid-template-columns: minmax(420px, 1fr) 420px;
+      gap: 20px;
     }
-    .info-wrap:hover .tip,
-    .info-wrap.open .tip,
-    .info-btn:focus + .tip{ opacity:1; visibility:visible; transform:translateY(0); }
 
-    /* Main area: wide preview left, square map right */
-    .twocol{display:grid;grid-template-columns:minmax(420px,1fr) 420px;gap:16px}
-    @media (max-width: 1100px){ .twocol{grid-template-columns:1fr;} }
+    .preview-holder {
+      background: #0b0d12;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border);
+    }
 
-    .preview-holder{position:relative}
-    .placeholder{display:flex;align-items:center;justify-content:center;text-align:center;color:var(--muted);height:360px;border:1px dashed var(--border);border-radius:12px;background:#0a0d13}
-    .preview-img{width:100%;max-height:640px;object-fit:contain;background:#0a0d13;border:1px solid var(--border);border-radius:12px;display:none}
+    .preview-img {
+      max-width: 100%;
+      max-height: 60vh;
+      display: none;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
 
-    .map-card{background:#0c0f15;border:1px solid var(--border);border-radius:12px;padding:10px}
-    .map-wrap{width:100%;aspect-ratio:1/1;border:1px solid var(--border);border-radius:10px;overflow:hidden}
-    #map{width:100%;height:100%}
+    .placeholder {
+      color: var(--muted);
+      font-size: 14px;
+      pointer-events: none;
+    }
 
-    .device-card{display:flex;gap:12px;align-items:center;background:#0c1020;border:1px solid #223;border-radius:12px;padding:10px;margin-top:12px}
-    .device-card img{width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid #334}
+    .map-card {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      min-height: 400px;
+    }
 
-    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-    .search{flex:1;min-width:220px;background:#0c0f15;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 10px}
-    table{width:100%;border-collapse:collapse}
-    th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);font-size:13px}
-    th{color:#cbd5e1;font-weight:600}
+    .map-wrap {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+    }
 
-    footer{text-align:center;padding:16px;color:var(--muted);border-top:1px solid var(--border);}
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #151923;
+    }
+
+    .device-card {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .device-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .device-label {
+      color: var(--muted);
+    }
+
+    .device-val {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .drop {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      color: var(--muted);
+      transition: all 0.2s;
+      background: rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+    }
+
+    .drop.dragover {
+      border-color: var(--accent);
+      background: rgba(122, 162, 247, 0.1);
+      color: var(--accent);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      width: 35%;
+    }
+
+    td {
+      color: var(--text);
+      word-break: break-word;
+      font-family: var(--font-mono);
+    }
+
+    tr:last-child td,
+    tr:last-child th {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    @media (max-width: 900px) {
+      .twocol {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
+
+  <!-- Shared JS -->
+  <script src="js/common.js" defer></script>
 </head>
+
 <body>
-  <header>
-    <div class="brand">
-      <div class="brand-left">
-        <img class="logo-left" src="https://i.imgur.com/eQss5r2.png" alt="Tool icon">
-        <div>
-          <h1 class="title">EXIF Metadata Inspector</h1>
-          <div class="help">Upload or drop an image, or fetch by URL. Nothing leaves your browser.</div>
+  <div class="page">
+    <header>
+      <div class="brand">
+        <div class="brand-left">
+          <a href="index.html">
+            <img class="logo" src="Wayfinder.png" alt="Wayfinder Intelligence logo" />
+          </a>
+          <div>
+            <h1 class="title">EXIF Metadata Inspector</h1>
+            <div class="help">Upload or drop an image, or fetch by URL. Nothing leaves your browser.</div>
+          </div>
         </div>
       </div>
-      <a class="brand-right" href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener">
-        <img class="logo-right" src="Wayfinder.png" alt="Wayfinder Intelligence" onerror="this.src='https://i.imgur.com/q3oovaN.png'">
-      </a>
-    </div>
-  </header>
+    </header>
 
-  <main>
-    <!-- Controls -->
-    <div class="card" style="display:grid;gap:10px">
-      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <label for="file" class="btn primary" style="appearance:none;border:1px solid var(--border);background:#182039;color:#cdd6f4;padding:8px 12px;border-radius:10px;cursor:pointer">Select image</label>
-        <input id="file" type="file" accept="image/*" hidden>
-        <div id="drop" class="drop" style="flex:1">Drag & drop an image here</div>
-      </div>
-      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <input id="urlInput" type="text" placeholder="…or paste an image URL (must allow CORS)" class="search"/>
-        <button class="btn" id="btnFetch" style="appearance:none;border:1px solid var(--border);background:#0e1220;color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer">Fetch</button>
-        <button class="btn" id="btnClear" style="appearance:none;border:1px solid var(--border);background:#0e1220;color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer">Clear</button>
-        <button class="btn" id="btnExportJson" title="Export parsed metadata as JSON" style="appearance:none;border:1px solid var(--border);background:#0e1220;color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer">Export JSON</button>
-        <button class="btn" id="btnCopyTable" title="Copy all metadata as TSV" style="appearance:none;border:1px solid var(--border);background:#0e1220;color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer">Copy TSV</button>
-      </div>
-    </div>
+    <main style="padding: 20px; max-width: 1400px; margin: 0 auto;">
+      <div class="card mb-4">
+        <div class="row" style="padding: 16px; gap: 16px; align-items: center;">
+          <label for="file" class="btn primary">Select image</label>
+          <input id="file" type="file" accept="image/*" hidden>
 
-    <!-- Summary (highlights) -->
-    <div class="card">
-      <div class="summary" id="highlights">
-        <div class="hl"><b>Device</b><span id="hlDevice">—</span></div>
+          <div id="drop" class="drop" style="flex: 1; padding: 10px;">Drag & drop an image here</div>
 
-<div class="hl">
-  <div class="info-wrap">
-    <b>Date/Time</b>
-    <button class="info-btn" id="dtInfoBtn" aria-label="What does this mean?" title="What does this mean?">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 10v7M12 7h0.01"></path></svg>
-    </button>
-    <div class="tip" id="dtTip" role="tooltip">
-      <strong>Camera local time</strong> — what the device’s clock recorded.<br>
-      <strong>GPS UTC time</strong> — universal time from satellites (absolute).<br>
-      <strong>Offsets</strong> like “+01:00” mean hours <em>ahead</em> of UTC; “–05:00” means hours <em>behind</em> UTC.
-    </div>
-  </div>
-  <br>
-  <span id="hlDate">—</span>
-</div>
+          <div style="display: flex; gap: 8px; align-items: center; flex: 1;">
+            <input id="urlInput" type="text" placeholder="Or paste image URL..." style="flex: 1;">
+            <button id="btnUrl" class="btn">Fetch</button>
+          </div>
 
-
-        <div class="hl"><b>GPS</b><span id="hlGPS">—</span></div>
-        <div class="hl"><b>Exposure</b><span id="hlExposure">—</span></div>
-        <div class="hl"><b>Lens</b><span id="hlLens">—</span></div>
-        <div class="hl"><b>Software</b><span id="hlSW">—</span></div>
-        <div class="hl"><b>Dimensions</b><span id="hlDim">—</span></div>
-        <div class="hl"><b>File</b><span id="hlFile">—</span></div>
-      </div>
-    </div>
-
-    <!-- Main content: preview left, square map right -->
-    <div class="twocol">
-      <div class="card">
-        <div class="preview-holder">
-          <div id="placeholder" class="placeholder">Drop an image or choose a file</div>
-          <img id="preview" class="preview-img" alt="Preview"/>
+          <button id="btnExport" class="btn" disabled>Export JSON</button>
+          <button id="btnCsv" class="btn" disabled>Export CSV</button>
         </div>
       </div>
 
-      <div class="card">
-        <div class="map-card">
-          <div class="map-wrap"><div id="map"></div></div>
-          <div id="deviceCard" class="device-card" style="display:none">
-            <img id="deviceThumb" alt="Device thumbnail">
-            <div>
-              <div id="deviceTitle" style="font-weight:700"></div>
-              <div class="small">Source: Wikipedia <span id="deviceLinks"></span></div>
+      <div class="twocol">
+        <!-- Left: Preview -->
+        <div class="card">
+          <div class="preview-holder">
+            <div id="placeholder" class="placeholder">Drop an image or choose a file</div>
+            <img id="preview" class="preview-img" alt="Preview" />
+          </div>
+          <div style="padding: 16px;">
+            <h3 style="margin: 0 0 12px; font-size: 15px;">Metadata</h3>
+            <div style="max-height: 400px; overflow: auto; border: 1px solid var(--border); border-radius: 8px;">
+              <table id="table">
+                <tbody>
+                  <tr>
+                    <td colspan="2" style="text-align:center; color:var(--muted);">No data loaded</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Map & Device -->
+        <div class="card map-card">
+          <div class="map-wrap">
+            <div id="map"></div>
+          </div>
+          <div class="device-card">
+            <div class="device-row">
+              <span class="device-label">Device</span>
+              <span class="device-val" id="devModel">—</span>
+            </div>
+            <div class="device-row">
+              <span class="device-label">Lens</span>
+              <span class="device-val" id="devLens">—</span>
+            </div>
+            <div class="device-row">
+              <span class="device-label">Date</span>
+              <span class="device-val" id="devDate">—</span>
+            </div>
+            <div class="device-row">
+              <span class="device-label">Coords</span>
+              <span class="device-val" id="devCoords">—</span>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
 
-    <!-- Details table -->
-    <div class="card">
-      <div class="toolbar">
-        <input id="filter" class="search" type="text" placeholder="Filter tags (key or value)…"/>
-        <div class="small" id="count">0 tags</div>
-      </div>
-      <div style="overflow:auto; max-height:480px; border:1px solid var(--border); border-radius:10px;">
-        <table id="metaTable">
-          <thead>
-            <tr><th style="width:34%">Tag</th><th>Value</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-  </main>
-
-  <footer>
-    <a href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener" style="color:inherit; text-decoration:underline; text-underline-offset:2px; display:inline-flex; align-items:center; gap:8px">
-      <img src="Wayfinder.png" alt="Wayfinder Intelligence" style="height:22px; width:auto; vertical-align:middle" onerror="this.src='https://i.imgur.com/q3oovaN.png'">
-      <span>© 2025 Wayfinder Intelligence</span>
-    </a>
-  </footer>
+    <footer>
+      © 2025 <a href="https://wayfinderintelligence.co.nz" target="_blank" rel="noopener">Wayfinder Intelligence</a> ·
+      Experimental tools
+    </footer>
+  </div>
 
   <script>
-    // ===== Map =====
-    let map, marker;
-    function ensureMap(){ if (map) return map; map=L.map('map').setView([0,0],2); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map); return map; }
-    function showOnMap(lat,lon,label){ ensureMap(); if(marker){marker.remove(); marker=null;} marker=L.marker([lat,lon]).addTo(map).bindPopup(label||'Location').openPopup(); map.setView([lat,lon],12); }
+    const $ = id => document.getElementById(id);
+    const fileInput = $('file');
+    const dropZone = $('drop');
+    const urlInput = $('urlInput');
+    const btnUrl = $('btnUrl');
+    const preview = $('preview');
+    const placeholder = $('placeholder');
+    const tableBody = $('table').querySelector('tbody');
+    const btnExport = $('btnExport');
+    const btnCsv = $('btnCsv');
 
-    // ===== DOM =====
-    const $=s=>document.querySelector(s);
-    const $$=s=>Array.from(document.querySelectorAll(s));
-    const metaTableBody=$('#metaTable tbody');
+    // Map
+    const map = L.map('map').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+    let marker;
 
-    // ===== State =====
-    let lastFlat={}; let lastBlobInfo={name:null,type:null,size:null,width:null,height:null};
+    let currentMeta = null;
 
-    // ===== UI helpers =====
-    function setPreviewFromBlob(blob){
-      const url=URL.createObjectURL(blob);
-      const img=$('#preview');
-      img.src=url; img.style.display='block';
-      $('#placeholder').style.display='none';
-      img.onload=()=>URL.revokeObjectURL(url);
+    // Drag & Drop
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
+      dropZone.addEventListener(e, preventDefaults, false);
+      document.body.addEventListener(e, preventDefaults, false);
+    });
+    function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+
+    ['dragenter', 'dragover'].forEach(e => dropZone.classList.add('dragover'));
+    ['dragleave', 'drop'].forEach(e => dropZone.classList.remove('dragover'));
+
+    dropZone.addEventListener('drop', e => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files.length) handleFile(files[0]);
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) handleFile(fileInput.files[0]);
+    });
+
+    btnUrl.addEventListener('click', () => {
+      const u = urlInput.value.trim();
+      if (u) handleUrl(u);
+    });
+
+    function reset() {
+      preview.style.display = 'none';
+      preview.src = '';
+      placeholder.style.display = 'block';
+      tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--muted);">No data loaded</td></tr>';
+      $('devModel').textContent = '—';
+      $('devLens').textContent = '—';
+      $('devDate').textContent = '—';
+      $('devCoords').textContent = '—';
+      if (marker) map.removeLayer(marker);
+      map.setView([0, 0], 2);
+      currentMeta = null;
+      btnExport.disabled = true;
+      btnCsv.disabled = true;
     }
-    function hideDeviceCard(){ const card=$('#deviceCard'); if(!card) return; card.style.display='none'; const img=$('#deviceThumb'); if(img) img.removeAttribute('src'); $('#deviceTitle').textContent=''; $('#deviceLinks').textContent=''; }
-    function clearAll(){
-      const img=$('#preview'); img.removeAttribute('src'); img.style.display='none';
-      $('#placeholder').style.display='flex';
-      metaTableBody.innerHTML=''; updateCount(); hideDeviceCard();
-      $$('#highlights .hl span').forEach(el=> el.textContent='—');
-      if(marker){marker.remove(); marker=null;} if(map){map.setView([0,0],2);}
-      lastFlat={}; lastBlobInfo={name:null,type:null,size:null,width:null,height:null};
-    }
-    function updateCount(){ $('#count').textContent=Object.keys(lastFlat).length+' tags'; }
-    function kvRow(k,v){ const tr=document.createElement('tr'); const tdK=document.createElement('td'); tdK.textContent=k; const tdV=document.createElement('td'); tdV.textContent=v==null?'—':String(v); tr.append(tdK,tdV); return tr; }
-    function filterTable(q){ q=q.trim().toLowerCase(); for(const tr of metaTableBody.rows){ const k=tr.cells[0].textContent.toLowerCase(); const v=tr.cells[1].textContent.toLowerCase(); tr.style.display=(!q||k.includes(q)||v.includes(q))?'':'none'; } }
 
-    // ===== Math helpers =====
-    function rationalToFloat(r){ if(r==null) return 0; if(typeof r==='number') return r; if(typeof r==='object'){ if('numerator'in r&&'denominator'in r) return (r.numerator||0)/(r.denominator||1); if('value'in r) return r.value; } return parseFloat(r)||0; }
-    function toDecimal(coord,ref){
-      if(coord==null) return null;
-      if(typeof coord==='number') return coord;
-      if(typeof coord==='object'&&'description'in coord){
-        const a=String(coord.description).split(/[,\s]+/).map(Number).filter(n=>!isNaN(n));
-        if(a.length>=3){ let d=a[0]+a[1]/60+a[2]/3600; if(ref&&/[SW]/i.test(ref)) d=-d; return d; }
+    async function handleFile(file) {
+      reset();
+      const url = URL.createObjectURL(file);
+      preview.src = url;
+      preview.onload = () => {
+        preview.style.display = 'block';
+        placeholder.style.display = 'none';
+      };
+      processImage(file);
+    }
+
+    async function handleUrl(url) {
+      reset();
+      // Proxy warning: this might fail due to CORS if not proxied or allowed.
+      // Since we are client-side only, we can only fetch CORS-enabled images.
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        handleFile(blob);
+      } catch (e) {
+        alert('Could not fetch image (CORS restriction?): ' + e);
       }
-      try{ const p=Array.isArray(coord)?coord:[]; const d=rationalToFloat(p[0]), m=rationalToFloat(p[1]), s=rationalToFloat(p[2]); if(!isFinite(d)) return null; let dec=d+m/60+s/3600; if(ref&&/[SW]/i.test(ref)) dec=-dec; return dec; }catch{ return null; }
     }
 
-    // ===== Time helpers (no localization) =====
-    function pad2(n){ n=Math.floor(Number(n)||0); return (n<10?'0':'')+n; }
-    function normalizeOffset(off){
-      if(!off) return null; let s=String(off).trim();
-      if(/^z$/i.test(s)) return '+00:00';
-      s=s.replace(/\s+/g,'');
-      if(/^[+-]\d{2}:\d{2}$/.test(s)) return s;
-      if(/^[+-]\d{4}$/.test(s)) return s.slice(0,3)+':'+s.slice(3);
-      if(/^GMT[+-]\d{4}$/i.test(s)) return s.slice(3,6)+':'+s.slice(6);
-      return null;
-    }
-    function parseOffsetFromDateString(dt){
-      if(!dt) return null;
-      const m=String(dt).trim().match(/(Z|[+\-]\d{2}:?\d{2}|GMT[+\-]\d{4})$/i);
-      return m?normalizeOffset(m[1]):null;
-    }
-    function formatDateNeutral(v){
-      if (v instanceof Date){
-        const y=v.getFullYear(), M=pad2(v.getMonth()+1), d=pad2(v.getDate()), h=pad2(v.getHours()), m=pad2(v.getMinutes()), s=pad2(v.getSeconds());
-        return `${y}:${M}:${d} ${h}:${m}:${s}`;
-      }
-      const s=String(v);
-      const m=s.match(/(\d{4})[:\-](\d{2})[:\-](\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
-      if(m) return `${m[1]}:${m[2]}:${m[3]} ${m[4]}:${m[5]}:${m[6]}`;
-      return s.replace(/\s*(GMT[^\s]+|UTC|NZDT|NZST|\([^)]+\))\s*$/i,'').trim();
-    }
-    function formatGPSTimestamp(flat){
-      const date=flat.GPSDateStamp||flat.GPSDate||flat.GPSDateTime;
-      const t=flat.GPSTimeStamp||flat.GPSTime;
-      if(!date||!t) return null;
-      let h=0,m=0,s=0;
-      if(Array.isArray(t)){ h=rationalToFloat(t[0]); m=rationalToFloat(t[1]); s=rationalToFloat(t[2]); }
-      else if(typeof t==='object'&&'description'in t){ const p=String(t.description).split(/[\s:]+/).map(Number).filter(n=>!isNaN(n)); h=p[0]||0; m=p[1]||0; s=p[2]||0; }
-      else if(typeof t==='string'){ const p=t.split(/[\s:]+/).map(Number).filter(n=>!isNaN(n)); h=p[0]||0; m=p[1]||0; s=p[2]||0; }
-      const hh=pad2(h), mm=pad2(m), ss=pad2(Math.round(s));
-      const d=String(date).replace(/\./g,'-');
-      const norm=/\d{4}[:\-]\d{2}[:\-]\d{2}/.test(d)? d.replace(/:/g,'-'):d;
-      return `${norm} ${hh}:${mm}:${ss} UTC`;
-    }
-
-    // ===== Reverse geocode (optional) =====
-    async function lookupPlace(lat, lon){
-      try{
-        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=10&addressdetails=1`;
-        const res = await fetch(url, {headers:{'Accept':'application/json'}});
-        if(!res.ok) return null;
-        const j = await res.json();
-        const a = j.address || {};
-        const city = a.city || a.town || a.village || a.hamlet || a.municipality || a.county || '';
-        const country = a.country || (a.country_code ? a.country_code.toUpperCase() : '');
-        const parts = [city, country].filter(Boolean);
-        return parts.length ? parts.join(', ') : null;
-      }catch{ return null; }
-    }
-
-    // ===== Device helpers =====
-    function deviceKindFromStrings(make,model,software){
-      const s=(String(make||'')+' '+String(model||'')+' '+String(software||'')).toLowerCase();
-      const phone=['iphone','ipad','pixel','sm-','moto','redmi','xiaomi','oneplus','huawei','oppo','vivo','nexus','galaxy'];
-      const cam=['canon','nikon','fujifilm','fuji','sony','leica','lumix','panasonic','olympus','pentax','ricoh','sigma'];
-      if(phone.some(h=>s.includes(h))) return 'phone';
-      if(cam.some(h=>s.includes(h))) return 'camera';
-      return 'other';
-    }
-    function svgIcon(kind){
-      const common="fill='none' stroke='%23a7b0d6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'";
-      if(kind==='phone') return `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='7' y='2' rx='3' ry='3' width='10' height='20' ${common}></rect><circle cx='12' cy='18' r='1' ${common}></circle></svg>`;
-      if(kind==='camera') return `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='2' y='7' width='20' height='14' rx='2' ${common}></rect><circle cx='12' cy='14' r='4' ${common}></circle><path d='M8 7l2-3h4l2 3' ${common}></path></svg>`;
-      return `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect x='3' y='3' width='18' height='18' rx='2' ${common}></rect><path d='M7 7h10v10H7z' ${common}></path></svg>`;
-    }
-    function setDeviceThumbFallback(kind){
-      const svg=svgIcon(kind);
-      const data='data:image/svg+xml;utf8,'+encodeURIComponent(svg);
-      const img=$('#deviceThumb');
-      img.src=data; img.alt=kind+' icon';
-    }
-
-    // ===== Highlights (async for reverse geocode) =====
-    function setHighlight(id,val){ $('#'+id).textContent=(val==null||val==='')?'—':String(val); }
-
-    async function renderHighlights(flat){
-      const make  = flat.Make || flat.make;
-      const model = flat.Model || flat.model;
-      const lens  = flat.LensModel || flat.lensModel || flat.Lens;
-      const iso   = flat.ISOSpeedRatings || flat.ISO || flat.ISOSpeed || flat.ISOValue;
-      const exp   = flat.ExposureTime || flat.Exposure || flat.ExposureValue;
-      const fnum  = flat.FNumber || flat.F || flat.ApertureValue;
-      const flen  = flat.FocalLength || flat.FocalLengthIn35mmFilm;
-      const sw    = flat.Software || flat.ProcessingSoftware;
-
-      const dtRaw = flat.DateTimeOriginal || flat.CreateDate || flat.DateTime || flat.DateTimeDigitized || flat.ModifyDate;
-      const neutral = dtRaw ? formatDateNeutral(dtRaw) : null;
-      const exifOff = normalizeOffset(flat.OffsetTimeOriginal || flat.OffsetTime || flat.OffsetTimeDigitized);
-      const inlineOff = parseOffsetFromDateString(dtRaw);
-      const offset = exifOff || inlineOff;
-
-      const lat = (flat.GPSLatitudeDecimal!=null)? flat.GPSLatitudeDecimal : toDecimal(flat.GPSLatitude, flat.GPSLatitudeRef);
-      const lon = (flat.GPSLongitudeDecimal!=null)? flat.GPSLongitudeDecimal : toDecimal(flat.GPSLongitude, flat.GPSLongitudeRef);
-      const gpsUTC = formatGPSTimestamp(flat);
-
-      let locText = null;
-      if (lat!=null && lon!=null && isFinite(lat) && isFinite(lon)){
-        showOnMap(Number(lat),Number(lon),'EXIF Location');
-        lookupPlace(lat,lon).then(place=>{
-          if(place && $('#hlDate').dataset.locApplied!=='yes'){
-            const current = $('#hlDate').textContent;
-            const augmented = current.replace('(local time at photo location)', `(local time at photo location, ≈ ${place})`);
-            $('#hlDate').textContent = augmented;
-            $('#hlDate').dataset.locApplied='yes';
-          }
+    async function processImage(file) {
+      try {
+        const output = await exifr.parse(file, {
+          tiff: true, ifd0: true, ifd1: true, exif: true, gps: true,
+          interop: true, xmp: true, icc: true, iptc: true,
+          mergeOutput: false
         });
-        locText = '(local time at photo location)'; // placeholder, refined when place resolves
-      }else{
-        ensureMap(); map.setView([0,0],2);
-      }
 
-      // Compose Date/Time with clear wording
-      let dtDisplay = '—';
-      if (neutral){
-        if (gpsUTC){
-          dtDisplay = `${neutral} ${locText || '(local time at photo location)'} · GPS: ${gpsUTC}`;
-        } else if (offset){
-          dtDisplay = `${neutral} (camera local time, ${offset} from UTC)`;
-        } else {
-          dtDisplay = `${neutral} (camera local time, timezone unknown)`;
+        // Flatten for display
+        const flat = {};
+        if (output) {
+          for (let section in output) {
+            if (typeof output[section] === 'object') {
+              for (let k in output[section]) {
+                flat[k] = output[section][k];
+              }
+            }
+          }
         }
-      }
-      setHighlight('hlDate', dtDisplay);
 
-      const device=[make,model].filter(Boolean).join(' ');
-      setHighlight('hlDevice', device || '—');
+        currentMeta = flat;
+        renderTable(flat);
+        renderDevice(flat);
 
-      const expTxt=(()=>{
-        const chunks=[];
-        if(iso) chunks.push('ISO '+iso);
-        if(fnum) chunks.push('f/'+fnum);
-        if(flen) chunks.push(flen);
-        if(exp){
-          const v=(typeof exp==='object'&&'numerator'in exp&&'denominator'in exp)? (exp.numerator/exp.denominator) : Number(exp);
-          if(!isNaN(v)&&v>0) chunks.push(v>1? v.toFixed(2)+'s' : ('1/'+Math.round(1/v)));
-          else chunks.push(String(exp));
+        // GPS
+        if (flat.latitude && flat.longitude) {
+          const lat = flat.latitude;
+          const lon = flat.longitude;
+          $('devCoords').textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+          map.setView([lat, lon], 13);
+          marker = L.marker([lat, lon]).addTo(map);
         }
-        return chunks.join(' · ');
-      })();
-      setHighlight('hlExposure', expTxt || '—');
-      setHighlight('hlLens', lens || '—');
-      setHighlight('hlSW', sw || '—');
 
-      const gpsTxt = (lat!=null && lon!=null && isFinite(lat) && isFinite(lon)) ? (Number(lat).toFixed(6)+', '+Number(lon).toFixed(6)) : '—';
-      setHighlight('hlGPS', gpsTxt);
+        btnExport.disabled = false;
+        btnCsv.disabled = false;
 
-      const wh=(lastBlobInfo.width&&lastBlobInfo.height)? (lastBlobInfo.width+' × '+lastBlobInfo.height) : null;
-      setHighlight('hlDim', wh || '—');
-
-      const fileBits=[ lastBlobInfo.name, lastBlobInfo.type, (lastBlobInfo.size!=null? ((lastBlobInfo.size/1024).toFixed(1)+' KB'):null) ].filter(Boolean).join(' · ');
-      setHighlight('hlFile', fileBits || '—');
-
-      if (device) fetchDeviceCard(device); else hideDeviceCard();
-    }
-
-    // ===== Device card (Wikipedia) =====
-    async function fetchDeviceCard(query){
-      try{
-        const url=new URL('https://en.wikipedia.org/w/api.php');
-        url.search=new URLSearchParams({origin:'*',format:'json',action:'query',generator:'search',gsrsearch:query,prop:'pageimages|info',inprop:'url',piprop:'thumbnail',pithumbsize:'240',gsrlimit:'5'}).toString();
-        const res=await fetch(url.toString()); const js=await res.json(); const pages=js?.query?.pages||{};
-        const first=Object.values(pages).sort((a,b)=>(a.index||0)-(b.index||0))[0];
-        const parts=(query||'').split(' '); const make=parts[0]||''; const model=parts.slice(1).join(' '); const kind=deviceKindFromStrings(make,model,'');
-        if(!first){ setDeviceThumbFallback(kind); $('#deviceTitle').textContent=query; $('#deviceLinks').textContent=''; $('#deviceCard').style.display='flex'; return; }
-        const title=first.title; const thumb=first.thumbnail?.source||''; const full=first.fullurl||('https://en.wikipedia.org/wiki/'+encodeURIComponent(title));
-        $('#deviceTitle').textContent=title; const img=$('#deviceThumb');
-        if(thumb){ img.onerror=()=> setDeviceThumbFallback(kind); img.src=thumb; img.alt=title; } else { setDeviceThumbFallback(kind); }
-        $('#deviceLinks').innerHTML=' · <a href="'+full+'" target="_blank" rel="noopener">Wikipedia</a>';
-        $('#deviceCard').style.display='flex';
-      }catch{
-        const parts=(query||'').split(' '); const make=parts[0]||''; const model=parts.slice(1).join(' '); const kind=deviceKindFromStrings(make,model,'');
-        setDeviceThumbFallback(kind); $('#deviceTitle').textContent=query; $('#deviceLinks').textContent=''; $('#deviceCard').style.display='flex';
+      } catch (e) {
+        console.error(e);
+        tableBody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:var(--danger);">Error parsing EXIF: ${e.message}</td></tr>`;
       }
     }
 
-    // ===== Table + parsing =====
-    function flattenTags(obj){
-      const out={};
-      for(const [k,v] of Object.entries(obj||{})){
-        if(v && typeof v==='object' && !Array.isArray(v)){
-          if('description'in v || 'value'in v){ out[k]=v.description ?? v.value; }
-          else out[k]=JSON.stringify(v);
-        } else {
-          out[k]=Array.isArray(v)? v.join(', ') : v;
-        }
+    function renderTable(data) {
+      if (!data || Object.keys(data).length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--muted);">No metadata found</td></tr>';
+        return;
       }
-      return out;
-    }
-    function renderTable(flat){
-      metaTableBody.innerHTML='';
-      const entries=Object.entries(flat).sort((a,b)=> a[0].localeCompare(b[0]));
-      for(const [k,v] of entries){ metaTableBody.appendChild(kvRow(k,v)); }
-      updateCount();
-    }
-
-    async function parseWithExifr(blob){
-      const data=await exifr.parse(blob,{tiff:true,ifd0:true,ifd1:true,exif:true,gps:true,iptc:true,xmp:true,jfif:true,interop:true});
-      if(!data) return {};
-      const flat={...data};
-      if(data.latitude!=null && data.longitude!=null){
-        flat.GPSLatitudeDecimal=data.latitude; flat.GPSLongitudeDecimal=data.longitude;
+      let html = '';
+      // Sort keys
+      const keys = Object.keys(data).sort();
+      for (const k of keys) {
+        let val = data[k];
+        if (val instanceof Date) val = val.toLocaleString();
+        if (typeof val === 'object') val = JSON.stringify(val);
+        if (String(val).length > 100) val = String(val).substring(0, 100) + '...';
+        html += `<tr><th>${k}</th><td>${val}</td></tr>`;
       }
-      return flat;
+      tableBody.innerHTML = html;
     }
 
-    async function parseWithExifReader(blob){
-      const tags=await ExifReader.load(blob,{expanded:true});
-      const flat={};
-      for(const k in (tags||{})){
-        const v=tags[k];
-        flat[k]=(v && (v.description!=null))? v.description : (v && (v.value!=null))? v.value : v;
-      }
-      return flat;
+    function renderDevice(data) {
+      const model = data.Model || data.Make || '—';
+      const lens = data.LensModel || data.Lens || '—';
+      const date = data.DateTimeOriginal || data.CreateDate || data.ModifyDate || '—';
+
+      $('devModel').textContent = model;
+      $('devLens').textContent = lens;
+      $('devDate').textContent = (date instanceof Date) ? date.toLocaleString() : date;
     }
 
-    async function parseFromBlob(blob){
-      // file info
-      lastBlobInfo.name=blob.name||null; lastBlobInfo.type=blob.type||null; lastBlobInfo.size=blob.size||null;
-      try{ const bmp=await createImageBitmap(blob); lastBlobInfo.width=bmp.width; lastBlobInfo.height=bmp.height; bmp.close(); }catch{}
-
-      try{
-        let flat={};
-        try{ flat=await parseWithExifr(blob); }catch(e){ console.warn('exifr failed',e); }
-        if(!flat || Object.keys(flat).length===0){
-          try{ flat=await parseWithExifReader(blob); }catch(e){ console.warn('ExifReader failed',e); }
-        }
-        if(!flat || Object.keys(flat).length===0) throw new Error('No metadata extracted');
-
-        lastFlat=flat;
-        await renderHighlights(flat);
-        renderTable(flattenTags(flat));
-      }catch(err){
-        console.error('Parse error:',err);
-        lastFlat={};
-        metaTableBody.innerHTML='<tr><td colspan="2" class="small">No EXIF/IPTC/XMP metadata found or file type unsupported. Try a JPEG with metadata intact.</td></tr>';
-        ensureMap(); map.setView([0,0],2); hideDeviceCard(); updateCount();
-      }
-    }
-
-    // ===== Inputs =====
-    document.getElementById('file').addEventListener('change', async e=>{
-      const f=e.target.files[0]; if(!f) return;
-      clearAll(); setPreviewFromBlob(f); await parseFromBlob(f); e.target.value='';
+    btnExport.addEventListener('click', () => {
+      if (!currentMeta) return;
+      const blob = new Blob([JSON.stringify(currentMeta, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'metadata.json';
+      a.click();
     });
 
-    const drop=$('#drop');
-    ['dragenter','dragover'].forEach(ev=> drop.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation(); drop.classList.add('drag');}));
-    ['dragleave','drop'].forEach(ev=> drop.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation(); drop.classList.remove('drag');}));
-    drop.addEventListener('drop', async e=>{
-      const f=e.dataTransfer.files[0]; if(!f) return;
-      clearAll(); setPreviewFromBlob(f); await parseFromBlob(f);
-    });
-
-    document.getElementById('btnFetch').addEventListener('click', async ()=>{
-      const url=($('#urlInput').value||'').trim(); if(!url) return;
-      try{
-        clearAll();
-        const res=await fetch(url,{mode:'cors'});
-        if(!res.ok) throw new Error('HTTP '+res.status);
-        const blob=await res.blob();
-        setPreviewFromBlob(blob); await parseFromBlob(blob);
-      }catch(err){
-        console.warn('Fetch failed:',err);
-        alert('Could not fetch image from that URL (CORS/permissions). Try downloading and dropping it here.');
+    btnCsv.addEventListener('click', () => {
+      if (!currentMeta) return;
+      const keys = Object.keys(currentMeta).sort();
+      const rows = ['Key,Value'];
+      for (const k of keys) {
+        let val = currentMeta[k];
+        if (val instanceof Date) val = val.toISOString();
+        if (typeof val === 'object') val = JSON.stringify(val);
+        rows.push(`"${k}","${String(val).replace(/"/g, '""')}"`);
       }
+      const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'metadata.csv';
+      a.click();
     });
 
-    document.getElementById('btnClear').addEventListener('click', clearAll);
-    document.getElementById('btnExportJson').addEventListener('click', ()=>{
-      const blob=new Blob([JSON.stringify(lastFlat,null,2)],{type:'application/json'});
-      const a=document.createElement('a');
-      a.href=URL.createObjectURL(blob); a.download='metadata.json'; a.click();
-      setTimeout(()=>URL.revokeObjectURL(a.href),500);
-    });
-    document.getElementById('btnCopyTable').addEventListener('click', ()=>{
-      const rows=[['Tag','Value'], ...Object.entries(flattenTags(lastFlat)).sort((a,b)=> a[0].localeCompare(b[0]))];
-      const tsv=rows.map(r=> r.map(x=> String(x??'').replaceAll('\t',' ').replaceAll('\n',' ')).join('\t')).join('\n');
-      navigator.clipboard.writeText(tsv).then(()=> alert('Copied metadata as TSV to clipboard.')).catch(()=> alert('Copy failed.'));
-    });
-    document.getElementById('filter').addEventListener('input', e=> filterTable(e.target.value));
-
-    // ===== Tooltip interactions (click/tap toggle + click-outside close) =====
-    (function(){
-      const wrap = document.querySelector('.info-wrap');
-      const btn  = document.getElementById('dtInfoBtn');
-      if(!wrap || !btn) return;
-      const toggle = (e)=>{ e.stopPropagation(); wrap.classList.toggle('open'); };
-      btn.addEventListener('click', toggle);
-      btn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggle(e); } });
-      document.addEventListener('click', (e)=>{ if(!wrap.contains(e.target)) wrap.classList.remove('open'); });
-    })();
-
-    // init
-    ensureMap();
   </script>
 </body>
-</html>
 
+</html>

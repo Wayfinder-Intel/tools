@@ -1,566 +1,607 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Email Enumerator – Email Address Generator (Strict Mask Match)</title>
-<style>
-  /* ===================== Wayfinder / Graph Builder look ===================== */
-  :root{
-    --bg:#0f1115; --panel:#151923; --muted:#8a93a6; --text:#e6e9f2;
-    --accent:#7aa2f7; --accent-2:#a6da95; --danger:#f7768e; --border:#242a37;
-    --logo-size:72px;
-  }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Email Enumerator – Email Address Generator</title>
 
-  /* Global box-sizing to prevent width overflow from padding/borders */
-  *, *::before, *::after { box-sizing: border-box; }
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  /* Base */
-  html,body{height:100%}
-  body{
-    margin:0; color:var(--text);
-    font-family:system-ui,-apple-system,Segoe UI,Inter,Roboto,"Helvetica Neue",Arial,"Noto Sans";
-    background:linear-gradient(180deg,#0f1115 0%,#0b0d12 100%);
-  }
+  <!-- Shared CSS -->
+  <link rel="stylesheet" href="css/style.css">
 
-  /* Page shell (keeps your existing layout/markup) */
-  .wrap{position:relative; z-index:1; max-width:1200px; margin:0 auto; padding:24px 16px 72px;}
+  <style>
+    /* Tool-specific overrides */
+    :root {
+      --logo-size: 72px;
+    }
 
-  /* ===================== Header (logo + title) ===================== */
-  .topbar{display:flex; align-items:center; gap:12px; margin-bottom:10px}
-  .logo{height:var(--logo-size); width:auto; display:block}
-  .titleblock h1{margin:0; font-size:20px; font-weight:800; letter-spacing:.2px; line-height:1.1}
-  .titleblock .sub{color:var(--muted); margin:6px 0 0; font-size:13px; max-width:820px}
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
 
-  /* ===================== Cards / sections ===================== */
-  .card{
-    background:var(--panel); border:1px solid var(--border); border-radius:12px; overflow:hidden;
-  }
-  .hd{
-    display:flex; align-items:center; justify-content:space-between; gap:12px;
-    padding:12px 14px; border-bottom:1px solid var(--border); color:var(--muted);
-    font-size:14px; text-transform:uppercase; letter-spacing:.2px; font-weight:700;
-  }
-  .bd{padding:12px 14px}
+    /* Grid Layouts */
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 20px;
+    }
 
-  /* “Use-cases” callout */
-  .usecases{margin:12px 0 14px; padding:10px 14px; background:#0c0f15; border:1px solid var(--border); border-radius:10px}
-  .usecases ul{margin:6px 0 0 18px; color:var(--muted); line-height:1.4}
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
 
-  /* ===================== Grid helpers ===================== */
-  .layout{
-    display:grid;
-    grid-template-columns: minmax(0,1fr) 320px; /* minmax(0,1fr) prevents overflow */
-    gap:16px;
-  }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
 
-  /* Prevent overlap by allowing safe shrink + more breathing room */
-  .grid-3{
-    display:grid;
-    grid-template-columns:repeat(3,minmax(0,1fr));
-    gap:14px;
-  }
-  .grid-2{
-    display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:12px;
-  }
-  .grid-1{display:grid; grid-template-columns:1fr; gap:10px}
+    .grid-1 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
 
-  /* ===================== Inputs ===================== */
-  label{font-size:12px; color:var(--muted)}
-  input[type="text"], input[type="number"], textarea, select{
-    width:100%; background:#0c0f15; color:var(--text);
-    border:1px solid var(--border); border-radius:10px; padding:8px 10px; font-size:14px;
-  }
-  /* Make sure long placeholders can't force overflow in grid cells */
-  .grid-3 input, .grid-2 input, .grid-1 input, .grid-2 select { min-width:0; }
+    /* Inputs */
+    .grid-3 input,
+    .grid-2 input,
+    .grid-1 input,
+    .grid-2 select {
+      min-width: 0;
+    }
 
-  textarea{min-height:90px; resize:vertical; font-family:ui-monospace,Menlo,Consolas,monospace; line-height:1.35}
-  .help{color:var(--muted); font-size:.8rem; margin-top:4px}
-  .muted{color:var(--muted)}
+    /* Flags/Chips */
+    .flag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
 
-  /* ===================== Buttons ===================== */
-  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
-  .btnbar{display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-top:8px}
+    .flag input {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+    }
 
-  button{
-    appearance:none; background:#0e1220; color:#ffffff; border:1px solid var(--border);
-    border-radius:10px; padding:8px 12px; font-size:13px; cursor:pointer;
-  }
-  button:hover{border-color:#2d3547}
-  button.secondary{background:#12192b; color:#e6e9f2}
-  .btn-mini{padding:6px 10px; font-size:12px; border-radius:8px}
-  .count{color:var(--muted); font-size:12px}
+    .flag label {
+      color: var(--text);
+      cursor: pointer;
+    }
 
-  /* ===================== Toggles / Flags / Chips ===================== */
-  .flag{
-    display:flex; align-items:center; gap:8px; padding:6px 8px;
-    background:#0d1220; border:1px solid var(--border); border-radius:10px;
-  }
-  .flag input{accent-color:#5b85f9; width:16px; height:16px}
-  .sep{height:1px; background:var(--border); margin:10px 0}
+    .sep {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
 
-  /* ===================== Status & results ===================== */
-  .status{margin-top:8px; color:var(--muted)}
-  .out{margin-top:12px}
-  .out .list{max-height:420px; overflow:auto; padding:8px}
-  .chip{
-    background:#0c0f15; color:#cdd6f4; border:1px solid var(--border); border-radius:999px;
-    padding:4px 8px; font-size:12px; display:inline-flex; align-items:center; gap:8px;
-  }
-  .chip .x{appearance:none; background:transparent; border:none; color:#9da9c2; font-weight:700; cursor:pointer}
+    /* Results */
+    .out .list {
+      max-height: 420px;
+      overflow: auto;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
 
-  /* ===================== Footer note ===================== */
-  .foot{color:var(--muted); font-size:12px; padding:12px 14px; border-top:1px solid var(--border)}
-</style>
+    .chip {
+      background: rgba(122, 162, 247, 0.1);
+      color: #cdd6f4;
+      border: 1px solid rgba(122, 162, 247, 0.2);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 2px;
+    }
 
+    .usecases {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .usecases ul {
+      margin: 8px 0 0 20px;
+      padding: 0;
+    }
+
+    .usecases li {
+      margin-bottom: 4px;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+  <!-- Shared JS -->
+  <script src="js/common.js" defer></script>
 </head>
+
 <body>
-  <div class="wrap">
-
-    <!-- ======= HEADER (logo + title + short blurb) ======= -->
-    <div class="topbar">
-      <img class="logo" src="https://i.imgur.com/MPzwGEy.png" alt="Logo" />
-      <div class="titleblock">
-        <h1>Email Enumerator</h1>
-        <p class="sub">
-          Generate plausible email usernames from names &amp; YOB.
-        </p>
-      </div>
-    </div>
-
-    <!-- ======= USE-CASES CALLOUT ======= -->
-    <div class="usecases card">
-      <strong>Two ways to use this tool:</strong>
-      <ul>
-        <li><em>Generate guesses</em> – enter first/middle/last name and (optionally) year of birth to produce plausible email usernames.</li>
-        <li><em>Match a masked email</em> – paste something like <code>bob******@gmail.com</code> to restrict results to what fits the stars.</li>
-      </ul>
-    </div>
-
-    <!-- ======= MAIN GRID (Inputs left / Options right) ======= -->
-    <div class="layout">
-
-      <!-- ======= LEFT: INPUTS & RESULTS ======= -->
-      <div class="card">
-        <div class="hd">
-          <div><strong>Inputs</strong></div>
-          <div class="muted">Tip: Try different separators/orders in Options to broaden guesses.</div>
+  <div class="page">
+    <header>
+      <div class="brand">
+        <div class="brand-left">
+          <a href="index.html">
+            <img class="logo" src="Wayfinder.png" alt="Wayfinder Intelligence logo" />
+          </a>
+          <div>
+            <h1 class="title">Email Enumerator</h1>
+            <div class="help">Generate plausible email usernames from names &amp; YOB.</div>
+          </div>
         </div>
+      </div>
+    </header>
 
-        <div class="bd">
-          <!-- === Name fields === -->
-          <div class="grid-3">
-            <div>
-              <label for="first">First Name</label>
-              <input id="first" type="text" placeholder="e.g., Bob" />
-            </div>
-            <div>
-              <label for="middle">Middle Name</label>
-              <input id="middle" type="text" placeholder="(optional)" />
-            </div>
-            <div>
-              <label for="last">Last Name</label>
-              <input id="last" type="text" placeholder="e.g., Smith" />
-            </div>
+    <div class="wrap">
+      <!-- USE-CASES CALLOUT -->
+      <div class="usecases">
+        <strong style="color:var(--text)">Two ways to use this tool:</strong>
+        <ul>
+          <li><em>Generate guesses</em> – enter first/middle/last name and (optionally) year of birth to produce
+            plausible email usernames.</li>
+          <li><em>Match a masked email</em> – paste something like <code>bob******@gmail.com</code> to restrict results
+            to what fits the stars.</li>
+        </ul>
+      </div>
+
+      <!-- MAIN GRID -->
+      <div class="layout">
+
+        <!-- LEFT: INPUTS & RESULTS -->
+        <div class="card">
+          <div class="hd"
+            style="display:flex; justify-content:space-between; align-items:center; padding:16px; border-bottom:1px solid var(--border);">
+            <strong style="font-size:15px;">Inputs</strong>
+            <div class="muted small">Tip: Try different separators/orders in Options.</div>
           </div>
 
-          <!-- === YOB + Domain === -->
-          <div class="grid-2" style="margin-top:10px">
-            <div>
-              <label for="yob">Year of Birth</label>
-              <input id="yob" type="number" inputmode="numeric" placeholder="e.g., 1990 or 90" />
-            </div>
-            <div>
-              <label for="domain">Domain (optional)</label>
-              <input id="domain" type="text" placeholder="e.g., gmail.com" />
-            </div>
-          </div>
-
-          <!-- === Masked email (*** mode) === -->
-          <div class="grid-1" style="margin-top:10px">
-            <div>
-              <label for="masked">Masked Email (for *** matching)</label>
-              <input id="masked" type="text" placeholder="e.g., bob******@gmail.com or bob******" />
-              <div class="help">Include middle name to try full forms (e.g., <code>bob.john.smith</code>) as well as initials.</div>
-            </div>
-          </div>
-
-          <!-- === Buttons & status === -->
-          <div class="btnbar">
-            <button id="go" onclick="window.__EE_run && window.__EE_run()">Generate</button>
-            <button id="clear" class="secondary">Clear</button>
-            <span id="count" class="count"></span>
-          </div>
-
-          <div id="status" class="status"></div>
-
-          <!-- === Results === -->
-          <div class="out card" id="out" hidden>
-            <div class="hd">
-              <div id="resultsTitle"><strong>Results</strong> <span class="muted">(from name/YOB guesses)</span></div>
-              <div class="toolbar">
-                <span id="totals" class="count"></span>
-                <button id="copyAll" class="btn-mini">Copy All</button>
-                <button id="exportCSV" class="btn-mini secondary">Export CSV</button>
+          <div class="bd" style="padding:20px;">
+            <!-- Name fields -->
+            <div class="grid-3">
+              <div>
+                <label for="first" class="mb-2 block">First Name</label>
+                <input id="first" type="text" placeholder="e.g., Bob" />
+              </div>
+              <div>
+                <label for="middle" class="mb-2 block">Middle Name</label>
+                <input id="middle" type="text" placeholder="(optional)" />
+              </div>
+              <div>
+                <label for="last" class="mb-2 block">Last Name</label>
+                <input id="last" type="text" placeholder="e.g., Smith" />
               </div>
             </div>
-            <div class="bd">
-              <div id="list" class="list"></div>
+
+            <!-- YOB + Domain -->
+            <div class="grid-2" style="margin-top:16px">
+              <div>
+                <label for="yob" class="mb-2 block">Year of Birth</label>
+                <input id="yob" type="number" inputmode="numeric" placeholder="e.g., 1990 or 90" />
+              </div>
+              <div>
+                <label for="domain" class="mb-2 block">Domain (optional)</label>
+                <input id="domain" type="text" placeholder="e.g., gmail.com" />
+              </div>
+            </div>
+
+            <!-- Masked email -->
+            <div class="grid-1" style="margin-top:16px">
+              <div>
+                <label for="masked" class="mb-2 block">Masked Email (for *** matching)</label>
+                <input id="masked" type="text" placeholder="e.g., bob******@gmail.com" />
+                <div class="help mt-2">Include middle name to try full forms (e.g., <code>bob.john.smith</code>).</div>
+              </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="actions" style="margin-top:24px; justify-content:flex-end;">
+              <span id="count" class="muted small mr-4"></span>
+              <button id="clear" class="btn">Clear</button>
+              <button id="go" class="btn primary">Generate</button>
+            </div>
+
+            <div id="status" class="status mt-4 small"></div>
+
+            <!-- Results -->
+            <div class="out card mt-6" id="out" hidden
+              style="border:1px solid var(--border); background:rgba(0,0,0,0.1);">
+              <div class="hd"
+                style="padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                <div id="resultsTitle" style="font-size:14px;"><strong>Results</strong></div>
+                <div class="actions" style="gap:8px;">
+                  <span id="totals" class="muted small mr-2"></span>
+                  <button id="copyAll" class="btn" style="padding:4px 10px; font-size:12px;">Copy All</button>
+                  <button id="exportCSV" class="btn" style="padding:4px 10px; font-size:12px;">CSV</button>
+                </div>
+              </div>
+              <div class="bd" style="padding:0;">
+                <div id="list" class="list" style="border:none; background:transparent;"></div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- ======= RIGHT: OPTIONS SIDEBAR ======= -->
-      <aside class="card">
-        <div class="hd"><strong>Options</strong></div>
-        <div class="bd">
-          <!-- Pattern families -->
-          <div class="muted" style="margin-bottom:6px"><strong>Pattern Families</strong></div>
-          <div class="flag"><input type="checkbox" id="p_concat" checked /> <label for="p_concat">Concatenation (no separator)</label></div>
-          <div class="flag"><input type="checkbox" id="p_dot" checked /> <label for="p_dot">Dot separator</label></div>
-          <div class="flag"><input type="checkbox" id="p_us" checked /> <label for="p_us">Underscore separator</label></div>
-          <div class="flag"><input type="checkbox" id="p_hy" checked /> <label for="p_hy">Hyphen separator</label></div>
+        <!-- RIGHT: OPTIONS SIDEBAR -->
+        <aside class="card">
+          <div class="hd" style="padding:16px; border-bottom:1px solid var(--border); font-weight:600;">Options</div>
+          <div class="bd" style="padding:16px;">
 
-          <div class="sep"></div>
+            <div class="muted small mb-2 uppercase tracking-wide font-bold">Pattern Families</div>
+            <div class="flag"><input type="checkbox" id="p_concat" checked /> <label for="p_concat">Concatenation (no
+                sep)</label></div>
+            <div class="flag"><input type="checkbox" id="p_dot" checked /> <label for="p_dot">Dot separator</label>
+            </div>
+            <div class="flag"><input type="checkbox" id="p_us" checked /> <label for="p_us">Underscore separator</label>
+            </div>
+            <div class="flag"><input type="checkbox" id="p_hy" checked /> <label for="p_hy">Hyphen separator</label>
+            </div>
 
-          <!-- Name orders -->
-          <div class="muted" style="margin-bottom:6px"><strong>Name Orders</strong></div>
-          <div class="flag"><input type="checkbox" id="o_fl" checked /> <label for="o_fl">first + last</label></div>
-          <div class="flag"><input type="checkbox" id="o_lf" checked /> <label for="o_lf">last + first</label></div>
+            <div class="sep"></div>
 
-          <div class="sep"></div>
+            <div class="muted small mb-2 uppercase tracking-wide font-bold">Name Orders</div>
+            <div class="flag"><input type="checkbox" id="o_fl" checked /> <label for="o_fl">first + last</label></div>
+            <div class="flag"><input type="checkbox" id="o_lf" checked /> <label for="o_lf">last + first</label></div>
 
-          <!-- Initials & middle -->
-          <div class="muted" style="margin-bottom:6px"><strong>Initials &amp; Middle</strong></div>
-          <div class="flag"><input type="checkbox" id="i_flast" checked /> <label for="i_flast">f + last (e.g., bsmith)</label></div>
-          <div class="flag"><input type="checkbox" id="i_firstl" checked /> <label for="i_firstl">first + l</label></div>
-          <div class="flag"><input type="checkbox" id="i_fmlast" checked /> <label for="i_fmlast">f + m + last</label></div>
-          <div class="flag"><input type="checkbox" id="i_lfirst" /> <label for="i_lfirst">last + first (include initials)</label></div>
-          <div class="flag"><input type="checkbox" id="m_full" checked /> <label for="m_full">include middle full</label></div>
-          <div class="flag"><input type="checkbox" id="m_init" checked /> <label for="m_init">include middle initial</label></div>
-          <div class="flag"><input type="checkbox" id="short_first" /> <label for="short_first">short first (1–3 chars) + last</label></div>
+            <div class="sep"></div>
 
-          <div class="sep"></div>
+            <div class="muted small mb-2 uppercase tracking-wide font-bold">Initials &amp; Middle</div>
+            <div class="flag"><input type="checkbox" id="i_flast" checked /> <label for="i_flast">f + last (e.g.,
+                bsmith)</label></div>
+            <div class="flag"><input type="checkbox" id="i_firstl" checked /> <label for="i_firstl">first + l</label>
+            </div>
+            <div class="flag"><input type="checkbox" id="i_fmlast" checked /> <label for="i_fmlast">f + m + last</label>
+            </div>
+            <div class="flag"><input type="checkbox" id="i_lfirst" /> <label for="i_lfirst">last + first
+                (initials)</label></div>
+            <div class="flag"><input type="checkbox" id="m_full" checked /> <label for="m_full">include middle
+                full</label></div>
+            <div class="flag"><input type="checkbox" id="m_init" checked /> <label for="m_init">include middle
+                initial</label></div>
+            <div class="flag"><input type="checkbox" id="short_first" /> <label for="short_first">short first (1–3
+                chars)</label></div>
 
-          <!-- Year -->
-          <div class="muted" style="margin-bottom:6px"><strong>Year</strong></div>
-          <div class="flag"><input type="checkbox" id="y_2" checked /> <label for="y_2">include YY</label></div>
-          <div class="flag"><input type="checkbox" id="y_4" checked /> <label for="y_4">include YYYY</label></div>
-          <div class="flag"><input type="checkbox" id="y_end" checked /> <label for="y_end">append year</label></div>
-          <div class="flag"><input type="checkbox" id="y_start" /> <label for="y_start">prepend year</label></div>
+            <div class="sep"></div>
 
-          <div class="sep"></div>
+            <div class="muted small mb-2 uppercase tracking-wide font-bold">Year</div>
+            <div class="flag"><input type="checkbox" id="y_2" checked /> <label for="y_2">include YY</label></div>
+            <div class="flag"><input type="checkbox" id="y_4" checked /> <label for="y_4">include YYYY</label></div>
+            <div class="flag"><input type="checkbox" id="y_end" checked /> <label for="y_end">append year</label></div>
+            <div class="flag"><input type="checkbox" id="y_start" /> <label for="y_start">prepend year</label></div>
 
-          <!-- Mask policy -->
-          <div class="muted" style="margin-bottom:6px"><strong>Mask Policy</strong></div>
-          <div class="kvs">
-            <label for="mask_policy">Username *** matching must be...</label>
-            <select id="mask_policy">
-              <option value="strict" selected>= (Strict)</option>
-              <option value="lte">≤ (Up to)</option>
-              <option value="gte">≥ (At least)</option>
-            </select>
+            <div class="sep"></div>
+
+            <div class="muted small mb-2 uppercase tracking-wide font-bold">Mask Policy</div>
+            <div class="kvs">
+              <label for="mask_policy" class="block mb-2 text-xs">Username *** matching:</label>
+              <select id="mask_policy" style="width:100%">
+                <option value="strict" selected>= (Strict)</option>
+                <option value="lte">≤ (Up to)</option>
+                <option value="gte">≥ (At least)</option>
+              </select>
+            </div>
           </div>
-        </div>
-      </aside>
+        </aside>
+      </div>
     </div>
   </div>
 
-<script>
-/* ============================================================================
-   EMAIL ENUMERATOR – APP LOGIC
-   (unchanged)
-   ========================================================================== */
-(function(){
-  const $ = id => document.getElementById(id);
+  <script>
+    /* ============================================================================
+       EMAIL ENUMERATOR – APP LOGIC
+       ========================================================================== */
+    (function () {
+      const $ = id => document.getElementById(id);
 
-  const normalize = s => (s||'')
-    .toLowerCase()
-    .normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-z0-9]/g,'')
-    .trim();
+      const normalize = s => (s || '')
+        .toLowerCase()
+        .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, '')
+        .trim();
 
-  const VALID_LOCAL = /^[a-z0-9]+([._-]?[a-z0-9]+)*$/;
-  const initial = s => s ? s[0] : '';
-  const uniq = arr => Array.from(new Set(arr));
+      const VALID_LOCAL = /^[a-z0-9]+([._-]?[a-z0-9]+)*$/;
+      const initial = s => s ? s[0] : '';
+      const uniq = arr => Array.from(new Set(arr));
 
-  function yearForms(y) {
-    const s = (y||'').trim();
-    if(!/^\d{2,4}$/.test(s)) return [];
-    const out = [];
-    if(s.length >= 2) out.push(s.slice(-2));
-    if(s.length === 4) out.push(s);
-    return uniq(out);
-  }
-
-  function enabledSeps(){
-    const seps = [];
-    if($('p_concat').checked) seps.push('');
-    if($('p_dot').checked) seps.push('.');
-    if($('p_us').checked) seps.push('_');
-    if($('p_hy').checked) seps.push('-');
-    return seps;
-  }
-
-  function buildBases(first, middle, last){
-    const f = first, l = last, m = middle;
-    const F = initial(f), L = initial(l), M = initial(m);
-    const bases = new Set();
-
-    const wantFL = $('o_fl').checked;
-    const wantLF = $('o_lf').checked;
-    const wantFLast = $('i_flast').checked;
-    const wantFirstL = $('i_firstl').checked;
-    const wantFMLast = $('i_fmlast').checked;
-    const wantLFirst = $('i_lfirst').checked;
-    const wantMFull = $('m_full').checked;
-    const wantMInit = $('m_init').checked;
-    const wantShortFirst = $('short_first').checked;
-    const seps = enabledSeps();
-
-    function join(parts){
-      const usable = parts.filter(Boolean);
-      if(!usable.length) return;
-      for(const sep of seps){
-        const s = usable.join(sep);
-        if(s && VALID_LOCAL.test(s)) bases.add(s);
+      function yearForms(y) {
+        const s = (y || '').trim();
+        if (!/^\d{2,4}$/.test(s)) return [];
+        const out = [];
+        if (s.length >= 2) out.push(s.slice(-2));
+        if (s.length === 4) out.push(s);
+        return uniq(out);
       }
-    }
 
-    if(wantFL && f && l) join([f,l]);
-    if(wantLF && l && f) join([l,f]);
-
-    if(f) join([f]);
-    if(l) join([l]);
-
-    if(wantMFull && f && m && l) {
-      join([f,m,l]);
-      if(wantLF) join([l,m,f]);
-    }
-
-    if(wantMInit && f && m && l) {
-      join([f, M, l]);
-      join([F, M, l]);
-      join([f, m[0], l]);
-    }
-
-    if(wantFLast && f && l) join([F, l]);
-    if(wantFirstL && f && l) join([f, L]);
-    if(wantFMLast && f && m && l) join([F, M, l]);
-    if(wantLFirst && l && f) {
-      join([l, f]);
-      join([L, f]);
-      join([l, F]);
-    }
-
-    if(wantShortFirst && f && l){
-      for(let k=1;k<=3 && k<f.length;k++){
-        join([f.slice(0,k), l]);
+      function enabledSeps() {
+        const seps = [];
+        if ($('p_concat').checked) seps.push('');
+        if ($('p_dot').checked) seps.push('.');
+        if ($('p_us').checked) seps.push('_');
+        if ($('p_hy').checked) seps.push('-');
+        return seps;
       }
-    }
-    return Array.from(bases);
-  }
 
-  function attachYear(bases, yRaw){
-    const out = new Set();
-    const seps = enabledSeps().length ? enabledSeps() : [''];
-    const forms = yearForms(yRaw);
-    const useEnd = $('y_end').checked;
-    const useStart = $('y_start').checked;
+      function buildBases(first, middle, last) {
+        const f = first, l = last, m = middle;
+        const F = initial(f), L = initial(l), M = initial(m);
+        const bases = new Set();
 
-    for(const base of bases){
-      out.add(base);
-      if(forms.length === 0) continue;
-      for(const yf of forms){
-        if(useEnd){
-          for(const sep of seps){ out.add(base + (sep ? sep + yf : yf)); }
+        const wantFL = $('o_fl').checked;
+        const wantLF = $('o_lf').checked;
+        const wantFLast = $('i_flast').checked;
+        const wantFirstL = $('i_firstl').checked;
+        const wantFMLast = $('i_fmlast').checked;
+        const wantLFirst = $('i_lfirst').checked;
+        const wantMFull = $('m_full').checked;
+        const wantMInit = $('m_init').checked;
+        const wantShortFirst = $('short_first').checked;
+        const seps = enabledSeps();
+
+        function join(parts) {
+          const usable = parts.filter(Boolean);
+          if (!usable.length) return;
+          for (const sep of seps) {
+            const s = usable.join(sep);
+            if (s && VALID_LOCAL.test(s)) bases.add(s);
+          }
         }
-        if(useStart){
-          for(const sep of seps){ out.add((sep ? yf + sep + base : yf + base)); }
+
+        if (wantFL && f && l) join([f, l]);
+        if (wantLF && l && f) join([l, f]);
+
+        if (f) join([f]);
+        if (l) join([l]);
+
+        if (wantMFull && f && m && l) {
+          join([f, m, l]);
+          if (wantLF) join([l, m, f]);
+        }
+
+        if (wantMInit && f && m && l) {
+          join([f, M, l]);
+          join([F, M, l]);
+          join([f, m[0], l]);
+        }
+
+        if (wantFLast && f && l) join([F, l]);
+        if (wantFirstL && f && l) join([f, L]);
+        if (wantFMLast && f && m && l) join([F, M, l]);
+        if (wantLFirst && l && f) {
+          join([l, f]);
+          join([L, f]);
+          join([l, F]);
+        }
+
+        if (wantShortFirst && f && l) {
+          for (let k = 1; k <= 3 && k < f.length; k++) {
+            join([f.slice(0, k), l]);
+          }
+        }
+        return Array.from(bases);
+      }
+
+      function attachYear(bases, yRaw) {
+        const out = new Set();
+        const seps = enabledSeps().length ? enabledSeps() : [''];
+        const forms = yearForms(yRaw);
+        const useEnd = $('y_end').checked;
+        const useStart = $('y_start').checked;
+
+        for (const base of bases) {
+          out.add(base);
+          if (forms.length === 0) continue;
+          for (const yf of forms) {
+            if (useEnd) {
+              for (const sep of seps) { out.add(base + (sep ? sep + yf : yf)); }
+            }
+            if (useStart) {
+              for (const sep of seps) { out.add((sep ? yf + sep + base : yf + base)); }
+            }
+          }
+        }
+        return Array.from(out).filter(x => VALID_LOCAL.test(x));
+      }
+
+      function parseMask(masked) {
+        const raw = (masked || '').trim().toLowerCase();
+        if (!raw) return null;
+        const at = raw.indexOf('@');
+        const local = at === -1 ? raw : raw.slice(0, at);
+        const domain = at === -1 ? '' : raw.slice(at + 1).trim();
+
+        const firstStar = local.indexOf('*');
+        thePrefix = firstStar === -1 ? local : local.slice(0, firstStar);
+        const starCount = firstStar === -1 ? 0 : (local.length - firstStar);
+        return { prefix: thePrefix, starCount, required: thePrefix.length + starCount, domain };
+      }
+
+      function applyMaskPolicy(locals, mask, policy) {
+        if (!mask) return locals;
+        const { prefix, required } = mask;
+        return locals.filter(lp => {
+          if (!lp.startsWith(prefix)) return false;
+          if (policy === 'strict') return lp.length === required;
+          if (policy === 'lte') return lp.length <= required;
+          if (policy === 'gte') return lp.length >= required;
+          return false;
+        });
+      }
+
+      function domPreferInput(domainInput, mask) {
+        const di = (domainInput || '').trim().toLowerCase();
+        const dm = mask && mask.domain ? mask.domain.trim().toLowerCase() : '';
+        return di || dm;
+      }
+
+      let lastOutputs = [];
+
+      function run() {
+        const first = normalize($('first').value);
+        const middle = normalize($('middle').value);
+        const last = normalize($('last').value);
+        const yob = ('' + ($('yob').value || '')).trim();
+        const domainInput = $('domain').value;
+        const masked = $('masked').value;
+
+        const status = $('status');
+        const out = $('out');
+        const list = $('list');
+        const totals = $('totals');
+        const count = $('count');
+        const resultsTitle = $('resultsTitle');
+
+        status.textContent = '';
+        list.innerHTML = '';
+        totals.textContent = '';
+        count.textContent = '';
+        out.hidden = true;
+
+        if (!first && !last && !masked) {
+          status.innerHTML = '<span style="color: var(--danger)"><strong>Enter at least a first or last name, or provide a masked email.</strong></span>';
+          return;
+        }
+
+        let yRaw = '';
+        if (yob) {
+          if (!/^\d{2,4}$/.test(yob)) {
+            status.innerHTML = '<span style="color: var(--danger)">Year must be 2–4 digits (e.g., 90 or 1990).</span>';
+            return;
+          }
+          yRaw = yob;
+        }
+
+        const bases = buildBases(first, middle, last);
+        let locals = attachYear(bases, yRaw);
+        locals = uniq(locals).sort((a, b) => a.length - b.length || a.localeCompare(b));
+
+        const maskInfo = parseMask(masked);
+        const policy = $('mask_policy').value;
+        if (maskInfo) {
+          locals = applyMaskPolicy(locals, maskInfo, policy);
+          resultsTitle.innerHTML = '<strong>Results</strong> <span class="muted">(restricted by masked email pattern)</span>';
+        } else {
+          resultsTitle.innerHTML = '<strong>Results</strong> <span class="muted">(from name/YOB guesses)</span>';
+        }
+
+        const dom = domPreferInput(domainInput, maskInfo);
+        const outputs = dom ? locals.map(lp => `${lp}@${dom}`) : locals;
+
+        if (outputs.length === 0) {
+          const notes = [];
+          if (maskInfo) {
+            notes.push(`Mask prefix <code>${maskInfo.prefix || '(none)'}</code>, required length <code>${maskInfo.required}</code>, policy <code>${policy}</code>.`);
+            const nearby = uniq(attachYear(bases, yRaw)
+              .filter(lp => lp.startsWith(maskInfo.prefix))
+              .map(lp => lp.length)).sort((a, b) => a - b);
+            if (nearby.length) notes.push(`Available lengths with this prefix: <code>${nearby.join(', ')}</code>.`);
+          }
+          status.innerHTML = `<span style="color:#fbbf24">No matching email guesses found.</span> ${notes.join(' ')}`;
+          lastOutputs = [];
+          return;
+        }
+
+        out.hidden = false;
+        totals.textContent = `${outputs.length} match${outputs.length === 1 ? '' : 'es'}`;
+        count.textContent = totals.textContent;
+
+        const frag = document.createDocumentFragment();
+        outputs.forEach(e => {
+          const span = document.createElement('span');
+          span.className = 'chip';
+          span.textContent = e;
+          frag.appendChild(span);
+        });
+        list.appendChild(frag);
+
+        lastOutputs = outputs.slice();
+
+        if (maskInfo) {
+          status.innerHTML = `Applied mask: prefix <code>${maskInfo.prefix || '(none)'}</code>, required length <code>${maskInfo.required}</code>, policy <code>${policy}</code>.`;
+        } else {
+          status.textContent = 'Mask not provided: showing unfiltered candidates.';
         }
       }
-    }
-    return Array.from(out).filter(x => VALID_LOCAL.test(x));
-  }
 
-  function parseMask(masked){
-    const raw = (masked||'').trim().toLowerCase();
-    if(!raw) return null;
-    const at = raw.indexOf('@');
-    const local = at === -1 ? raw : raw.slice(0,at);
-    const domain = at === -1 ? '' : raw.slice(at+1).trim();
-
-    const firstStar = local.indexOf('*');
-    thePrefix = firstStar === -1 ? local : local.slice(0, firstStar);
-    const starCount = firstStar === -1 ? 0 : (local.length - firstStar);
-    return { prefix: thePrefix, starCount, required: thePrefix.length + starCount, domain };
-  }
-
-  function applyMaskPolicy(locals, mask, policy){
-    if(!mask) return locals;
-    const { prefix, required } = mask;
-    return locals.filter(lp => {
-      if(!lp.startsWith(prefix)) return false;
-      if(policy === 'strict') return lp.length === required;
-      if(policy === 'lte')    return lp.length <= required;
-      if(policy === 'gte')    return lp.length >= required;
-      return false;
-    });
-  }
-
-  function domPreferInput(domainInput, mask){
-    const di = (domainInput||'').trim().toLowerCase();
-    const dm = mask && mask.domain ? mask.domain.trim().toLowerCase() : '';
-    return di || dm;
-  }
-
-  let lastOutputs = [];
-
-  function run(){
-    const first = normalize($('first').value);
-    const middle = normalize($('middle').value);
-    const last = normalize($('last').value);
-    const yob = (''+($('yob').value||'')).trim();
-    const domainInput = $('domain').value;
-    const masked = $('masked').value;
-
-    const status = $('status');
-    const out = $('out');
-    const list = $('list');
-    const totals = $('totals');
-    const count = $('count');
-    const resultsTitle = $('resultsTitle');
-
-    status.textContent = '';
-    list.innerHTML = '';
-    totals.textContent = '';
-    count.textContent = '';
-    out.hidden = true;
-
-    if(!first && !last && !masked){
-      status.innerHTML = '<span style="color: var(--danger)"><strong>Enter at least a first or last name, or provide a masked email.</strong></span>';
-      return;
-    }
-
-    let yRaw = '';
-    if(yob){
-      if(!/^\d{2,4}$/.test(yob)){
-        status.innerHTML = '<span style="color: var(--danger)">Year must be 2–4 digits (e.g., 90 or 1990).</span>';
-        return;
+      async function copyAll() {
+        if (!lastOutputs.length) return;
+        const text = lastOutputs.join('\n');
+        try {
+          await navigator.clipboard.writeText(text);
+          // toast('Copied all to clipboard');
+          alert('Copied all to clipboard');
+        } catch (e) {
+          const ta = document.createElement('textarea');
+          ta.value = text; document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); document.body.removeChild(ta);
+          // toast('Copied all (fallback)');
+          alert('Copied all (fallback)');
+        }
       }
-      yRaw = yob;
-    }
 
-    const bases = buildBases(first, middle, last);
-    let locals = attachYear(bases, yRaw);
-    locals = uniq(locals).sort((a,b)=> a.length-b.length || a.localeCompare(b));
-
-    const maskInfo = parseMask(masked);
-    const policy = $('mask_policy').value;
-    if(maskInfo){
-      locals = applyMaskPolicy(locals, maskInfo, policy);
-      resultsTitle.innerHTML = '<strong>Results</strong> <span class="muted">(restricted by masked email pattern)</span>';
-    } else {
-      resultsTitle.innerHTML = '<strong>Results</strong> <span class="muted">(from name/YOB guesses)</span>';
-    }
-
-    const dom = domPreferInput(domainInput, maskInfo);
-    const outputs = dom ? locals.map(lp => `${lp}@${dom}`) : locals;
-
-    if(outputs.length === 0){
-      const notes = [];
-      if(maskInfo){
-        notes.push(`Mask prefix <code>${maskInfo.prefix||'(none)'}</code>, required length <code>${maskInfo.required}</code>, policy <code>${policy}</code>.`);
-        const nearby = uniq(attachYear(bases, yRaw)
-          .filter(lp => lp.startsWith(maskInfo.prefix))
-          .map(lp => lp.length)).sort((a,b)=>a-b);
-        if(nearby.length) notes.push(`Available lengths with this prefix: <code>${nearby.join(', ')}</code>.`);
+      function exportCSV() {
+        if (!lastOutputs.length) return;
+        const rows = ['email'];
+        lastOutputs.forEach(e => rows.push('"' + e.replace(/"/g, '""') + '"'));
+        const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'email_guesses.csv';
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
       }
-      status.innerHTML = `<span style="color:#fbbf24">No matching email guesses found.</span> ${notes.join(' ')}`;
-      lastOutputs = [];
-      return;
-    }
 
-    out.hidden = false;
-    totals.textContent = `${outputs.length} match${outputs.length===1?'':'es'}`;
-    count.textContent = totals.textContent;
+      window.__EE_run = run;
 
-    const frag = document.createDocumentFragment();
-    outputs.forEach(e => {
-      const span = document.createElement('span');
-      span.className = 'chip';
-      span.textContent = e;
-      frag.appendChild(span);
-    });
-    list.appendChild(frag);
+      const elGo = $('go'); if (elGo) elGo.addEventListener('click', run);
+      const elClear = $('clear'); if (elClear) elClear.addEventListener('click', () => {
+        ['first', 'middle', 'last', 'yob', 'domain', 'masked'].forEach(id => $(id).value = '');
+        $('status').textContent = '';
+        $('list').innerHTML = '';
+        $('totals').textContent = '';
+        $('count').textContent = '';
+        $('out').hidden = true;
+        $('resultsTitle').innerHTML = '<strong>Results</strong> <span class="muted">(from name/YOB guesses)</span>';
+        lastOutputs = [];
+        $('first').focus();
+      });
 
-    lastOutputs = outputs.slice();
-
-    if(maskInfo){
-      status.innerHTML = `Applied mask: prefix <code>${maskInfo.prefix||'(none)'}</code>, required length <code>${maskInfo.required}</code>, policy <code>${policy}</code>.`;
-    } else {
-      status.textContent = 'Mask not provided: showing unfiltered candidates.';
-    }
-  }
-
-  async function copyAll(){
-    if(!lastOutputs.length) return;
-    const text = lastOutputs.join('\n');
-    try{
-      await navigator.clipboard.writeText(text);
-      toast('Copied all to clipboard');
-    }catch(e){
-      const ta = document.createElement('textarea');
-      ta.value = text; document.body.appendChild(ta); ta.select();
-      document.execCommand('copy'); document.body.removeChild(ta);
-      toast('Copied all (fallback)');
-    }
-  }
-
-  function exportCSV(){
-    if(!lastOutputs.length) return;
-    const rows = ['email'];
-    lastOutputs.forEach(e=> rows.push('"'+e.replace(/"/g,'""')+'"'));
-    const blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8;'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'email_guesses.csv';
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
-  }
-
-  function toast(msg){
-    const el = document.createElement('div');
-    el.textContent = msg;
-    el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:#0ea5e9;color:#001018;padding:8px 12px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.35);z-index:10;font-weight:700;';
-    document.body.appendChild(el);
-    setTimeout(()=>{ el.style.transition='opacity .4s'; el.style.opacity='0'; setTimeout(()=>el.remove(), 400); }, 1100);
-  }
-
-  window.__EE_run = run;
-
-  const elGo = $('go');     if(elGo) elGo.addEventListener('click', run);
-  const elClear = $('clear'); if(elClear) elClear.addEventListener('click', ()=>{
-    ['first','middle','last','yob','domain','masked'].forEach(id=>$(id).value='');
-    $('status').textContent='';
-    $('list').innerHTML='';
-    $('totals').textContent='';
-    $('count').textContent='';
-    $('out').hidden=true;
-    $('resultsTitle').innerHTML = '<strong>Results</strong> <span class="muted">(from name/YOB guesses)</span>';
-    lastOutputs = [];
-    $('first').focus();
-  });
-
-  ['first','middle','last','yob','domain','masked'].forEach(id=>{
-    const el = $(id); if(el) el.addEventListener('keydown', e=>{ if(e.key==='Enter') run(); });
-  });
-  const elCopy = $('copyAll'); if(elCopy) elCopy.addEventListener('click', copyAll);
-  const elCSV  = $('exportCSV'); if(elCSV)  elCSV.addEventListener('click', exportCSV);
-})();
-</script>
+      ['first', 'middle', 'last', 'yob', 'domain', 'masked'].forEach(id => {
+        const el = $(id); if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+      });
+      const elCopy = $('copyAll'); if (elCopy) elCopy.addEventListener('click', copyAll);
+      const elCSV = $('exportCSV'); if (elCSV) elCSV.addEventListener('click', exportCSV);
+    })();
+  </script>
 </body>
+
 </html>

@@ -81,7 +81,9 @@
         var kw = document.createElement('input');
         kw.className = 'i';
         kw.placeholder = 'Enter keyword';
-        kw.addEventListener('keydown', function (e) { e.stopPropagation(); });
+        kw.addEventListener('keydown', function (e) { e.stopPropagation(); e.stopImmediatePropagation(); });
+        kw.addEventListener('keyup', function (e) { e.stopPropagation(); e.stopImmediatePropagation(); });
+        kw.addEventListener('keypress', function (e) { e.stopPropagation(); e.stopImmediatePropagation(); });
         var sowBtn = document.createElement('button');
         sowBtn.className = 'b p';
         sowBtn.textContent = 'Sowsearch';

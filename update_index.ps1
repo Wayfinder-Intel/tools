@@ -29,13 +29,20 @@ foreach ($key in $mappings.Keys) {
         $name = $mappings[$key]
         $code = $bookmarklets[$key]
         
-        # Target string to replace - matching the placeholder in index.html
-        # Note: The placeholder has single quotes inside the alert
-        $target = "<a class=""btn primary"" href=""javascript:alert\('Please run the build script to populate this!'\)"">$name</a>"
+        # Target regex to replace - matching the anchor tag for this specific bookmarklet
+        # We look for <a ...>$name</a> and replace the whole tag
+        # Escape special regex characters in $name just in case
+        $escapedName = [regex]::Escape($name)
+        $pattern = "<a class=""btn primary"" href=""[^""]*"">$escapedName</a>"
         $replacement = "<a class=""btn primary"" href=""$code"">$name</a>"
         
-        $html = $html -replace $target, $replacement
-        Write-Host "Updated $name"
+        if ($html -match $pattern) {
+            $html = [regex]::Replace($html, $pattern, $replacement)
+            Write-Host "Updated $name"
+        }
+        else {
+            Write-Warning "Placeholder/Link for $name not found in index.html"
+        }
     }
     else {
         Write-Warning "Code for $key not found in encoded file."

@@ -81,6 +81,7 @@
         var kw = document.createElement('input');
         kw.className = 'i';
         kw.placeholder = 'Enter keyword';
+        kw.addEventListener('keydown', function (e) { e.stopPropagation(); });
         var sowBtn = document.createElement('button');
         sowBtn.className = 'b p';
         sowBtn.textContent = 'Sowsearch';

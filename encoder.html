@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <script type="text/plain" id="b1">(function () {
+    try {
+        var html = document.documentElement.innerHTML || '';
+        var ids = [];
+        var m;
+        var r = /"userID"\s*:\s*"(\d{5,20})"/g;
+        while ((m = r.exec(html))) {
+            ids.push(m[1]);
+            if (ids.length > 4) break;
+        }
+        if (ids.length < 2) {
+            alert('Did not find a second "userID" on this page.');
+            return;
+        }
+        var id = ids[1];
+        var b = document.createElement('div');
+        b.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:2147483647;display:flex;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.08)';
+        var s = b.attachShadow({ mode: 'open' });
+        var st = document.createElement('style');
+        st.textContent =
+            ':host{all:initial;font-family:system-ui,Segoe UI,Arial,sans-serif}' +
+            '*{box-sizing:border-box}' +
+            '.c{margin:12vh 0;background:#111;color:#eee;min-width:320px;max-width:560px;border:1px solid #333;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.5);padding:14px}' +
+            '.t{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}' +
+            '.x{background:#333;border:0;color:#eee;padding:.35rem .6rem;border-radius:8px;cursor:pointer}' +
+            '.l{opacity:.8;font-size:12px;margin:.25rem 0}' +
+            '.r{display:flex;gap:8px;align-items:center}' +
+            '.i{flex:1;padding:.5rem .6rem;border:1px solid #333;border-radius:8px;background:#0b0b0b;color:#eee;font:14px/1.2 monospace}' +
+            '.b{background:#2a2a2a;border:0;color:#eee;padding:.45rem .7rem;border-radius:8px;cursor:pointer}' +
+            '.p{background:#2d6cdf;color:#fff}';
+        var c = document.createElement('div');
+        c.className = 'c';
+        var top = document.createElement('div');
+        top.className = 't';
+        var ttl = document.createElement('div');
+        ttl.textContent = 'Facebook userID';
+        var cls = document.createElement('button');
+        cls.className = 'x';
+        cls.textContent = 'Close';
+        cls.onclick = function () { b.remove(); };
+        top.appendChild(ttl);
+        top.appendChild(cls);
+        c.appendChild(top);
+        var lbl = document.createElement('div');
+        lbl.className = 'l';
+        lbl.textContent = '2nd "userID" found:';
+        c.appendChild(lbl);
+        var row = document.createElement('div');
+        row.className = 'r';
+        var inp = document.createElement('input');
+        inp.className = 'i';
+        inp.readOnly = true;
+        inp.value = id;
+        var cp = document.createElement('button');
+        cp.className = 'b';
+        cp.textContent = 'Copy';
+        cp.onclick = function () {
+            navigator.clipboard.writeText(id).then(function () {
+                cp.textContent = 'Copied';
+                setTimeout(function () { cp.textContent = 'Copy'; }, 900);
+            }).catch(function (e) {
+                alert('Copy failed:' + e);
+            });
+        };
+        var go = document.createElement('button');
+        go.className = 'b p';
+        go.textContent = 'Marketplace';
+        go.onclick = function () {
+            window.open('https://www.facebook.com/marketplace/profile/' + id, '_blank', 'noopener');
+        };
+        row.appendChild(inp);
+        row.appendChild(cp);
+        row.appendChild(go);
+        c.appendChild(row);
+        var lbl2 = document.createElement('div');
+        lbl2.className = 'l';
+        lbl2.textContent = 'Search this profile:';
+        c.appendChild(lbl2);
+        var row2 = document.createElement('div');
+        row2.className = 'r';
+        var kw = document.createElement('input');
+        kw.className = 'i';
+        kw.placeholder = 'Enter keyword';
+        var sowBtn = document.createElement('button');
+        sowBtn.className = 'b p';
+        sowBtn.textContent = 'Sowsearch';
+        sowBtn.onclick = function () {
+            var innerObj = { name: 'author', args: id };
+            var filterObj = { rp_author: JSON.stringify(innerObj) };
+            var filterStr = btoa(JSON.stringify(filterObj));
+            var url = 'https://www.facebook.com/search/top/?q=' + encodeURIComponent(kw.value) + '&filters=' + filterStr + '&epa=FILTERS&_rdr';
+            window.open(url, '_blank');
+        };
+        var profileBtn = document.createElement('button');
+        profileBtn.className = 'b p';
+        profileBtn.textContent = 'Profile Search';
+        profileBtn.onclick = function () {
+            var url = 'https://www.facebook.com/profile/' + id + '/search/?q=' + encodeURIComponent(kw.value);
+            window.open(url, '_blank');
+        };
+        row2.appendChild(kw);
+        row2.appendChild(sowBtn);
+        row2.appendChild(profileBtn);
+        c.appendChild(row2);
+        s.appendChild(st);
+        s.appendChild(c);
+        document.body.appendChild(b);
+    } catch (e) {
+        alert('userID finder error:' + e.message);
+    }
+})();</script>
+
+    <script type="text/plain" id="b2">(function () {
+    const min = 300, max = 800; // adjust delay between clicks in milliseconds
+    let running = true;
+    function rand() {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+    function clickNext() {
+        if (!running) return;
+        var btn = Array.prototype.slice.call(document.querySelectorAll('a,button,div[role="button"]')).find(function (el) { return /view/i.test(el.textContent) && el.offsetParent !== null; });
+        if (btn) {
+            btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            btn.click();
+            console.log('Clicked:', btn.textContent.trim());
+            window.scrollBy(0, 200);
+            setTimeout(clickNext, rand());
+        } else {
+            alert('No more "view" buttons found.');
+            panel.remove();
+        }
+    }
+    var panel = document.createElement('div');
+    panel.style.cssText = 'position:fixed;bottom:15px;right:15px;z-index:999999;padding:6px 10px;background:#111;color:#eee;border:1px solid #333;border-radius:8px;font:13px system-ui;box-shadow:0 4px 14px rgba(0,0,0,.4);display:flex;gap:6px;align-items:center';
+    var btnPause = document.createElement('button');
+    btnPause.textContent = 'Pause';
+    var btnStop = document.createElement('button');
+    btnStop.textContent = 'Stop';
+    [btnPause, btnStop].forEach(function (b) {
+        b.style.cssText = 'background:#2a2a2a;border:0;color:#eee;padding:4px 8px;border-radius:6px;cursor:pointer;font:13px system-ui';
+    });
+    btnPause.onclick = function () {
+        running = !running;
+        if (running) {
+            btnPause.textContent = 'Pause';
+            clickNext();
+        } else {
+            btnPause.textContent = 'Resume';
+        }
+    };
+    btnStop.onclick = function () {
+        running = false;
+        panel.remove();
+        alert('Stopped.');
+    };
+    panel.append('Auto-View:', btnPause, btnStop);
+    document.body.appendChild(panel);
+    clickNext();
+})();</script>
+
+    <script type="text/plain" id="b3">(function () {
+    try {
+        var add = function (set, u) {
+            if (!u) return;
+            try {
+                var x = new URL(u, location.href);
+                x.hash = '';
+                set.add(x.toString());
+            } catch (e) { }
+        };
+
+        var found = new Set();
+        document.querySelectorAll('img').forEach(function (img) {
+            add(found, img.getAttribute('src') || img.src);
+            (img.getAttribute('srcset') || '').split(',').forEach(function (v) {
+                var a = v.trim().split(' ')[0];
+                if (a) add(found, a);
+            });
+            ['data-src', 'data-original', 'data-lazy', 'data-echo', 'data-iesrc'].forEach(function (k) {
+                add(found, img.getAttribute(k));
+            });
+        });
+
+        Array.prototype.forEach.call(document.querySelectorAll('*'), function (el) {
+            var bg = getComputedStyle(el).backgroundImage;
+            if (bg && bg !== 'none') {
+                var re = /url\((['"]?)(.*?)\1\)/g, m;
+                while ((m = re.exec(bg))) {
+                    add(found, m[2]);
+                }
+            }
+        });
+
+        var list = Array.from(found);
+        var host = document.createElement('div');
+        host.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:2147483647;overflow:auto;background:rgba(0,0,0,0.02)';
+        var sh = host.attachShadow({ mode: 'open' });
+        var style = document.createElement('style');
+        style.textContent = ':host{all:initial;font-family:system-ui,Segoe UI,Arial,sans-serif}*{box-sizing:border-box}.wrap{min-height:100%;background:#0f0f10;color:#eaeaea;display:flex;flex-direction:column}.top{position:sticky;top:0;z-index:1;padding:.6rem .9rem;background:#0f0f10;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;justify-content:space-between;gap:.5rem}.btn{background:#2a2a2a;border:0;color:#eee;padding:.35rem .6rem;border-radius:6px;cursor:pointer}.grid{padding:.7rem .9rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.9rem}.card{position:relative;background:#151518;border:1px solid #2a2a2a;border-radius:8px;overflow:hidden;display:flex;flex-direction:column}.thumb{display:block;width:100%;height:180px;object-fit:cover;background:#0b0b0c}.meta{padding:.45rem .5rem}.url{word-break:break-all;opacity:.85;font-size:12px;line-height:1.2;max-height:3.4em;overflow:hidden}.dims{opacity:.65;font-size:11px;margin-top:.2rem}.bar{position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:.4rem;justify-content:flex-end}.chip{background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.15);padding:.25rem .45rem;border-radius:6px;font-size:12px;cursor:pointer}.toast{position:fixed;right:12px;bottom:12px;background:#2d6cdf;color:#fff;padding:.4rem .6rem;border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.3);font:12px/1 system-ui}';
+        var wrap = document.createElement('div');
+        wrap.className = 'wrap';
+        var topDiv = document.createElement('div');
+        topDiv.className = 'top';
+        var left = document.createElement('div');
+        var title = document.createElement('strong');
+        title.textContent = 'Image Scraper';
+        var count = document.createElement('span');
+        count.id = 'count';
+        count.style.opacity = '0.75';
+        count.style.marginLeft = '.4rem';
+        left.appendChild(title);
+        left.appendChild(count);
+        var right = document.createElement('div');
+        var closeBtn = document.createElement('button');
+        closeBtn.className = 'btn';
+        closeBtn.id = 'close';
+        closeBtn.textContent = 'Close';
+        right.appendChild(closeBtn);
+        topDiv.appendChild(left);
+        topDiv.appendChild(right);
+        var grid = document.createElement('div');
+        grid.className = 'grid';
+        grid.id = 'grid';
+        wrap.appendChild(topDiv);
+        wrap.appendChild(grid);
+        sh.appendChild(style);
+        sh.appendChild(wrap);
+        document.body.appendChild(host);
+        count.textContent = ' (' + list.length + ' found)';
+        var toast = function (msg) {
+            var n = document.createElement('div');
+            n.className = 'toast';
+            n.textContent = msg;
+            sh.appendChild(n);
+            setTimeout(function () { n.remove(); }, 1200);
+        };
+        var makeCard = function (u) {
+            var card = document.createElement('div');
+            card.className = 'card';
+            var img = document.createElement('img');
+            img.className = 'thumb';
+            img.loading = 'lazy';
+            img.referrerPolicy = 'no-referrer';
+            img.src = u;
+            var meta = document.createElement('div');
+            meta.className = 'meta';
+            var urlDiv = document.createElement('div');
+            urlDiv.className = 'url';
+            urlDiv.textContent = u;
+            var dims = document.createElement('div');
+            dims.className = 'dims';
+            dims.textContent = '...';
+            img.addEventListener('load', function () {
+                dims.textContent = (img.naturalWidth || '?') + 'x' + (img.naturalHeight || '?');
+            }, { once: true });
+            var bar = document.createElement('div');
+            bar.className = 'bar';
+            var copyBtn = document.createElement('button');
+            copyBtn.className = 'chip';
+            copyBtn.textContent = 'Copy';
+            copyBtn.onclick = function () {
+                navigator.clipboard.writeText(u).then(function () {
+                    toast('Copied');
+                }).catch(function (e) {
+                    alert('Copy failed: ' + e);
+                });
+            };
+            var openBtn = document.createElement('button');
+            openBtn.className = 'chip';
+            openBtn.textContent = 'Open';
+            openBtn.onclick = function () {
+                window.open(u, '_blank', 'noopener');
+            };
+            bar.appendChild(copyBtn);
+            bar.appendChild(openBtn);
+            meta.appendChild(urlDiv);
+            meta.appendChild(dims);
+            card.appendChild(img);
+            card.appendChild(meta);
+            card.appendChild(bar);
+            return card;
+        };
+        var i = 0;
+        (function batch() {
+            var end = Math.min(i + 60, list.length);
+            for (; i < end; i++) {
+                grid.appendChild(makeCard(list[i]));
+            }
+            if (i < list.length) requestAnimationFrame(batch);
+        })();
+        closeBtn.onclick = function () {
+            host.remove();
+        };
+    } catch (e) {
+        alert('Image scraper error: ' + (e && e.message ? e.message : e));
+    }
+})();</script>
+
+    <script type="text/plain" id="b4">(function () {
+    try {
+        var raw = Array.prototype.slice.call(document.links).map(function (a) { return a.getAttribute('href') || a.href; }).filter(Boolean);
+        var links = raw.map(function (h) {
+            try {
+                var u = new URL(h, location.href);
+                u.hash = '';
+                ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid', 'gclid'].forEach(function (p) { u.searchParams.delete(p); });
+                return u.toString();
+            } catch (e) {
+                return null;
+            }
+        }).filter(Boolean);
+        var uniq = Array.from(new Set(links));
+        var hostCounts = uniq.reduce(function (a, u) {
+            try {
+                var d = new URL(u).hostname;
+                a[d] = (a[d] || 0) + 1;
+            } catch (e) { }
+            return a;
+        }, {});
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'position:fixed;inset:10% 10%;z-index:2147483647;background:#111;color:#eee;border:1px solid #444;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);display:flex;flex-direction:column';
+        wrap.innerHTML = '<div style="padding:.6rem .9rem;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center"><strong>Extracted links (' + uniq.length + ')</strong><button id="x" style="background:#333;border:0;color:#eee;padding:.3rem .6rem;border-radius:6px;cursor:pointer">Close</button></div>' +
+            '<div style="padding:.6rem .9rem;display:grid;grid-template-columns:1fr;gap:.5rem;flex:1;min-height:0">' +
+            '<div style="font:12px/1.4 monospace;white-space:pre;overflow:auto;border:1px solid #333;border-radius:6px;padding:.5rem" id="domains"></div>' +
+            '<textarea id="out" style="flex:1;min-height:0;width:100%;resize:none;font:12px/1.4 monospace;background:#0b0b0b;color:#eee;border:1px solid #333;border-radius:6px;padding:.5rem"></textarea>' +
+            '</div>' +
+            '<div style="padding:.6rem .9rem;border-top:1px solid #333;display:flex;gap:.5rem">' +
+            '<button id="copy" style="background:#2d6cdf;border:0;color:white;padding:.4rem .7rem;border-radius:6px;cursor:pointer">Copy</button>' +
+            '<button id="csv" style="background:#444;border:0;color:#eee;padding:.4rem .7rem;border-radius:6px;cursor:pointer">Download CSV</button>' +
+            '</div>';
+        document.body.appendChild(wrap);
+        var txt = uniq.join('\n');
+        wrap.querySelector('#out').value = txt;
+        wrap.querySelector('#domains').textContent = Object.keys(hostCounts).map(function (d) { return d + ': ' + hostCounts[d]; }).join('\n');
+        wrap.querySelector('#x').onclick = function () { wrap.remove(); };
+        wrap.querySelector('#copy').onclick = function () {
+            try {
+                navigator.clipboard.writeText(txt).then(function () { alert('Copied'); }).catch(function (e) { alert('Copy failed: ' + e); });
+            } catch (e) {
+                alert('Copy failed: ' + e);
+            }
+        };
+        wrap.querySelector('#csv').onclick = function () {
+            var csv = 'URL\n' + uniq.map(function (u) { return '"' + u.replace(/"/g, '""') + '"'; }).join('\n');
+            var a = document.createElement('a');
+            a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+            a.download = 'links.csv';
+            a.click();
+        };
+    } catch (e) {
+        console.error(e);
+        alert('Extractor error: ' + e);
+    }
+})();</script>
+
+    <script type="text/plain" id="b5">(function () {
+    try {
+        var re = /"creation_time"\s*:\s*(\d{10,13})\b/;
+        function scanScripts() {
+            var s = document.scripts;
+            for (var i = 0; i < s.length; i++) {
+                var t = s[i].textContent || "";
+                var m = re.exec(t);
+                if (m) return m[1]
+            }
+            return null
+        }
+        var raw = scanScripts();
+        if (!raw) {
+            var txt = document.documentElement.textContent || "";
+            var m = re.exec(txt);
+            raw = m ? m[1] : null
+        }
+        if (!raw) {
+            alert("No \"creation_time\" found.");
+            return
+        }
+        var sec = (raw.length > 10) ? Math.floor(parseInt(raw, 10) / 1000) : parseInt(raw, 10);
+        if (!isFinite(sec)) {
+            alert("Invalid creation_time: " + raw);
+            return
+        }
+        var ms = sec * 1000, dL = new Date(ms), dU = new Date(ms), months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"], z = function (n) { return (n < 10 ? "0" : "") + n }, fmtLocal = function (d) { return d.getDate() + " " + months[d.getMonth()] + " " + d.getFullYear() + ", " + z(d.getHours()) + ":" + z(d.getMinutes()) + ":" + z(d.getSeconds()) }, fmtUTC = function (d) { return d.getUTCDate() + " " + months[d.getUTCMonth()] + " " + d.getUTCFullYear() + ", " + z(d.getUTCHours()) + ":" + z(d.getUTCMinutes()) + ":" + z(d.getUTCSeconds()) }, box = document.createElement("div");
+        box.style.cssText = "position:fixed;top:12vh;left:12vw;z-index:2147483647;background:#0f0f10;color:#eaeaea;border:1px solid #2a2a2a;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);min-width:320px;max-width:90vw;font:14px/1.45 system-ui,Segoe UI,Arial,sans-serif";
+        var header = document.createElement("div");
+        header.style.cssText = "cursor:move;padding:10px 14px;background:#151518;border-bottom:1px solid #2a2a2a;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:space-between;gap:.5rem";
+        var title = document.createElement("div");
+        title.textContent = "Marketplace listing creation time";
+        var close = document.createElement("button");
+        close.textContent = "×";
+        close.style.cssText = "all:unset;cursor:pointer;font-size:18px;line-height:1;background:#2a2a2a;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:2px 8px";
+        close.onclick = function () { box.remove() };
+        header.appendChild(title);
+        header.appendChild(close);
+        var body = document.createElement("div");
+        body.style.cssText = "padding:12px 14px 14px";
+        function row(label, value) {
+            var p = document.createElement("div");
+            p.style.margin = "6px 0";
+            var b = document.createElement("div");
+            b.style.opacity = ".85";
+            b.textContent = label;
+            var v = document.createElement("div");
+            v.style.cssText = "white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;font-weight:600";
+            v.textContent = value;
+            p.appendChild(b);
+            p.appendChild(v);
+            return p
+        }
+        var note = document.createElement("div");
+        note.style.cssText = "margin-bottom:10px;font-size:13px;opacity:.8";
+        note.textContent = "Note: Refresh the listing with Ctrl+R before using this bookmarklet!";
+        body.appendChild(note);
+        body.appendChild(row("Epoch (seconds)", String(sec)));
+        body.appendChild(row("UTC", fmtUTC(dU)));
+        body.appendChild(row("Browser local time", fmtLocal(dL)));
+        var actions = document.createElement("div");
+        actions.style.cssText = "margin-top:10px;display:flex;gap:8px;justify-content:flex-start;align-items:center";
+        var copy = document.createElement("button");
+        copy.textContent = "Copy details";
+        copy.style.cssText = "all:unset;cursor:pointer;font-size:13px;line-height:1;background:#2d6cdf;color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:6px 10px";
+        copy.onclick = function () {
+            var txt = "Epoch (seconds): " + sec + "\nUTC: " + fmtUTC(dU) + "\nBrowser local time: " + fmtLocal(dL);
+            navigator.clipboard.writeText(txt).then(function () {
+                copy.textContent = "Copied";
+                setTimeout(function () { copy.textContent = "Copy details" }, 1200)
+            }).catch(function (e) { alert("Copy failed: " + e) })
+        };
+        actions.appendChild(copy);
+        body.appendChild(actions);
+        box.appendChild(header);
+        box.appendChild(body);
+        document.body.appendChild(box);
+        (function () {
+            var ox = 0, oy = 0, dx = 0, dy = 0, drag = false;
+            header.addEventListener("mousedown", function (e) {
+                drag = true; dx = e.clientX; dy = e.clientY;
+                var r = box.getBoundingClientRect();
+                ox = r.left; oy = r.top;
+                e.preventDefault()
+            });
+            document.addEventListener("mousemove", function (e) {
+                if (!drag) return;
+                var nx = ox + (e.clientX - dx), ny = oy + (e.clientY - dy);
+                box.style.left = Math.max(0, Math.min(innerWidth - 60, nx)) + "px";
+                box.style.top = Math.max(0, Math.min(innerHeight - 40, ny)) + "px"
+            });
+            document.addEventListener("mouseup", function () { drag = false })
+        })();
+    } catch (e) {
+        alert("Bookmarklet error: " + (e && e.message ? e.message : e))
+    }
+})();</script>
+
+    <textarea id="out1"></textarea>
+    <textarea id="out2"></textarea>
+    <textarea id="out3"></textarea>
+    <textarea id="out4"></textarea>
+    <textarea id="out5"></textarea>
+
+    <script>
+        document.getElementById('out1').value = 'javascript:' + encodeURIComponent(document.getElementById('b1').textContent);
+        document.getElementById('out2').value = 'javascript:' + encodeURIComponent(document.getElementById('b2').textContent);
+        document.getElementById('out3').value = 'javascript:' + encodeURIComponent(document.getElementById('b3').textContent);
+        document.getElementById('out4').value = 'javascript:' + encodeURIComponent(document.getElementById('b4').textContent);
+        document.getElementById('out5').value = 'javascript:' + encodeURIComponent(document.getElementById('b5').textContent);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok OSINT Graph</title>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Cytoscape -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Sidebar -->
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <h1>TikTok Graph</h1>
+                <button id="theme-toggle" class="icon-btn" title="Toggle Light/Dark Theme">
+                    <i data-lucide="sun"></i>
+                </button>
+            </div>
+
+            <!-- Import Section -->
+            <section class="panel">
+                <h2>Import Data</h2>
+                <div class="import-group">
+                    <label for="import-mode">Import Type</label>
+                    <select id="import-mode">
+                        <option value="seed">Create Initial Target (Seed)</option>
+                        <option value="following">Add Target's Following</option>
+                        <option value="followers">Add Target's Followers</option>
+                    </select>
+                </div>
+
+                <div class="import-group target-select-group" style="display: none;">
+                    <label for="active-seed">Attach to Target</label>
+                    <select id="active-seed">
+                        <option value="" disabled selected>Select a target node...</option>
+                    </select>
+                </div>
+
+                <div class="import-group">
+                    <label>Paste TikTok HTML Data</label>
+                    <div id="html-paste-area" contenteditable="true"
+                        data-placeholder="Paste profile headers or follower lists here..."></div>
+                </div>
+
+                <button id="import-btn" class="primary-btn w-full mt-2">
+                    <i data-lucide="download"></i> Process Data
+                </button>
+                <button id="dev-export-btn" class="secondary-btn w-full mt-2"
+                    style="font-size: 0.75rem; color: var(--text-secondary);">
+                    Export Raw Copy/Paste Payload
+                </button>
+            </section>
+
+            <!-- Analysis Section -->
+            <section class="panel">
+                <h2>Graph Analysis</h2>
+
+                <div class="setting-group">
+                    <div class="setting-header">
+                        <label for="k-truss-slider">k-truss Pruning Level</label>
+                        <span id="k-value-display">2</span>
+                    </div>
+                    <input type="range" id="k-truss-slider" min="2" max="10" value="2" step="1">
+                    <p class="help-text">Filters out loose connections to find cohesive communities.</p>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="analyze-communities-btn" class="secondary-btn w-full mb-2">
+                        <i data-lucide="network"></i> Color Communities
+                    </button>
+                    <button id="clear-graph-btn" class="danger-btn w-full">
+                        <i data-lucide="trash-2"></i> Clear Graph
+                    </button>
+                </div>
+            </section>
+
+            <!-- Stats Tracker -->
+            <section class="panel stats-panel">
+                <div class="stat-box">
+                    <span class="stat-label">Nodes</span>
+                    <span id="stat-nodes" class="stat-value">0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Edges</span>
+                    <span id="stat-edges" class="stat-value">0</span>
+                </div>
+            </section>
+        </aside>
+
+        <!-- Main Graph Area -->
+        <main id="graph-container">
+            <div id="cy"></div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

@@ -1,107 +1,255 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TikTok OSINT Graph</title>
+    <title>TikTok Graph Builder</title>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Shared CSS -->
+    <link rel="stylesheet" href="../css/style.css">
+
     <!-- Cytoscape -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=1014">
+
+    <!-- Shared JS -->
+    <script src="../js/common.js" defer></script>
 </head>
 
 <body>
-    <div id="app">
-        <!-- Sidebar -->
-        <aside id="sidebar">
-            <div class="sidebar-header">
-                <h1>TikTok Graph</h1>
-                <button id="theme-toggle" class="icon-btn" title="Toggle Light/Dark Theme">
-                    <i data-lucide="sun"></i>
+    <div id="cy"></div>
+
+    <div class="ui-layer">
+        <!-- Floating horizontal top bar for categories -->
+        <div class="floating-bar horizontal top-nav">
+            <a href="#" class="brand-link" title="Wayfinder Intelligence" onclick="event.preventDefault()">
+                <img class="logo" src="https://wayfinder-intel.github.io/tools/Wayfinder.png" alt="Wayfinder Logo" />
+            </a>
+            <div class="divider vertical"></div>
+            <button class="nav-btn" data-category="DATA" title="DATA">
+                <i data-lucide="database"></i>
+            </button>
+            <button class="nav-btn" data-category="APPEARANCE" title="APPEARANCE">
+                <i data-lucide="palette"></i>
+            </button>
+            <button class="nav-btn" data-category="EDITING" title="EDITING">
+                <i data-lucide="edit-3"></i>
+            </button>
+            <button class="nav-btn" data-category="ANALYSIS" title="ANALYSIS">
+                <i data-lucide="line-chart"></i>
+            </button>
+            <button class="nav-btn" data-category="SETTINGS" title="SETTINGS">
+                <i data-lucide="settings"></i>
+            </button>
+        </div>
+
+        <!-- Vertical floating subtool pill wrapper -->
+        <div id="side-panel" class="subtools-wrapper">
+            <div class="panel-section hidden" data-panel="DATA">
+                <div class="floating-bar icon-only header-icon-bar" title="DATA Category">
+                    <i data-lucide="database"></i>
+                </div>
+                <button class="subtool-btn" data-action="Ingest" title="Ingest HTML Snippets">
+                    <i data-lucide="download"></i>
+                </button>
+                <div style="width: 24px; height: 1px; background: rgba(255,255,255,0.1); margin: 4px 0;"></div>
+                <button class="subtool-btn" id="export-json-btn" title="Export Graph to JSON">
+                    <i data-lucide="upload-cloud"></i>
+                </button>
+                <button class="subtool-btn" id="import-json-btn" title="Import Graph from JSON">
+                    <i data-lucide="download-cloud"></i>
+                </button>
+                <!-- Hidden file input for uploading JSON -->
+                <input type="file" id="import-json-hidden" accept=".json" style="display: none;">
+            </div>
+
+            <div class="panel-section hidden" data-panel="APPEARANCE">
+                <div class="floating-bar icon-only header-icon-bar" title="APPEARANCE Category">
+                    <i data-lucide="palette"></i>
+                </div>
+                <button class="subtool-btn placeholder-btn" data-action="Avatar/Dot toggle" title="Avatar / Dot toggle">
+                    <i data-lucide="image"></i>
                 </button>
             </div>
 
-            <!-- Import Section -->
-            <section class="panel">
-                <h2>Import Data</h2>
-                <div class="import-group">
-                    <label for="import-mode">Import Type</label>
-                    <select id="import-mode">
-                        <option value="seed">Create Initial Target (Seed)</option>
-                        <option value="following">Add Target's Following</option>
-                        <option value="followers">Add Target's Followers</option>
-                    </select>
+            <div class="panel-section hidden" data-panel="EDITING">
+                <div class="floating-bar icon-only header-icon-bar" title="EDITING Category">
+                    <i data-lucide="edit-3"></i>
                 </div>
-
-                <div class="import-group target-select-group" style="display: none;">
-                    <label for="active-seed">Attach to Target</label>
-                    <select id="active-seed">
-                        <option value="" disabled selected>Select a target node...</option>
-                    </select>
-                </div>
-
-                <div class="import-group">
-                    <label>Paste TikTok HTML Data</label>
-                    <div id="html-paste-area" contenteditable="true"
-                        data-placeholder="Paste profile headers or follower lists here..."></div>
-                </div>
-
-                <button id="import-btn" class="primary-btn w-full mt-2">
-                    <i data-lucide="download"></i> Process Data
+                <button class="subtool-btn placeholder-btn" data-action="Draw Link" title="Draw Link">
+                    <i data-lucide="git-commit"></i>
                 </button>
-                <button id="dev-export-btn" class="secondary-btn w-full mt-2"
-                    style="font-size: 0.75rem; color: var(--text-secondary);">
-                    Export Raw Copy/Paste Payload
-                </button>
-            </section>
+            </div>
 
-            <!-- Analysis Section -->
-            <section class="panel">
-                <h2>Graph Analysis</h2>
+            <div class="panel-section hidden" data-panel="ANALYSIS">
+                <div class="floating-bar icon-only header-icon-bar" title="ANALYSIS Category">
+                    <i data-lucide="line-chart"></i>
+                </div>
 
-                <div class="setting-group">
-                    <div class="setting-header">
-                        <label for="k-truss-slider">k-truss Pruning Level</label>
-                        <span id="k-value-display">2</span>
+                <!-- First Follower Principle (FFP) Tools -->
+                <div class="tool-group ffp-controls" id="ffp-controls-container">
+                    <div class="ffp-main-row">
+                        <button class="subtool-btn" id="ffp-toggle-btn" title="Toggle First Follower Principle (Both)">
+                            <i data-lucide="heart"></i>
+                        </button>
+
+                        <!-- Slide-out specific direction toggles -->
+                        <div class="ffp-sub-toggles hidden" id="ffp-sub-toggles">
+                            <button class="subtool-btn micro-btn" id="ffp-followers-btn" title="Pioneer Followers Only">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="15" cy="15" r="7" />
+                                    <path d="M4 4l9 9" />
+                                    <polyline points="8 13 13 13 13 8" />
+                                </svg>
+                            </button>
+                            <button class="subtool-btn micro-btn" id="ffp-following-btn" title="Pioneer Following Only">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="9" cy="15" r="7" />
+                                    <path d="M9 15l11-11" />
+                                    <polyline points="15 4 20 4 20 9" />
+                                </svg>
+                            </button>
+                            <!-- Divider -->
+                            <div class="ffp-divider"></div>
+                            <!-- Depth N Adjusters -->
+                            <button class="subtool-btn micro-btn" id="ffp-depth-down" title="Decrease Depth">
+                                <i data-lucide="chevron-down"></i>
+                            </button>
+                            <button class="subtool-btn micro-btn" id="ffp-depth-up" title="Increase Depth">
+                                <i data-lucide="chevron-up"></i>
+                            </button>
+                        </div>
+
+                        <!-- Transient Depth Display Overlay -->
+                        <div id="ffp-depth-toast" class="ffp-depth-toast hidden">10</div>
                     </div>
-                    <input type="range" id="k-truss-slider" min="2" max="10" value="2" step="1">
-                    <p class="help-text">Filters out loose connections to find cohesive communities.</p>
                 </div>
 
-                <div class="action-buttons">
-                    <button id="analyze-communities-btn" class="secondary-btn w-full mb-2">
-                        <i data-lucide="network"></i> Color Communities
-                    </button>
-                    <button id="clear-graph-btn" class="danger-btn w-full">
-                        <i data-lucide="trash-2"></i> Clear Graph
-                    </button>
-                </div>
-            </section>
+                <button class="subtool-btn placeholder-btn mt-2" data-action="Highlight Mutuals"
+                    title="Highlight Mutuals">
+                    <i data-lucide="users"></i>
+                </button>
+            </div>
 
-            <!-- Stats Tracker -->
-            <section class="panel stats-panel">
-                <div class="stat-box">
-                    <span class="stat-label">Nodes</span>
-                    <span id="stat-nodes" class="stat-value">0</span>
+            <div class="panel-section hidden" data-panel="SETTINGS">
+                <div class="floating-bar icon-only header-icon-bar" title="SETTINGS Category">
+                    <i data-lucide="settings"></i>
                 </div>
-                <div class="stat-box">
-                    <span class="stat-label">Edges</span>
-                    <span id="stat-edges" class="stat-value">0</span>
-                </div>
-            </section>
-        </aside>
-
-        <!-- Main Graph Area -->
-        <main id="graph-container">
-            <div id="cy"></div>
-        </main>
+                <button class="subtool-btn placeholder-btn" data-action="Preferences" title="Preferences">
+                    <i data-lucide="sliders"></i>
+                </button>
+                <button class="subtool-btn" id="debug-paste-btn" title="Export Paste Buffer (.json)">
+                    <i data-lucide="bug"></i>
+                </button>
+            </div>
+        </div>
     </div>
 
-    <script src="app.js"></script>
+    <div id="toast-container"></div>
+
+    <!-- Ingest Modal -->
+    <div id="ingest-modal-backdrop" class="modal-backdrop hidden">
+        <div id="ingest-modal" class="modal">
+            <div class="modal-header">
+                <h2>Ingest TikTok Data</h2>
+                <button id="close-modal-btn" class="icon-btn" title="Close"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Data Type:</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="ingest-type" value="seed" checked> Seed Profile</label>
+                        <label><input type="radio" name="ingest-type" value="following"> Following List</label>
+                        <label><input type="radio" name="ingest-type" value="followers"> Followers List</label>
+                    </div>
+                </div>
+                <div class="form-group" id="seed-select-group" style="display: none;">
+                    <label for="active-seed">Attach to Seed:</label>
+                    <select id="active-seed" class="ui-select">
+                        <option value="">-- Select a Target Profile --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Paste DOM Content Here:</label>
+                    <div id="html-paste-area" contenteditable="true" class="paste-area"
+                        placeholder="Paste TikTok profile or list here..."></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-ingest-btn" class="btn btn-secondary">Cancel</button>
+                <button id="submit-ingest-btn" class="btn btn-primary">Process</button>
+            </div>
+            <!-- Loading Overlay -->
+            <div id="loading-overlay" class="loading-overlay hidden">
+                <div class="spinner"></div>
+                <span>Processing...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug Paste Modal -->
+    <div id="debug-modal-backdrop" class="modal-backdrop hidden">
+        <div id="debug-modal" class="modal">
+            <div class="modal-header">
+                <h2>Paste Debugger</h2>
+                <button id="close-debug-modal-btn" class="icon-btn" title="Close"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Paste DOM Content here to export for debugging:</label>
+                    <div id="debug-paste-area" contenteditable="true" class="paste-area"
+                        placeholder="Paste data here..."></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-debug-btn" class="btn btn-secondary">Cancel</button>
+                <button id="download-debug-btn" class="btn btn-primary">Download JSON</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hover Panel (Hidden by default) -->
+    <div id="node-hover-panel" class="hover-panel hidden">
+        <div class="hover-panel-header">
+            <div class="hover-titles">
+                <h3 id="hover-display-name">Display Name</h3>
+                <span id="hover-username">@username</span>
+            </div>
+            <button id="hover-copy-btn" class="icon-btn" title="Copy Info"><i data-lucide="copy"></i></button>
+        </div>
+        <div id="hover-bio" class="hover-bio">Bio text goes here...</div>
+        <div class="hover-stats">
+            <div class="stat-box">
+                <span class="stat-value" id="hover-following-count">0</span>
+                <span class="stat-label">Following</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-value" id="hover-followers-count">0</span>
+                <span class="stat-label">Followers</span>
+            </div>
+        </div>
+        <div class="hover-footer"
+            style="margin-top: 12px; padding: 12px 16px 12px 16px; border-top: 1px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: space-between;">
+            <span class="stat-label">INGESTED</span>
+            <span id="hover-ingest-time" class="stat-label"
+                style="font-family: 'Inter', monospace; text-transform: none;">N/A</span>
+        </div>
+    </div>
+
+    <script src="app.js?v=1023"></script>
     <script>
-        // Initialize Lucide icons
         lucide.createIcons();
     </script>
 </body>

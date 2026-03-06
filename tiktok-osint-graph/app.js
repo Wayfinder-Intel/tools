@@ -442,6 +442,18 @@ class GraphApp {
                 ffpRankLabelBtn.classList.remove('btn-ffp-sub-active');
             }
 
+            // Disable # button when FFP is off (it needs FFP edges to label)
+            if (this.ffpMode === 'off') {
+                ffpRankLabelBtn.disabled = true;
+                // Also auto-clear rank label state if FFP is turned off
+                if (this.ffpRankLabelMode) {
+                    this.ffpRankLabelMode = false;
+                    ffpRankLabelBtn.classList.remove('btn-ffp-sub-active');
+                }
+            } else {
+                ffpRankLabelBtn.disabled = false;
+            }
+
             // Sub-toggle visibility is managed solely by hover — never force show/hide here
             this.applyFFPStyles();
         };

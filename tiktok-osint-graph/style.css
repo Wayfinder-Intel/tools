@@ -180,6 +180,12 @@ body {
     background: rgba(239, 68, 68, 0.1) !important;
 }
 
+.subtool-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .subtool-btn.active svg,
 .subtool-btn.active i {
     color: #ef4444 !important;
@@ -229,7 +235,7 @@ body {
     opacity: 1;
     visibility: visible;
     transform: translateX(0);
-    transition: opacity 250ms ease-out, transform 250ms ease-out, visibility 250ms ease-out;
+    transition: opacity 400ms ease-out, transform 400ms ease-out, visibility 400ms ease-out;
     pointer-events: auto;
 }
 

@@ -115,6 +115,7 @@ class GraphApp {
         // FFP State
         this.ffpMode = 'off'; // 'off', 'both', 'followers', 'following'
         this.ffpDepth = 10;
+        this.ffpGhostMode = false;
     }
 
     initEventListeners() {
@@ -347,6 +348,8 @@ class GraphApp {
         };
 
         const ffpSubToggles = document.getElementById('ffp-sub-toggles');
+        const ffpGhostBtn = document.getElementById('ffp-ghost-btn');
+        let ffpHoverTimeout = null;
 
         const updateFFPUI = () => {
             // Reset active classes
@@ -355,9 +358,6 @@ class GraphApp {
             ffpFollowingBtn.className = 'subtool-btn micro-btn';
 
             if (this.ffpMode !== 'off') {
-                // Show the sub-toggle panel
-                ffpSubToggles.classList.remove('hidden');
-
                 if (this.ffpMode === 'both') {
                     // Full highlight for both
                     ffpToggleBtn.classList.add('btn-ffp-active');
@@ -372,13 +372,38 @@ class GraphApp {
                     ffpToggleBtn.classList.add('btn-ffp-partial');
                     ffpFollowingBtn.classList.add('btn-ffp-sub-active');
                 }
+            }
+
+            // Sub-toggles visibility is managed by hover now, except it always shows if ghost mode is active to give user feedback
+            if (this.ffpGhostMode) {
+                ffpGhostBtn.classList.add('btn-ffp-sub-active');
+                ffpSubToggles.classList.remove('hidden');
             } else {
-                // Hide the sub-toggle panel when FFP is off
-                ffpSubToggles.classList.add('hidden');
+                ffpGhostBtn.classList.remove('btn-ffp-sub-active');
+                if (this.ffpMode === 'off') {
+                    ffpSubToggles.classList.add('hidden');
+                }
             }
             // Trigger redrawing the graph edges based on new state
             this.applyFFPStyles();
         };
+
+        // 400ms hover delay logic for FFP toggle button
+        ffpToggleBtn.addEventListener('mouseenter', () => {
+            if (ffpHoverTimeout) clearTimeout(ffpHoverTimeout);
+            ffpHoverTimeout = setTimeout(() => {
+                ffpSubToggles.classList.remove('hidden');
+            }, 400);
+        });
+
+        // Hide sub-toggles when mouse leaves the whole row (unless mode is active/ghost)
+        const ffpMainRow = document.querySelector('.ffp-main-row');
+        ffpMainRow.addEventListener('mouseleave', () => {
+            if (ffpHoverTimeout) clearTimeout(ffpHoverTimeout);
+            if (this.ffpMode === 'off' && !this.ffpGhostMode) {
+                ffpSubToggles.classList.add('hidden');
+            }
+        });
 
         ffpToggleBtn.addEventListener('click', () => {
             this.ffpMode = this.ffpMode === 'both' ? 'off' : 'both';
@@ -411,6 +436,12 @@ class GraphApp {
                 showDepthToast();
                 if (this.ffpMode !== 'off') updateFFPUI();
             }
+        });
+
+        ffpGhostBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.ffpGhostMode = !this.ffpGhostMode;
+            updateFFPUI();
         });
 
         // --- Hover Panel Logic ---
@@ -1021,6 +1052,9 @@ class GraphApp {
             const allEdges = this.cy.edges();
             allEdges.addClass('faded'); // Fade everything first
 
+            // Collection to track which nodes are part of currently active FFP edges
+            const activeNodes = this.cy.collection();
+
             allEdges.forEach(edge => {
                 const rank = edge.data('ffpRank');
                 const dir = edge.data('ffpDirection');
@@ -1035,8 +1069,20 @@ class GraphApp {
                     const color = getGradientColor(rank);
                     edge.style('line-color', color);
                     edge.style('target-arrow-color', color);
+
+                    // Track nodes attached to visible FFP edges
+                    activeNodes.merge(edge.source());
+                    activeNodes.merge(edge.target());
                 }
             });
+
+            // If ghost mode is active, fade nodes that aren't part of active FFP edges
+            if (this.ffpGhostMode) {
+                this.cy.nodes().addClass('faded'); // Fade all initially
+                activeNodes.removeClass('faded'); // Unfade active ones
+            } else {
+                this.cy.nodes().removeClass('faded'); // Unfade all
+            }
         });
     }
 

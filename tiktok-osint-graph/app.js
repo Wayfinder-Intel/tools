@@ -368,6 +368,24 @@ class GraphApp {
             });
         }
 
+        // Reheat: re-run force layout to spread nodes
+        const reheatBtn = document.getElementById('reheat-btn');
+        if (reheatBtn) {
+            reheatBtn.addEventListener('click', () => {
+                this.showToast('Reheating graph…');
+                this.cy.layout({
+                    name: 'cose',
+                    padding: 60,
+                    idealEdgeLength: 80,
+                    nodeRepulsion: 8000,
+                    animate: true,
+                    animationDuration: 800,
+                    fit: true,
+                    randomize: false,
+                }).run();
+            });
+        }
+
         const importBtn = document.getElementById('import-json-btn');
         const importHidden = document.getElementById('import-json-hidden');
         if (importBtn && importHidden) {

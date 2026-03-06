@@ -69,8 +69,7 @@ class GraphApp {
                 style: {
                     'border-color': rootStyles.getPropertyValue('--brand').trim() || '#2ea8ff',
                     'border-width': 4,
-                    'border-opacity': 1,
-                    'box-shadow': '0px 0px 10px #2ea8ff' // Optional glow in some renderers
+                    'border-opacity': 1
                 }
             },
             {

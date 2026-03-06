@@ -83,6 +83,15 @@ class GraphApp {
                 }
             },
             {
+                // When a seed (has followers/following data) is ALSO selected, override green -> teal
+                selector: 'node[?hasFollowers]:selected, node[?hasFollowing]:selected',
+                style: {
+                    'border-color': '#00d4c8',
+                    'border-width': 4,
+                    'border-opacity': 1
+                }
+            },
+            {
                 selector: 'edge',
                 style: {
                     'width': 2,

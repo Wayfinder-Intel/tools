@@ -174,6 +174,17 @@ body {
     border-color: var(--ui-active);
 }
 
+.subtool-btn.active {
+    color: #ef4444 !important;
+    border-color: rgba(239, 68, 68, 0.5) !important;
+    background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.subtool-btn.active svg,
+.subtool-btn.active i {
+    color: #ef4444 !important;
+}
+
 .header-icon-bar {
     color: var(--ui-header-icon);
     background: var(--ui-header-bg);

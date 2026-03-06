@@ -96,6 +96,19 @@ class GraphApp {
                     'opacity': 1,
                     'z-index': 10
                 }
+            },
+            {
+                selector: 'node.faded',
+                style: {
+                    'opacity': 0.15,
+                    'text-opacity': 0.15
+                }
+            },
+            {
+                selector: 'edge.faded',
+                style: {
+                    'opacity': 0.05
+                }
             }
         ];
 

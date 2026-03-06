@@ -322,6 +322,8 @@ class GraphApp {
             }, 1500);
         };
 
+        const ffpSubToggles = document.getElementById('ffp-sub-toggles');
+
         const updateFFPUI = () => {
             // Reset active classes
             ffpToggleBtn.className = 'subtool-btn';
@@ -329,6 +331,9 @@ class GraphApp {
             ffpFollowingBtn.className = 'subtool-btn micro-btn';
 
             if (this.ffpMode !== 'off') {
+                // Show the sub-toggle panel
+                ffpSubToggles.classList.remove('hidden');
+
                 if (this.ffpMode === 'both') {
                     // Full highlight for both
                     ffpToggleBtn.classList.add('btn-ffp-active');
@@ -343,6 +348,9 @@ class GraphApp {
                     ffpToggleBtn.classList.add('btn-ffp-partial');
                     ffpFollowingBtn.classList.add('btn-ffp-sub-active');
                 }
+            } else {
+                // Hide the sub-toggle panel when FFP is off
+                ffpSubToggles.classList.add('hidden');
             }
             // Trigger redrawing the graph edges based on new state
             this.applyFFPStyles();

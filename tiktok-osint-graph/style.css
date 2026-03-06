@@ -299,21 +299,26 @@ body {
     /* Matches subtool-btn height */
 }
 
-/* Sub-toggles: slide in/out via opacity + transform only (no visibility to avoid snap) */
+/* Clip wrapper: this is what animates as a drawer */
+.ffp-sub-clip {
+    overflow: hidden;
+    max-width: 400px;
+    transition: max-width 2000ms ease, opacity 2000ms ease;
+    opacity: 1;
+}
+
+.ffp-sub-clip.hidden {
+    max-width: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Inner flex row: just lays the buttons out */
 .ffp-sub-toggles {
     display: flex;
     gap: 4px;
     margin-left: 6px;
-    opacity: 1;
-    transform: translateX(0);
-    transition: opacity 2000ms ease, transform 2000ms ease;
     pointer-events: auto;
-}
-
-.ffp-sub-toggles.hidden {
-    opacity: 0;
-    transform: translateX(-24px);
-    pointer-events: none;
 }
 
 .micro-btn {

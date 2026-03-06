@@ -888,8 +888,19 @@ class GraphApp {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                const elements = JSON.parse(e.target.result);
+                const parsed = JSON.parse(e.target.result);
                 const existingNodeCount = this.cy.nodes().length;
+
+                // Normalise to flat array — export saves {nodes:[...], edges:[...]}
+                let elements;
+                if (Array.isArray(parsed)) {
+                    elements = parsed;
+                } else {
+                    elements = [
+                        ...(parsed.nodes || []),
+                        ...(parsed.edges || [])
+                    ];
+                }
 
                 // Merge: only add elements whose IDs don't already exist
                 const newElements = [];

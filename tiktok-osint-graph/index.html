@@ -75,8 +75,14 @@
                 <div class="floating-bar icon-only header-icon-bar" title="APPEARANCE Category">
                     <i data-lucide="palette"></i>
                 </div>
-                <button class="subtool-btn placeholder-btn" data-action="Avatar/Dot toggle" title="Avatar / Dot toggle">
-                    <i data-lucide="image"></i>
+                <button class="subtool-btn" id="avatar-dot-toggle-btn" title="Avatar / Dot toggle">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <line x1="12" y1="9" x2="12" y2="3"></line>
+                        <line x1="9" y1="14" x2="4" y2="19"></line>
+                        <line x1="15" y1="14" x2="20" y2="19"></line>
+                    </svg>
                 </button>
             </div>
 
@@ -248,7 +254,7 @@
         </div>
     </div>
 
-    <script src="app.js?v=1024"></script>
+    <script src="app.js?v=1025"></script>
     <script>
         lucide.createIcons();
     </script>

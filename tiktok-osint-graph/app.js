@@ -57,6 +57,14 @@ class GraphApp {
                 }
             },
             {
+                selector: 'node.dot-mode',
+                style: {
+                    'width': 15,
+                    'height': 15,
+                    'background-image': 'none'
+                }
+            },
+            {
                 // If either followers OR following is loaded, give it a thin green border
                 selector: 'node[?hasFollowers], node[?hasFollowing]',
                 style: {
@@ -167,6 +175,22 @@ class GraphApp {
                 this.showToast(`Placeholder triggered: ${action}`);
             });
         });
+
+        // --- Appearance Toggles Logic ---
+        const avatarDotBtn = document.getElementById('avatar-dot-toggle-btn');
+        this.isDotMode = false;
+        if (avatarDotBtn) {
+            avatarDotBtn.addEventListener('click', () => {
+                this.isDotMode = !this.isDotMode;
+                avatarDotBtn.classList.toggle('active', this.isDotMode);
+                if (this.isDotMode) {
+                    this.cy.nodes().addClass('dot-mode');
+                } else {
+                    this.cy.nodes().removeClass('dot-mode');
+                }
+                this.showToast(this.isDotMode ? 'Dot view enabled' : 'Avatar view enabled');
+            });
+        }
 
         // Close panel when clicking empty graph space
         this.cy.on('tap', (e) => {
@@ -919,6 +943,10 @@ class GraphApp {
                     ingestTime: profile.ingestTime || new Date().toISOString()
                 }
             });
+        }
+
+        if (this.isDotMode) {
+            node.addClass('dot-mode');
         }
 
     }

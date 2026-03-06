@@ -890,20 +890,63 @@ class GraphApp {
         reader.onload = (e) => {
             try {
                 const elements = JSON.parse(e.target.result);
+                const existingNodeCount = this.cy.nodes().length;
 
-                // Clear the current graph before importing to prevent ghost-data compound bugs
-                this.cy.elements().remove();
+                // Merge: only add elements whose IDs don't already exist
+                const newElements = [];
+                for (const el of elements) {
+                    const id = el.data && el.data.id;
+                    if (id && !this.cy.getElementById(id).empty()) {
+                        // Element already exists — update its data in-place
+                        const existing = this.cy.getElementById(id);
+                        if (el.data) {
+                            Object.entries(el.data).forEach(([k, v]) => {
+                                if (v !== undefined && v !== null && v !== '') {
+                                    existing.data(k, v);
+                                }
+                            });
+                        }
+                    } else {
+                        newElements.push(el);
+                    }
+                }
 
+                let addedElements;
                 this.cy.batch(() => {
-                    this.cy.add(elements);
+                    addedElements = this.cy.add(newElements);
+                    // Rebuild edgeSet from newly added edges
+                    addedElements.edges().forEach(edge => {
+                        const s = edge.data('source');
+                        const t = edge.data('target');
+                        if (s && t) this.edgeSet.add(`${s}->${t}`);
+                    });
                 });
+
+                // Scatter new nodes that land at 0,0 (no saved position)
+                if (existingNodeCount > 0) {
+                    const cx = this.cy.width() / 2;
+                    const cy = this.cy.height() / 2;
+                    addedElements.nodes().forEach(n => {
+                        const pos = n.position();
+                        if (!pos || (pos.x === 0 && pos.y === 0)) {
+                            n.position({
+                                x: cx + (Math.random() * 300 - 150),
+                                y: cy + (Math.random() * 300 - 150)
+                            });
+                        }
+                    });
+                } else {
+                    this.cy.layout({ name: 'cose', padding: 50, idealEdgeLength: 60 }).run();
+                }
 
                 this.updateStats();
                 this.updateDropown();
-                this.cy.layout({ name: 'cose', padding: 50, idealEdgeLength: 60 }).run();
-                this.showToast(`Successfully imported ${file.name}`);
+                const skipped = elements.length - newElements.length;
+                const msg = skipped > 0
+                    ? `Merged ${file.name}: ${newElements.length} new, ${skipped} updated`
+                    : `Imported ${file.name}`;
+                this.showToast(msg);
 
-                // Re-apply FFP styles if active
                 if (this.ffpMode !== 'off') {
                     this.applyFFPStyles();
                 }

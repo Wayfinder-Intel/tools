@@ -718,6 +718,11 @@ class GraphApp {
             const profiles = this.parseTikTokProfiles(html, rawText, typeSelect);
             console.log(`Parsed ${profiles.length} profiles from paste.`);
 
+            // Always clear the paste area after attempting to parse, so it doesn't get stuck on failed ingests
+            if (pasteArea) {
+                pasteArea.innerHTML = '';
+            }
+
             if (profiles.length === 0) {
                 overlay.classList.add('hidden');
                 this.showToast('No TikTok profiles could be parsed. Ensure you copied the elements directly.');
@@ -770,20 +775,27 @@ class GraphApp {
             this.updateStats();
 
             // Only layout if this is the first ingest, otherwise leave user's manual dragging intact
-            if (existingNodeCount === 0 || typeSelect === 'seed') {
+            if (existingNodeCount === 0) {
                 this.cy.layout({ name: 'cose', padding: 50, idealEdgeLength: 60 }).run();
             } else {
-                // Scatter new nodes randomly around the target seed to prevent them piling exactly on 0,0
-                const targetSeed = this.cy.getElementById(targetId);
-                if (targetSeed && !targetSeed.empty()) {
-                    const center = targetSeed.position();
-                    newlyAddedElements.nodes().forEach(n => {
-                        n.position({
-                            x: center.x + (Math.random() * 200 - 100),
-                            y: center.y + (Math.random() * 200 - 100)
-                        });
-                    });
+                let center = { x: 0, y: 0 };
+                // If appending to a target seed, scatter around that seed
+                if (typeSelect !== 'seed' && targetId) {
+                    const targetSeed = this.cy.getElementById(targetId);
+                    if (targetSeed && !targetSeed.empty()) {
+                        center = targetSeed.position();
+                    }
+                } else {
+                    // If adding independent seeds to an existing graph, scatter them around the center of the viewport
+                    center = { x: this.cy.width() / 2, y: this.cy.height() / 2 };
                 }
+
+                newlyAddedElements.nodes().forEach(n => {
+                    n.position({
+                        x: center.x + (Math.random() * 300 - 150),
+                        y: center.y + (Math.random() * 300 - 150)
+                    });
+                });
             }
             this.showToast('Ingest complete!');
 
@@ -797,11 +809,6 @@ class GraphApp {
             const ingestBtn = document.querySelector('[data-action="Ingest"]');
             if (ingestBtn) {
                 ingestBtn.classList.remove('active');
-            }
-
-            // Clear the paste area so subsequent imports start fresh
-            if (pasteArea) {
-                pasteArea.innerHTML = '';
             }
 
             // Re-apply FFP styles if active

@@ -965,6 +965,11 @@ class GraphApp {
 
                 this.updateStats();
                 this.updateDropown();
+
+                // Select newly added nodes so user can drag them immediately
+                this.cy.nodes().unselect();
+                addedElements.nodes().select();
+
                 const skipped = elements.length - newElements.length;
                 const msg = skipped > 0
                     ? `Merged ${file.name}: ${newElements.length} new, ${skipped} updated`

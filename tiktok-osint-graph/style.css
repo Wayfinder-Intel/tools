@@ -302,7 +302,7 @@ body {
 /* Clip wrapper for drawer animation — JS drives maxWidth/opacity directly */
 .ffp-sub-clip {
     overflow: hidden;
-    transition: max-width 2000ms ease, opacity 2000ms ease;
+    transition: max-width 350ms ease, opacity 350ms ease;
 }
 
 /* Inner flex row */

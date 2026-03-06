@@ -100,8 +100,6 @@ class GraphApp {
                     'width': 4,
                     'line-color': rootStyles.getPropertyValue('--brand').trim() || '#2ea8ff',
                     'target-arrow-color': rootStyles.getPropertyValue('--brand').trim() || '#2ea8ff',
-                    'source-arrow-color': rootStyles.getPropertyValue('--brand').trim() || '#2ea8ff',
-                    'source-arrow-shape': 'triangle',
                     'opacity': 1,
                     'z-index': 10
                 }
@@ -1037,6 +1035,13 @@ class GraphApp {
             if (profile.bio) node.data('bio', profile.bio);
             if (profile.following !== 'Unknown') node.data('following', profile.following);
             if (profile.followers !== 'Unknown') node.data('followers', profile.followers);
+
+            // Override avatar if the new profile has a real image and the existing one is a generated placeholder
+            const currentImg = node.data('image') || '';
+            const newImg = profile.image || '';
+            if (newImg && !newImg.includes('ui-avatars.com') && currentImg.includes('ui-avatars.com')) {
+                node.data('image', newImg);
+            }
         } else {
             node = this.cy.add({
                 group: 'nodes',

@@ -306,7 +306,7 @@ body {
     margin-left: 6px;
     opacity: 1;
     transform: translateX(0);
-    transition: opacity 350ms ease, transform 350ms ease;
+    transition: opacity 2000ms ease, transform 2000ms ease;
     pointer-events: auto;
 }
 

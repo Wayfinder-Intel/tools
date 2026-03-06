@@ -789,6 +789,18 @@ class GraphApp {
             }
             this.showToast('Ingest complete!');
 
+            // Close the primary ingest modal backdrop as well
+            const ingestModalBackdrop = document.getElementById('ingest-modal-backdrop');
+            if (ingestModalBackdrop) {
+                ingestModalBackdrop.classList.add('hidden');
+            }
+
+            // Remove active state from the ingest button if it's still there
+            const ingestBtn = document.querySelector('[data-action="Ingest"]');
+            if (ingestBtn) {
+                ingestBtn.classList.remove('active');
+            }
+
             // Clear the paste area so subsequent imports start fresh
             if (pasteArea) {
                 pasteArea.innerHTML = '';
@@ -1055,7 +1067,8 @@ class GraphApp {
         const reverseStr = `${target}->${source}`;
         const forwardStr = `${source}->${target}`;
 
-        if (this.edgeSet.has(forwardStr)) return; // Edge already exists
+        if (this.edgeSet.has(forwardStr)) return; // Logic check
+        if (!this.cy.getElementById(edgeId).empty()) return; // Cytoscape strict element check
 
         this.edgeSet.add(forwardStr);
         let isMutual = false;

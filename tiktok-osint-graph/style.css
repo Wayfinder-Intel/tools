@@ -299,23 +299,23 @@ body {
     /* Matches subtool-btn height */
 }
 
-/* Slide out mini toggles on parent hover */
-.ffp-main-row:hover .ffp-sub-toggles,
-.ffp-sub-toggles:not(.hidden) {
-    display: flex;
-    opacity: 1;
-    transform: translateX(0);
-}
-
+/* Sub-toggles: always in the DOM, slide open/closed via class  */
 .ffp-sub-toggles {
     display: flex;
     gap: 4px;
     margin-left: 8px;
-    opacity: 0;
-    transform: translateX(-10px);
-    transition: all 200ms ease;
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+    transition: opacity 350ms ease, transform 350ms ease, visibility 350ms ease;
     pointer-events: auto;
-    /* ensure clicks register even if sliding */
+}
+
+.ffp-sub-toggles.hidden {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-20px);
+    pointer-events: none;
 }
 
 .micro-btn {

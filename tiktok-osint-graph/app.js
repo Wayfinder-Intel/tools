@@ -226,17 +226,11 @@ class GraphApp {
         let lastTapTime = 0;
         let lastTappedNode = null;
 
-        // Close panel and clear node selections when clicking empty graph space
+        // Clear node selections when clicking empty graph space (but do NOT close nav panels)
         this.cy.on('tap', (e) => {
             if (e.target === this.cy) {
-                // Background clicked
+                // Background clicked — only deselect nodes
                 this.cy.nodes().unselect();
-
-                if (activeCategory !== null) {
-                    activeCategory = null;
-                    topNavBtns.forEach(b => b.classList.remove('active'));
-                    panelSections.forEach(sec => sec.classList.add('hidden'));
-                }
             } else if (e.target.isNode()) {
                 // Node clicked
                 const node = e.target;
@@ -437,7 +431,6 @@ class GraphApp {
             // Ghost mode feedback
             if (this.ffpGhostMode) {
                 ffpGhostBtn.classList.add('btn-ffp-sub-active');
-                ffpSubToggles.classList.remove('hidden');
             } else {
                 ffpGhostBtn.classList.remove('btn-ffp-sub-active');
             }
@@ -445,34 +438,43 @@ class GraphApp {
             // Rank label mode feedback
             if (this.ffpRankLabelMode) {
                 ffpRankLabelBtn.classList.add('btn-ffp-sub-active');
-                ffpSubToggles.classList.remove('hidden');
             } else {
                 ffpRankLabelBtn.classList.remove('btn-ffp-sub-active');
             }
 
-            // Hide sub-toggles if nothing is keeping them open
-            if (this.ffpMode === 'off' && !this.ffpGhostMode && !this.ffpRankLabelMode) {
-                ffpSubToggles.classList.add('hidden');
-            }
-
+            // Sub-toggle visibility is managed solely by hover — never force show/hide here
             this.applyFFPStyles();
         };
 
-        // 400ms hover delay logic for FFP toggle button
+        // 400ms hover delay logic for FFP toggle button — sub-menu opens on hover, closes 1s after leaving
+        let ffpLeaveTimeout = null;
+
         ffpToggleBtn.addEventListener('mouseenter', () => {
+            if (ffpLeaveTimeout) clearTimeout(ffpLeaveTimeout);
             if (ffpHoverTimeout) clearTimeout(ffpHoverTimeout);
             ffpHoverTimeout = setTimeout(() => {
                 ffpSubToggles.classList.remove('hidden');
             }, 400);
         });
 
-        // Hide sub-toggles when mouse leaves the whole row (unless mode is active/ghost)
+        // Also re-open if cursor moves into the subtoggle row itself
+        ffpSubToggles.addEventListener('mouseenter', () => {
+            if (ffpLeaveTimeout) clearTimeout(ffpLeaveTimeout);
+        });
+
+        // Hide sub-toggles 1 second after mouse leaves the whole FFP area
         const ffpMainRow = document.querySelector('.ffp-main-row');
         ffpMainRow.addEventListener('mouseleave', () => {
             if (ffpHoverTimeout) clearTimeout(ffpHoverTimeout);
-            if (this.ffpMode === 'off' && !this.ffpGhostMode) {
+            ffpLeaveTimeout = setTimeout(() => {
                 ffpSubToggles.classList.add('hidden');
-            }
+            }, 1000);
+        });
+
+        ffpSubToggles.addEventListener('mouseleave', () => {
+            ffpLeaveTimeout = setTimeout(() => {
+                ffpSubToggles.classList.add('hidden');
+            }, 1000);
         });
 
         ffpToggleBtn.addEventListener('click', () => {

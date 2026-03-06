@@ -299,21 +299,13 @@ body {
     /* Matches subtool-btn height */
 }
 
-/* Clip wrapper: this is what animates as a drawer */
+/* Clip wrapper for drawer animation — JS drives maxWidth/opacity directly */
 .ffp-sub-clip {
     overflow: hidden;
-    max-width: 400px;
     transition: max-width 2000ms ease, opacity 2000ms ease;
-    opacity: 1;
 }
 
-.ffp-sub-clip.hidden {
-    max-width: 0;
-    opacity: 0;
-    pointer-events: none;
-}
-
-/* Inner flex row: just lays the buttons out */
+/* Inner flex row */
 .ffp-sub-toggles {
     display: flex;
     gap: 4px;

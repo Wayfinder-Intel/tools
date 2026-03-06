@@ -458,16 +458,30 @@ class GraphApp {
             this.applyFFPStyles();
         };
 
-        // Hover logic: open sub-menu after 400ms on heart, keep open anywhere in the row
+        // Initialise collapsed (no class toggling — direct style so CSS transitions always fire)
+        ffpSubToggles.style.maxWidth = '0px';
+        ffpSubToggles.style.opacity = '0';
+        ffpSubToggles.style.pointerEvents = 'none';
+
+        const showSub = () => {
+            ffpSubToggles.style.maxWidth = '400px';
+            ffpSubToggles.style.opacity = '1';
+            ffpSubToggles.style.pointerEvents = 'auto';
+        };
+
+        const hideSub = () => {
+            ffpSubToggles.style.maxWidth = '0px';
+            ffpSubToggles.style.opacity = '0';
+            ffpSubToggles.style.pointerEvents = 'none';
+        };
+
+        // Hover logic: open after 400ms on heart, stay open anywhere in row, close 1s after leaving
         let ffpLeaveTimeout = null;
 
-        // Opening hover: hovering the heart triggers the reveal after 400ms
         ffpToggleBtn.addEventListener('mouseenter', () => {
             if (ffpLeaveTimeout) clearTimeout(ffpLeaveTimeout);
             if (ffpHoverTimeout) clearTimeout(ffpHoverTimeout);
-            ffpHoverTimeout = setTimeout(() => {
-                ffpSubToggles.classList.remove('hidden');
-            }, 400);
+            ffpHoverTimeout = setTimeout(showSub, 400);
         });
 
         // Cancel close timer anywhere in the entire row (covers gaps between buttons)
@@ -479,9 +493,7 @@ class GraphApp {
         // Start 1s close timer only when cursor truly leaves the whole row
         ffpMainRow.addEventListener('mouseleave', () => {
             if (ffpHoverTimeout) clearTimeout(ffpHoverTimeout);
-            ffpLeaveTimeout = setTimeout(() => {
-                ffpSubToggles.classList.add('hidden');
-            }, 1000);
+            ffpLeaveTimeout = setTimeout(hideSub, 1000);
         });
 
         ffpToggleBtn.addEventListener('click', () => {

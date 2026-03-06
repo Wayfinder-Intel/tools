@@ -65,6 +65,15 @@ class GraphApp {
                 }
             },
             {
+                selector: 'node:selected',
+                style: {
+                    'border-color': rootStyles.getPropertyValue('--brand').trim() || '#2ea8ff',
+                    'border-width': 4,
+                    'border-opacity': 1,
+                    'box-shadow': '0px 0px 10px #2ea8ff' // Optional glow in some renderers
+                }
+            },
+            {
                 // If either followers OR following is loaded, give it a thin green border
                 selector: 'node[?hasFollowers], node[?hasFollowing]',
                 style: {
@@ -122,7 +131,8 @@ class GraphApp {
                 nodeRepulsion: 400000,
                 idealEdgeLength: 100
             },
-            wheelSensitivity: 0.2
+            wheelSensitivity: 0.2,
+            selectionType: 'additive' // Cytoscape handles shift-click naturally if we let it, or we handle it manually. 'additive' means standard click behavior.
         });
 
         // FFP State
@@ -206,14 +216,30 @@ class GraphApp {
             });
         }
 
-        // Close panel when clicking empty graph space
+        // Close panel and clear node selections when clicking empty graph space
         this.cy.on('tap', (e) => {
             if (e.target === this.cy) {
+                // Background clicked
+                this.cy.nodes().unselect();
+
                 if (activeCategory !== null) {
                     activeCategory = null;
                     topNavBtns.forEach(b => b.classList.remove('active'));
                     panelSections.forEach(sec => sec.classList.add('hidden'));
                 }
+            } else if (e.target.isNode()) {
+                // Node clicked
+                const node = e.target;
+                const originalEvent = e.originalEvent;
+
+                // If not holding shift/ctrl, clear others
+                if (!originalEvent.shiftKey && !originalEvent.ctrlKey && !originalEvent.metaKey) {
+                    // Cytoscape's default selectionType: 'single' handles this automatically,
+                    // but since we made it 'additive' above to support shift-click, we must handle single clicks manually:
+                    this.cy.nodes().difference(node).unselect();
+                }
+
+                // Toggle selection is handled automatically by Cytoscape 'additive' mode
             }
         });
 
@@ -700,11 +726,15 @@ class GraphApp {
                 return;
             }
 
+            let newlyAddedElements = this.cy.collection();
+            const existingNodeCount = this.cy.nodes().length;
+
             this.cy.batch(() => {
                 // If it's a seed ingest, just add the seed node
                 if (typeSelect === 'seed') {
                     profiles.forEach(p => {
                         this.addNodeToGraph(p, true);
+                        newlyAddedElements.merge(this.cy.getElementById(p.id));
                     });
                 } else {
                     // It's a follower/following ingest mapped to an existing seed
@@ -716,6 +746,9 @@ class GraphApp {
 
                     profiles.forEach((p, index) => {
                         this.addNodeToGraph(p, false);
+
+                        const newNode = this.cy.getElementById(p.id);
+                        newlyAddedElements.merge(newNode);
 
                         // FFP Chronological Rank: index 0 is newest, index L-1 is oldest (Rank 1)
                         const rank = totalNewProfiles - index;
@@ -729,11 +762,31 @@ class GraphApp {
                     });
                 }
                 this.updateDropown();
+
+                // Select all newly added nodes automatically
+                this.cy.nodes().unselect();
+                newlyAddedElements.select();
             });
 
             overlay.classList.add('hidden');
             this.updateStats();
-            this.cy.layout({ name: 'cose', padding: 50, idealEdgeLength: 60 }).run();
+
+            // Only layout if this is the first ingest, otherwise leave user's manual dragging intact
+            if (existingNodeCount === 0 || typeSelect === 'seed') {
+                this.cy.layout({ name: 'cose', padding: 50, idealEdgeLength: 60 }).run();
+            } else {
+                // Scatter new nodes randomly around the target seed to prevent them piling exactly on 0,0
+                const targetSeed = this.cy.getElementById(targetId);
+                if (targetSeed && !targetSeed.empty()) {
+                    const center = targetSeed.position();
+                    newlyAddedElements.nodes().forEach(n => {
+                        n.position({
+                            x: center.x + (Math.random() * 200 - 100),
+                            y: center.y + (Math.random() * 200 - 100)
+                        });
+                    });
+                }
+            }
             this.showToast('Ingest complete!');
 
             // Clear the paste area so subsequent imports start fresh

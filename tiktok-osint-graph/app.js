@@ -991,7 +991,7 @@ class GraphApp {
                 profiles.push({
                     id: id,
                     label: displayName,
-                    image: imgUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(id)}&background=random`,
+                    image: imgUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(id)}`,
                     bio: "",
                     following: "Unknown",
                     followers: "Unknown",
@@ -1012,7 +1012,7 @@ class GraphApp {
                         profiles.push({
                             id: id,
                             label: id,
-                            image: `https://ui-avatars.com/api/?name=${encodeURIComponent(id)}&background=random`,
+                            image: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(id)}`,
                             bio: "",
                             following: "Unknown",
                             followers: "Unknown",
@@ -1046,7 +1046,7 @@ class GraphApp {
             // Override avatar if the new profile has a real image and the existing one is a generated placeholder
             const currentImg = node.data('image') || '';
             const newImg = profile.image || '';
-            if (newImg && !newImg.includes('ui-avatars.com') && currentImg.includes('ui-avatars.com')) {
+            if (newImg && !newImg.includes('dicebear.com') && currentImg.includes('dicebear.com')) {
                 node.data('image', newImg);
             }
         } else {

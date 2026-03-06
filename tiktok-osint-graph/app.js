@@ -214,6 +214,10 @@ class GraphApp {
             });
         }
 
+        // Tracking for simulated double-click
+        let lastTapTime = 0;
+        let lastTappedNode = null;
+
         // Close panel and clear node selections when clicking empty graph space
         this.cy.on('tap', (e) => {
             if (e.target === this.cy) {
@@ -229,15 +233,25 @@ class GraphApp {
                 // Node clicked
                 const node = e.target;
                 const originalEvent = e.originalEvent;
+                const now = Date.now();
 
-                // If not holding shift/ctrl, clear others
-                if (!originalEvent.shiftKey && !originalEvent.ctrlKey && !originalEvent.metaKey) {
-                    // Cytoscape's default selectionType: 'single' handles this automatically,
-                    // but since we made it 'additive' above to support shift-click, we must handle single clicks manually:
-                    this.cy.nodes().difference(node).unselect();
+                // Detect double click (300ms window) on the same node
+                if (lastTappedNode === node.id() && (now - lastTapTime) < 300) {
+                    // Double click: Select the node and everything it is connected to
+                    node.select();
+                    // Select edges attached to this node
+                    node.connectedEdges().select();
+                    // Select nodes attached to those edges
+                    node.connectedEdges().connectedNodes().select();
+                } else {
+                    // Single click: If not holding shift/ctrl, clear others
+                    if (!originalEvent.shiftKey && !originalEvent.ctrlKey && !originalEvent.metaKey) {
+                        this.cy.nodes().difference(node).unselect();
+                    }
                 }
 
-                // Toggle selection is handled automatically by Cytoscape 'additive' mode
+                lastTapTime = now;
+                lastTappedNode = node.id();
             }
         });
 
@@ -1043,10 +1057,9 @@ class GraphApp {
             if (profile.following !== 'Unknown') node.data('following', profile.following);
             if (profile.followers !== 'Unknown') node.data('followers', profile.followers);
 
-            // Override avatar if the new profile has a real image and the existing one is a generated placeholder
-            const currentImg = node.data('image') || '';
+            // Override avatar if the new profile has a real image, unconditionally overwriting whatever was there
             const newImg = profile.image || '';
-            if (newImg && !newImg.includes('dicebear.com') && currentImg.includes('dicebear.com')) {
+            if (newImg && !newImg.includes('dicebear.com')) {
                 node.data('image', newImg);
             }
         } else {

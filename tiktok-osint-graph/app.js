@@ -411,6 +411,7 @@ class GraphApp {
 
         const ffpSubToggles = document.getElementById('ffp-sub-toggles');
         const ffpGhostBtn = document.getElementById('ffp-ghost-btn');
+        const ffpRankLabelBtn = document.getElementById('ffp-rank-label-btn');
         let ffpHoverTimeout = null;
 
         const updateFFPUI = () => {
@@ -421,32 +422,39 @@ class GraphApp {
 
             if (this.ffpMode !== 'off') {
                 if (this.ffpMode === 'both') {
-                    // Full highlight for both
                     ffpToggleBtn.classList.add('btn-ffp-active');
                     ffpFollowersBtn.classList.add('btn-ffp-sub-active');
                     ffpFollowingBtn.classList.add('btn-ffp-sub-active');
                 } else if (this.ffpMode === 'followers') {
-                    // Partial highlight heart 
                     ffpToggleBtn.classList.add('btn-ffp-partial');
                     ffpFollowersBtn.classList.add('btn-ffp-sub-active');
                 } else if (this.ffpMode === 'following') {
-                    // Partial highlight heart
                     ffpToggleBtn.classList.add('btn-ffp-partial');
                     ffpFollowingBtn.classList.add('btn-ffp-sub-active');
                 }
             }
 
-            // Sub-toggles visibility is managed by hover now, except it always shows if ghost mode is active to give user feedback
+            // Ghost mode feedback
             if (this.ffpGhostMode) {
                 ffpGhostBtn.classList.add('btn-ffp-sub-active');
                 ffpSubToggles.classList.remove('hidden');
             } else {
                 ffpGhostBtn.classList.remove('btn-ffp-sub-active');
-                if (this.ffpMode === 'off') {
-                    ffpSubToggles.classList.add('hidden');
-                }
             }
-            // Trigger redrawing the graph edges based on new state
+
+            // Rank label mode feedback
+            if (this.ffpRankLabelMode) {
+                ffpRankLabelBtn.classList.add('btn-ffp-sub-active');
+                ffpSubToggles.classList.remove('hidden');
+            } else {
+                ffpRankLabelBtn.classList.remove('btn-ffp-sub-active');
+            }
+
+            // Hide sub-toggles if nothing is keeping them open
+            if (this.ffpMode === 'off' && !this.ffpGhostMode && !this.ffpRankLabelMode) {
+                ffpSubToggles.classList.add('hidden');
+            }
+
             this.applyFFPStyles();
         };
 
@@ -503,6 +511,12 @@ class GraphApp {
         ffpGhostBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.ffpGhostMode = !this.ffpGhostMode;
+            updateFFPUI();
+        });
+
+        ffpRankLabelBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.ffpRankLabelMode = !this.ffpRankLabelMode;
             updateFFPUI();
         });
 
@@ -1238,6 +1252,20 @@ class GraphApp {
                     const color = getGradientColor(rank);
                     edge.style('line-color', color);
                     edge.style('target-arrow-color', color);
+
+                    // Rank label: show number if toggle is on
+                    if (this.ffpRankLabelMode) {
+                        edge.style('label', String(rank));
+                        edge.style('font-size', '9px');
+                        edge.style('color', '#e2e8f0');
+                        edge.style('text-background-color', '#1e293b');
+                        edge.style('text-background-opacity', 0.75);
+                        edge.style('text-background-padding', '2px');
+                        edge.style('text-background-shape', 'roundrectangle');
+                        edge.style('text-rotation', 'autorotate');
+                    } else {
+                        edge.removeStyle('label');
+                    }
 
                     // Track nodes attached to visible FFP edges
                     activeNodes.merge(edge.source());

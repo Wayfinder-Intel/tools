@@ -968,9 +968,12 @@ class GraphApp {
                 this.updateStats();
                 this.updateDropown();
 
-                // Select newly added nodes so user can drag them immediately
-                this.cy.nodes().unselect();
-                addedElements.nodes().select();
+                // Defer select so it fires AFTER any layout animation (cose is async)
+                // Select only the genuinely new nodes so user can drag them immediately
+                setTimeout(() => {
+                    this.cy.nodes().unselect();
+                    addedElements.nodes().select();
+                }, 200);
 
                 const skipped = elements.length - newElements.length;
                 const msg = skipped > 0

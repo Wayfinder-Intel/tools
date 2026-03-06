@@ -299,22 +299,20 @@ body {
     /* Matches subtool-btn height */
 }
 
-/* Sub-toggles: always in the DOM, slide open/closed via class  */
+/* Sub-toggles: slide in/out via opacity + transform only (no visibility to avoid snap) */
 .ffp-sub-toggles {
     display: flex;
     gap: 4px;
-    margin-left: 8px;
+    margin-left: 6px;
     opacity: 1;
-    visibility: visible;
     transform: translateX(0);
-    transition: opacity 350ms ease, transform 350ms ease, visibility 350ms ease;
+    transition: opacity 350ms ease, transform 350ms ease;
     pointer-events: auto;
 }
 
 .ffp-sub-toggles.hidden {
     opacity: 0;
-    visibility: hidden;
-    transform: translateX(-20px);
+    transform: translateX(-24px);
     pointer-events: none;
 }
 

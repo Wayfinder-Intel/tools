@@ -458,9 +458,10 @@ class GraphApp {
             this.applyFFPStyles();
         };
 
-        // 400ms hover delay logic for FFP toggle button — sub-menu opens on hover, closes 1s after leaving
+        // Hover logic: open sub-menu after 400ms on heart, keep open anywhere in the row
         let ffpLeaveTimeout = null;
 
+        // Opening hover: hovering the heart triggers the reveal after 400ms
         ffpToggleBtn.addEventListener('mouseenter', () => {
             if (ffpLeaveTimeout) clearTimeout(ffpLeaveTimeout);
             if (ffpHoverTimeout) clearTimeout(ffpHoverTimeout);
@@ -469,21 +470,15 @@ class GraphApp {
             }, 400);
         });
 
-        // Also re-open if cursor moves into the subtoggle row itself
-        ffpSubToggles.addEventListener('mouseenter', () => {
+        // Cancel close timer anywhere in the entire row (covers gaps between buttons)
+        const ffpMainRow = document.querySelector('.ffp-main-row');
+        ffpMainRow.addEventListener('mouseenter', () => {
             if (ffpLeaveTimeout) clearTimeout(ffpLeaveTimeout);
         });
 
-        // Hide sub-toggles 1 second after mouse leaves the whole FFP area
-        const ffpMainRow = document.querySelector('.ffp-main-row');
+        // Start 1s close timer only when cursor truly leaves the whole row
         ffpMainRow.addEventListener('mouseleave', () => {
             if (ffpHoverTimeout) clearTimeout(ffpHoverTimeout);
-            ffpLeaveTimeout = setTimeout(() => {
-                ffpSubToggles.classList.add('hidden');
-            }, 1000);
-        });
-
-        ffpSubToggles.addEventListener('mouseleave', () => {
             ffpLeaveTimeout = setTimeout(() => {
                 ffpSubToggles.classList.add('hidden');
             }, 1000);

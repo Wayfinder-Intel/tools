@@ -238,11 +238,14 @@ class GraphApp {
                 // Detect double click (300ms window) on the same node
                 if (lastTappedNode === node.id() && (now - lastTapTime) < 300) {
                     // Double click: Select the node and everything it is connected to
-                    node.select();
-                    // Select edges attached to this node
-                    node.connectedEdges().select();
-                    // Select nodes attached to those edges
-                    node.connectedEdges().connectedNodes().select();
+                    // Use setTimeout to ensure our explicit select() overrides Cytoscape's native toggle unselect
+                    setTimeout(() => {
+                        node.select();
+                        // Select edges attached to this node
+                        node.connectedEdges().select();
+                        // Select nodes attached to those edges
+                        node.connectedEdges().connectedNodes().select();
+                    }, 10);
                 } else {
                     // Single click: If not holding shift/ctrl, clear others
                     if (!originalEvent.shiftKey && !originalEvent.ctrlKey && !originalEvent.metaKey) {

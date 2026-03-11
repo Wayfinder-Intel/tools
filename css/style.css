@@ -18,6 +18,16 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
 
+:root.light-mode {
+  --bg: #f8f9fa;
+  --bg-2: #ffffff;
+  --panel: rgba(255, 255, 255, 0.9);
+  --panel-hover: rgba(255, 255, 255, 1);
+  --text: #1e293b;
+  --muted: #64748b;
+  --border: rgba(0, 0, 0, 0.1);
+}
+
 * { box-sizing: border-box; }
 
 html, body {

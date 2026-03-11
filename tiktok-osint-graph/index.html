@@ -1,277 +1,783 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="referrer" content="no-referrer">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
     <title>TikTok Graph Builder</title>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
 
     <!-- Shared CSS -->
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/style.css" />
 
     <!-- Cytoscape -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=1023">
+    <link rel="stylesheet" href="style.css?v=1023" />
 
     <!-- Shared JS -->
     <script src="../js/common.js" defer></script>
-</head>
+  </head>
 
-<body>
+  <body>
     <div id="cy"></div>
 
     <div class="ui-layer">
-        <!-- Floating horizontal top bar for categories -->
-        <div class="floating-bar horizontal top-nav">
-            <a href="#" class="brand-link" title="Wayfinder Intelligence" onclick="event.preventDefault()">
-                <img class="logo" src="https://wayfinder-intel.github.io/tools/Wayfinder.png" alt="Wayfinder Logo" />
-            </a>
-            <div class="divider vertical"></div>
-            <button class="nav-btn" data-category="DATA" title="DATA">
-                <i data-lucide="database"></i>
-            </button>
-            <button class="nav-btn" data-category="APPEARANCE" title="APPEARANCE">
-                <i data-lucide="palette"></i>
-            </button>
-            <button class="nav-btn" data-category="EDITING" title="EDITING">
-                <i data-lucide="edit-3"></i>
-            </button>
-            <button class="nav-btn" data-category="ANALYSIS" title="ANALYSIS">
-                <i data-lucide="line-chart"></i>
-            </button>
-            <button class="nav-btn" data-category="SETTINGS" title="SETTINGS">
-                <i data-lucide="settings"></i>
-            </button>
+      <!-- Floating horizontal top bar for categories -->
+      <div class="floating-bar horizontal top-nav">
+        <a
+          href="#"
+          class="brand-link"
+          title="Wayfinder Intelligence"
+          onclick="event.preventDefault()"
+        >
+          <img
+            class="logo"
+            src="https://wayfinder-intel.github.io/tools/Wayfinder.png"
+            alt="Wayfinder Logo"
+          />
+        </a>
+        <div class="divider vertical"></div>
+        <button class="nav-btn" data-category="DATA" title="DATA">
+          <i data-lucide="database"></i>
+        </button>
+        <button class="nav-btn" data-category="APPEARANCE" title="APPEARANCE">
+          <i data-lucide="palette"></i>
+        </button>
+        <button class="nav-btn" data-category="EDITING" title="EDITING">
+          <i data-lucide="edit-3"></i>
+        </button>
+        <button class="nav-btn" data-category="ANALYSIS" title="ANALYSIS">
+          <i data-lucide="line-chart"></i>
+        </button>
+        <button class="nav-btn" data-category="SETTINGS" title="SETTINGS">
+          <i data-lucide="settings"></i>
+        </button>
+      </div>
+
+      <!-- Vertical floating subtool pill wrapper -->
+      <div id="side-panel" class="subtools-wrapper">
+        <div class="panel-section hidden" data-panel="DATA">
+          <div
+            class="floating-bar icon-only header-icon-bar"
+            title="DATA Category"
+          >
+            <i data-lucide="database"></i>
+          </div>
+          <button
+            class="subtool-btn"
+            data-action="Ingest"
+            title="Ingest HTML Snippets"
+          >
+            <i data-lucide="download"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button class="subtool-btn" id="wipe-graph-btn" title="Wipe Graph">
+            <i data-lucide="eraser"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn"
+            id="export-json-btn"
+            title="Export Graph to JSON"
+          >
+            <i data-lucide="upload-cloud"></i>
+          </button>
+          <button
+            class="subtool-btn"
+            id="import-json-btn"
+            title="Import Graph from JSON"
+          >
+            <i data-lucide="download-cloud"></i>
+          </button>
+          <!-- Hidden file input for uploading JSON -->
+          <input
+            type="file"
+            id="import-json-hidden"
+            accept=".json"
+            style="display: none"
+          />
         </div>
 
-        <!-- Vertical floating subtool pill wrapper -->
-        <div id="side-panel" class="subtools-wrapper">
-            <div class="panel-section hidden" data-panel="DATA">
-                <div class="floating-bar icon-only header-icon-bar" title="DATA Category">
-                    <i data-lucide="database"></i>
-                </div>
-                <button class="subtool-btn" data-action="Ingest" title="Ingest HTML Snippets">
-                    <i data-lucide="download"></i>
-                </button>
-                <div style="width: 24px; height: 1px; background: rgba(255,255,255,0.1); margin: 4px 0;"></div>
-                <button class="subtool-btn" id="export-json-btn" title="Export Graph to JSON">
-                    <i data-lucide="upload-cloud"></i>
-                </button>
-                <button class="subtool-btn" id="import-json-btn" title="Import Graph from JSON">
-                    <i data-lucide="download-cloud"></i>
-                </button>
-                <!-- Hidden file input for uploading JSON -->
-                <input type="file" id="import-json-hidden" accept=".json" style="display: none;">
-            </div>
+        <div class="panel-section hidden" data-panel="APPEARANCE">
+          <div
+            class="floating-bar icon-only header-icon-bar"
+            title="APPEARANCE Category"
+          >
+            <i data-lucide="palette"></i>
+          </div>
+          <button
+            class="subtool-btn"
+            id="avatar-dot-toggle-btn"
+            title="Avatar / Dot toggle"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="3"></circle>
+              <line x1="12" y1="9" x2="12" y2="3"></line>
+              <line x1="9" y1="14" x2="4" y2="19"></line>
+              <line x1="15" y1="14" x2="20" y2="19"></line>
+            </svg>
+          </button>
+          <button
+            class="subtool-btn"
+            id="reheat-btn"
+            title="Reheat — re-run force layout to spread nodes"
+          >
+            <i data-lucide="flame"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn"
+            id="theme-toggle-btn"
+            title="Toggle White/Dark Mode"
+          >
+            <i data-lucide="sun"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
 
-            <div class="panel-section hidden" data-panel="APPEARANCE">
-                <div class="floating-bar icon-only header-icon-bar" title="APPEARANCE Category">
-                    <i data-lucide="palette"></i>
-                </div>
-                <button class="subtool-btn" id="avatar-dot-toggle-btn" title="Avatar / Dot toggle">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <line x1="12" y1="9" x2="12" y2="3"></line>
-                        <line x1="9" y1="14" x2="4" y2="19"></line>
-                        <line x1="15" y1="14" x2="20" y2="19"></line>
+          <button
+            class="subtool-btn"
+            id="center-graph-btn"
+            title="Center Graph / Fit to Screen"
+          >
+            <i data-lucide="frame"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn"
+            id="expand-space-btn"
+            title="Expand Graph Spacing"
+          >
+            <i data-lucide="maximize-2"></i>
+          </button>
+          <button
+            class="subtool-btn"
+            id="contract-space-btn"
+            title="Contract Graph Spacing"
+          >
+            <i data-lucide="minimize-2"></i>
+          </button>
+        </div>
+
+        <div class="panel-section hidden" data-panel="EDITING">
+          <div
+            class="floating-bar icon-only header-icon-bar"
+            title="EDITING Category"
+          >
+            <i data-lucide="edit-3"></i>
+          </div>
+          <!-- Initially disabled until there is a state to undo to -->
+          <button
+            class="subtool-btn disabled"
+            id="undo-btn"
+            title="Undo Last Action"
+          >
+            <i data-lucide="undo-2"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn"
+            id="snap-grid-btn"
+            title="Toggle Snap to Grid"
+          >
+            <i data-lucide="grid-3x3"></i>
+          </button>
+          <button
+            class="subtool-btn mt-2"
+            id="draw-link-btn"
+            title="Draw Manual Link"
+          >
+            <i data-lucide="git-commit"></i>
+          </button>
+        </div>
+
+        <div class="panel-section hidden" data-panel="ANALYSIS">
+          <div
+            class="floating-bar icon-only header-icon-bar"
+            title="ANALYSIS Category"
+          >
+            <i data-lucide="line-chart"></i>
+          </div>
+
+          <!-- First Follower Principle (FFP) Tools -->
+          <div class="tool-group ffp-controls" id="ffp-controls-container">
+            <div class="ffp-main-row">
+              <button
+                class="subtool-btn"
+                id="ffp-toggle-btn"
+                title="Toggle First Follower Principle (Both)"
+              >
+                <i data-lucide="heart"></i>
+              </button>
+
+              <!-- Slide-out specific direction toggles -->
+              <div class="ffp-sub-clip" id="ffp-sub-toggles">
+                <div class="ffp-sub-toggles">
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ffp-followers-btn"
+                    title="Pioneer Followers Only"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <circle cx="15" cy="15" r="7" />
+                      <path d="M4 4l9 9" />
+                      <polyline points="8 13 13 13 13 8" />
                     </svg>
-                </button>
-                <button class="subtool-btn" id="reheat-btn" title="Reheat — re-run force layout to spread nodes">
-                    <i data-lucide="flame"></i>
-                </button>
-            </div>
-
-            <div class="panel-section hidden" data-panel="EDITING">
-                <div class="floating-bar icon-only header-icon-bar" title="EDITING Category">
-                    <i data-lucide="edit-3"></i>
+                  </button>
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ffp-following-btn"
+                    title="Pioneer Following Only"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <circle cx="9" cy="15" r="7" />
+                      <path d="M9 15l11-11" />
+                      <polyline points="15 4 20 4 20 9" />
+                    </svg>
+                  </button>
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ffp-rank-label-btn"
+                    title="Show Rank Numbers on Links"
+                    style="font-size: 13px; font-weight: 700; line-height: 1"
+                    disabled
+                  >
+                    #
+                  </button>
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ffp-distance-reheat-btn"
+                    title="Reheat by FFP Distance"
+                  >
+                    <i data-lucide="scatter-chart"></i>
+                  </button>
+                  <!-- Divider -->
+                  <div class="ffp-divider"></div>
+                  <!-- Depth N Adjusters -->
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ffp-depth-down"
+                    title="Decrease Depth"
+                  >
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ffp-depth-up"
+                    title="Increase Depth"
+                  >
+                    <i data-lucide="chevron-up"></i>
+                  </button>
                 </div>
-                <button class="subtool-btn placeholder-btn" data-action="Draw Link" title="Draw Link">
-                    <i data-lucide="git-commit"></i>
-                </button>
+              </div>
+
+              <!-- Transient Depth Display Overlay -->
+              <div id="ffp-depth-toast" class="ffp-depth-toast hidden">10</div>
             </div>
+          </div>
 
-            <div class="panel-section hidden" data-panel="ANALYSIS">
-                <div class="floating-bar icon-only header-icon-bar" title="ANALYSIS Category">
-                    <i data-lucide="line-chart"></i>
+          <!-- K-Truss Tool -->
+          <div class="tool-group ffp-controls" id="ktruss-controls-container">
+            <div class="ffp-main-row">
+              <button
+                class="subtool-btn"
+                id="ktruss-toggle-btn"
+                title="Toggle K-Truss Analysis"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="5" r="3" />
+                  <circle cx="5" cy="19" r="3" />
+                  <circle cx="19" cy="19" r="3" />
+                  <line x1="10" y1="7" x2="6.5" y2="16.5" />
+                  <line x1="14" y1="7" x2="17.5" y2="16.5" />
+                  <line x1="8" y1="19" x2="16" y2="19" />
+                </svg>
+              </button>
+
+              <!-- Slide-out specific direction toggles -->
+              <div class="ffp-sub-clip" id="ktruss-sub-toggles">
+                <div class="ffp-sub-toggles">
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ktruss-depth-down"
+                    title="Decrease K"
+                  >
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ktruss-depth-up"
+                    title="Increase K"
+                  >
+                    <i data-lucide="chevron-up"></i>
+                  </button>
                 </div>
+              </div>
 
-                <!-- First Follower Principle (FFP) Tools -->
-                <div class="tool-group ffp-controls" id="ffp-controls-container">
-                    <div class="ffp-main-row">
-                        <button class="subtool-btn" id="ffp-toggle-btn" title="Toggle First Follower Principle (Both)">
-                            <i data-lucide="heart"></i>
-                        </button>
-
-                        <!-- Slide-out specific direction toggles -->
-                        <div class="ffp-sub-clip" id="ffp-sub-toggles">
-                            <div class="ffp-sub-toggles">
-                                <button class="subtool-btn micro-btn" id="ffp-followers-btn"
-                                    title="Pioneer Followers Only">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round">
-                                        <circle cx="15" cy="15" r="7" />
-                                        <path d="M4 4l9 9" />
-                                        <polyline points="8 13 13 13 13 8" />
-                                    </svg>
-                                </button>
-                                <button class="subtool-btn micro-btn" id="ffp-following-btn"
-                                    title="Pioneer Following Only">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round">
-                                        <circle cx="9" cy="15" r="7" />
-                                        <path d="M9 15l11-11" />
-                                        <polyline points="15 4 20 4 20 9" />
-                                    </svg>
-                                </button>
-                                <button class="subtool-btn micro-btn" id="ffp-ghost-btn" title="Fade Unrelated">
-                                    <i data-lucide="ghost"></i>
-                                </button>
-                                <button class="subtool-btn micro-btn" id="ffp-rank-label-btn"
-                                    title="Show Rank Numbers on Links"
-                                    style="font-size:13px;font-weight:700;line-height:1;" disabled>#</button>
-                                <!-- Divider -->
-                                <div class="ffp-divider"></div>
-                                <!-- Depth N Adjusters -->
-                                <button class="subtool-btn micro-btn" id="ffp-depth-down" title="Decrease Depth">
-                                    <i data-lucide="chevron-down"></i>
-                                </button>
-                                <button class="subtool-btn micro-btn" id="ffp-depth-up" title="Increase Depth">
-                                    <i data-lucide="chevron-up"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Transient Depth Display Overlay -->
-                        <div id="ffp-depth-toast" class="ffp-depth-toast hidden">10</div>
-                    </div>
-                </div>
-
-                <button class="subtool-btn placeholder-btn mt-2" data-action="Highlight Mutuals"
-                    title="Highlight Mutuals">
-                    <i data-lucide="users"></i>
-                </button>
+              <!-- Transient Depth Display Overlay -->
+              <div id="ktruss-depth-toast" class="ffp-depth-toast hidden">
+                3
+              </div>
             </div>
+          </div>
 
-            <div class="panel-section hidden" data-panel="SETTINGS">
-                <div class="floating-bar icon-only header-icon-bar" title="SETTINGS Category">
-                    <i data-lucide="settings"></i>
-                </div>
-                <button class="subtool-btn placeholder-btn" data-action="Preferences" title="Preferences">
-                    <i data-lucide="sliders"></i>
-                </button>
-                <button class="subtool-btn" id="debug-paste-btn" title="Export Paste Buffer (.json)">
-                    <i data-lucide="bug"></i>
-                </button>
-            </div>
+          <button
+            class="subtool-btn mt-2"
+            id="shortest-route-btn"
+            title="Shortest Route (Select 2+ nodes)"
+          >
+            <i data-lucide="route"></i>
+          </button>
+          <button
+            class="subtool-btn mt-2"
+            id="highlight-mutuals-btn"
+            title="Highlight Mutual Connections"
+          >
+            <i data-lucide="arrow-left-right"></i>
+          </button>
+          <button
+            class="subtool-btn mt-2"
+            id="global-ghost-btn"
+            title="Global Ghost (Fade unselected)"
+          >
+            <i data-lucide="ghost"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn mt-2"
+            id="select-seeds-btn"
+            title="Select All Seeds"
+          >
+            <i data-lucide="sprout"></i>
+          </button>
+          <button
+            class="subtool-btn mt-2"
+            id="select-singletons-btn"
+            title="Select Singletons (1 Link Only)"
+          >
+            <i data-lucide="target"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn mt-2"
+            id="inverse-select-btn"
+            title="Inverse Selection"
+          >
+            <i data-lucide="contrast"></i>
+          </button>
         </div>
+
+        <div class="panel-section hidden" data-panel="SETTINGS">
+          <div
+            class="floating-bar icon-only header-icon-bar"
+            title="SETTINGS Category"
+          >
+            <i data-lucide="settings"></i>
+          </div>
+          <button
+            class="subtool-btn placeholder-btn"
+            data-action="Preferences"
+            title="Preferences"
+          >
+            <i data-lucide="sliders"></i>
+          </button>
+          <button
+            class="subtool-btn"
+            id="debug-paste-btn"
+            title="Export Paste Buffer (.json)"
+          >
+            <i data-lucide="bug"></i>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div id="toast-container"></div>
 
     <!-- Ingest Modal -->
     <div id="ingest-modal-backdrop" class="modal-backdrop hidden">
-        <div id="ingest-modal" class="modal">
-            <div class="modal-header">
-                <h2>Ingest TikTok Data</h2>
-                <button id="close-modal-btn" class="icon-btn" title="Close"><i data-lucide="x"></i></button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Data Type:</label>
-                    <div class="radio-group">
-                        <label><input type="radio" name="ingest-type" value="seed" checked> Seed Profile</label>
-                        <label><input type="radio" name="ingest-type" value="following"> Following List</label>
-                        <label><input type="radio" name="ingest-type" value="followers"> Followers List</label>
-                    </div>
-                </div>
-                <div class="form-group" id="seed-select-group" style="display: none;">
-                    <label for="active-seed">Attach to Seed:</label>
-                    <select id="active-seed" class="ui-select">
-                        <option value="">-- Select a Target Profile --</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Paste DOM Content Here:</label>
-                    <div id="html-paste-area" contenteditable="true" class="paste-area"
-                        placeholder="Paste TikTok profile or list here..."></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="cancel-ingest-btn" class="btn btn-secondary">Cancel</button>
-                <button id="submit-ingest-btn" class="btn btn-primary">Process</button>
-            </div>
-            <!-- Loading Overlay -->
-            <div id="loading-overlay" class="loading-overlay hidden">
-                <div class="spinner"></div>
-                <span>Processing...</span>
-            </div>
+      <div id="ingest-modal" class="modal">
+        <div class="modal-header">
+          <h2>Ingest TikTok Data</h2>
+          <button id="close-modal-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
         </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Data Type:</label>
+            <div class="radio-group">
+              <label
+                ><input type="radio" name="ingest-type" value="seed" checked />
+                Seed Profile</label
+              >
+              <label
+                ><input type="radio" name="ingest-type" value="following" />
+                Following List</label
+              >
+              <label
+                ><input type="radio" name="ingest-type" value="followers" />
+                Followers List</label
+              >
+            </div>
+          </div>
+          <div class="form-group" id="seed-select-group" style="display: none">
+            <label for="active-seed">Attach to Seed:</label>
+            <select id="active-seed" class="ui-select">
+              <option value="">-- Select a Target Profile --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Paste DOM Content Here:</label>
+            <div
+              id="html-paste-area"
+              contenteditable="true"
+              class="paste-area"
+              placeholder="Paste TikTok profile or list here..."
+            ></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-ingest-btn" class="btn btn-secondary">
+            Cancel
+          </button>
+          <button id="submit-ingest-btn" class="btn btn-primary">
+            Process
+          </button>
+        </div>
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay hidden">
+          <div class="spinner"></div>
+          <span>Processing...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wipe Graph Modal -->
+    <div id="wipe-modal-backdrop" class="modal-backdrop hidden">
+      <div id="wipe-modal" class="modal">
+        <div class="modal-header">
+          <h2>Wipe Graph</h2>
+          <button id="close-wipe-modal-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <p style="color: var(--text); font-size: 14px; margin-bottom: 8px">
+              Are you sure you want to completely clear the entire graph? This
+              will remove all nodes and edges.
+            </p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-wipe-btn" class="btn btn-secondary">Cancel</button>
+          <button
+            id="submit-wipe-btn"
+            class="btn btn-primary"
+            style="background-color: #ef4444"
+          >
+            Wipe
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Debug Paste Modal -->
     <div id="debug-modal-backdrop" class="modal-backdrop hidden">
-        <div id="debug-modal" class="modal">
-            <div class="modal-header">
-                <h2>Paste Debugger</h2>
-                <button id="close-debug-modal-btn" class="icon-btn" title="Close"><i data-lucide="x"></i></button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Paste DOM Content here to export for debugging:</label>
-                    <div id="debug-paste-area" contenteditable="true" class="paste-area"
-                        placeholder="Paste data here..."></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="cancel-debug-btn" class="btn btn-secondary">Cancel</button>
-                <button id="download-debug-btn" class="btn btn-primary">Download JSON</button>
-            </div>
+      <div id="debug-modal" class="modal">
+        <div class="modal-header">
+          <h2>Paste Debugger</h2>
+          <button id="close-debug-modal-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
         </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Paste DOM Content here to export for debugging:</label>
+            <div
+              id="debug-paste-area"
+              contenteditable="true"
+              class="paste-area"
+              placeholder="Paste data here..."
+            ></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-debug-btn" class="btn btn-secondary">
+            Cancel
+          </button>
+          <button id="download-debug-btn" class="btn btn-primary">
+            Download JSON
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right-Click Radial Menu for Nodes -->
+    <div id="radial-menu" class="radial-menu hidden">
+      <!-- Center anchor -->
+      <div class="radial-center"></div>
+
+      <!-- Radial Items -->
+      <div
+        class="radial-item"
+        id="btn-lock-node"
+        title="Lock Selected Nodes"
+        style="--angle: 270deg"
+      >
+        <i data-lucide="lock"></i>
+      </div>
+    </div>
+
+    <!-- Edge Radial Menu for Manual Links -->
+    <!-- 7 items at 0, 51, 103, 154, 206, 257, 309 deg -->
+    <div id="edge-radial-menu" class="radial-menu hidden">
+      <div class="radial-center"></div>
+
+      <!-- Line styles: 180 / 231 / 282 deg -->
+      <div
+        class="radial-item edge-style-btn"
+        data-type="line"
+        data-style="solid"
+        title="Solid Line"
+        style="--angle: 180deg"
+      >
+        <i data-lucide="minus"></i>
+      </div>
+      <div
+        class="radial-item edge-style-btn"
+        data-type="line"
+        data-style="dashed"
+        title="Dashed Line"
+        style="--angle: 231deg"
+      >
+        <!-- Inline dashed SVG since no Lucide glyph exists -->
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+        >
+          <line x1="2" y1="12" x2="7" y2="12" />
+          <line x1="10" y1="12" x2="14" y2="12" />
+          <line x1="17" y1="12" x2="22" y2="12" />
+        </svg>
+      </div>
+      <div
+        class="radial-item edge-style-btn"
+        data-type="line"
+        data-style="dotted"
+        title="Dotted Line"
+        style="--angle: 282deg"
+      >
+        <i data-lucide="more-horizontal"></i>
+      </div>
+
+      <!-- Arrow styles: 129 / 78 / 27 deg -->
+      <div
+        class="radial-item edge-style-btn"
+        data-type="arrow"
+        data-style="both"
+        title="Bidirectional Arrows (Toggle)"
+        style="--angle: 129deg"
+      >
+        <i data-lucide="move-horizontal"></i>
+      </div>
+      <div
+        class="radial-item edge-style-btn"
+        data-type="arrow"
+        data-style="left"
+        title="Arrow to Source (Toggle)"
+        style="--angle: 78deg"
+      >
+        <i data-lucide="arrow-left"></i>
+      </div>
+      <div
+        class="radial-item edge-style-btn"
+        data-type="arrow"
+        data-style="right"
+        title="Arrow to Target (Toggle)"
+        style="--angle: 27deg"
+      >
+        <i data-lucide="arrow-right"></i>
+      </div>
+
+      <!-- Delete: 333 deg -->
+      <div
+        class="radial-item edge-style-btn radial-danger"
+        id="btn-delete-edge"
+        data-type="action"
+        data-style="delete"
+        title="Delete Link"
+        style="--angle: 333deg"
+      >
+        <i data-lucide="trash-2"></i>
+      </div>
     </div>
 
     <!-- Hover Panel (Hidden by default) -->
     <div id="node-hover-panel" class="hover-panel hidden">
-        <div class="hover-panel-header">
-            <div class="hover-titles">
-                <h3 id="hover-display-name">Display Name</h3>
-                <span id="hover-username">@username</span>
-            </div>
-            <button id="hover-copy-btn" class="icon-btn" title="Copy Info"><i data-lucide="copy"></i></button>
+      <div class="hover-panel-header">
+        <div class="hover-titles">
+          <h3 id="hover-display-name">Display Name</h3>
+          <span
+            id="hover-username"
+            style="cursor: pointer; text-decoration: underline; color: #3b82f6"
+            title="Open TikTok Profile"
+            >@username</span
+          >
         </div>
-        <div id="hover-bio" class="hover-bio">Bio text goes here...</div>
-        <div class="hover-stats">
-            <div class="stat-box">
-                <span class="stat-value" id="hover-following-count">0</span>
-                <span class="stat-label">Following</span>
-            </div>
-            <div class="stat-box">
-                <span class="stat-value" id="hover-followers-count">0</span>
-                <span class="stat-label">Followers</span>
-            </div>
+        <button id="hover-copy-btn" class="icon-btn" title="Copy Info">
+          <i data-lucide="copy"></i>
+        </button>
+      </div>
+      <div id="hover-bio" class="hover-bio">Bio text goes here...</div>
+      <div class="hover-stats">
+        <div class="stat-box">
+          <span class="stat-value" id="hover-following-count">0</span>
+          <span class="stat-label">Following</span>
         </div>
-        <div class="hover-footer"
-            style="margin-top: 12px; padding: 12px 16px 12px 16px; border-top: 1px solid rgba(255, 255, 255, 0.1); display: flex; align-items: center; justify-content: space-between;">
-            <span class="stat-label">INGESTED</span>
-            <span id="hover-ingest-time" class="stat-label"
-                style="font-family: 'Inter', monospace; text-transform: none;">N/A</span>
+        <div class="stat-box">
+          <span class="stat-value" id="hover-followers-count">0</span>
+          <span class="stat-label">Followers</span>
         </div>
+      </div>
+      <div
+        class="hover-footer"
+        style="
+          margin-top: 12px;
+          padding: 12px 16px 12px 16px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        "
+      >
+        <span class="stat-label">INGESTED</span>
+        <span
+          id="hover-ingest-time"
+          class="stat-label"
+          style="
+            font-family: &quot;Inter&quot;, monospace;
+            text-transform: none;
+          "
+          >N/A</span
+        >
+      </div>
     </div>
 
     <script src="app.js?v=1048"></script>
     <script>
-        lucide.createIcons();
+      lucide.createIcons();
     </script>
-</body>
-
+  </body>
 </html>

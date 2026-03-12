@@ -2551,7 +2551,7 @@ class GraphApp {
     });
   }
 
-  applyFFPStyles() {
+  applyFFPStyles(skipGhostUpdate = false) {
     // Reset old inline styles
     this.cy.edges().removeStyle("line-color");
     this.cy.edges().removeStyle("target-arrow-color");
@@ -2624,9 +2624,9 @@ class GraphApp {
       });
 
       // Re-apply global ghost logic now that FFP has updated active edges
-      if (this.globalGhostMode) {
+      if (this.globalGhostMode && !skipGhostUpdate) {
         this.updateGlobalGhost();
-      } else {
+      } else if (!this.globalGhostMode) {
         this.cy.nodes().removeClass("faded"); // Unfade all
       }
     });
@@ -2718,7 +2718,7 @@ class GraphApp {
   updateGlobalGhost() {
     if (!this.globalGhostMode) {
       if (this.ffpMode !== "off") {
-        this.applyFFPStyles(); // Let FFP take over fading if active
+        this.applyFFPStyles(true); // Let FFP take over fading if active, no trigger-back
       } else {
         this.cy.elements().removeClass("faded"); // Normal
       }
@@ -2738,7 +2738,7 @@ class GraphApp {
     } else {
       // Nothing selected: show all (or defer to FFP if active)
       if (this.ffpMode !== "off") {
-        this.applyFFPStyles();
+        this.applyFFPStyles(true);
       } else {
         this.cy.elements().removeClass("faded");
       }

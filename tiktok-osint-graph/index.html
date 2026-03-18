@@ -30,21 +30,37 @@
   <body>
     <div id="cy"></div>
 
+    <!-- Selection counter badge (top-right) -->
+    <div id="selection-counter" class="selection-counter hidden"></div>
+
+    <!-- Ego Network Mode Banner (top-centre) -->
+    <div id="ego-mode-banner" class="hidden">
+      👤 Ego view: <strong id="ego-mode-label">—</strong>
+      <span id="ego-hop-label" style="opacity:0.7;font-size:11px"></span>
+      <button id="ego-exit-btn">✕ Exit</button>
+    </div>
+
     <div class="ui-layer">
       <!-- Floating horizontal top bar for categories -->
       <div class="floating-bar horizontal top-nav">
         <a
-          href="#"
+          href="https://wayfinder-intel.github.io/tools"
           class="brand-link"
           title="Wayfinder Intelligence"
-          onclick="event.preventDefault()"
+          onclick="if(!confirm('Navigate away to the Wayfinder Tools page?')) event.preventDefault()"
         >
           <img
             class="logo"
-            src="https://wayfinder-intel.github.io/tools/Wayfinder.png"
+            src="https://raw.githubusercontent.com/Wayfinder-Intel/tools/main/Wayfinder%20white%20arrow.png"
             alt="Wayfinder Logo"
           />
         </a>
+        <img
+          src="https://raw.githubusercontent.com/Wayfinder-Intel/tools/main/tiktok_logo.png"
+          alt="TikTok OSINT Graph"
+          title="TikTok OSINT Graph"
+          style="height:24px;width:auto;opacity:0.85;margin-left:4px;pointer-events:none;"
+        />
         <div class="divider vertical"></div>
         <button class="nav-btn" data-category="DATA" title="DATA">
           <i data-lucide="database"></i>
@@ -98,6 +114,20 @@
               margin: 4px 0;
             "
           ></div>
+          <button class="subtool-btn" id="delete-selected-btn" title="Delete selected nodes/links (Del / Backspace)">
+            <i data-lucide="trash-2"></i>
+          </button>
+          <button class="subtool-btn" id="deletion-history-btn" title="Deletion History">
+            <i data-lucide="history"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
           <button
             class="subtool-btn"
             id="export-json-btn"
@@ -111,6 +141,21 @@
             title="Import Graph from JSON"
           >
             <i data-lucide="download-cloud"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn"
+            id="export-png-btn"
+            title="Export graph as PNG image"
+          >
+            <i data-lucide="image"></i>
           </button>
           <!-- Hidden file input for uploading JSON -->
           <input
@@ -462,12 +507,49 @@
               margin: 4px 0;
             "
           ></div>
+
+          <!-- Ego Network View -->
+          <div class="tool-group ffp-controls" id="ego-controls-container">
+            <div class="ffp-main-row">
+              <button
+                class="subtool-btn"
+                id="ego-toggle-btn"
+                title="Ego Network View (select a node first)"
+              >
+                <i data-lucide="user-circle-2"></i>
+              </button>
+              <!-- Depth sub-controls -->
+              <div class="ffp-sub-clip" id="ego-sub-toggles">
+                <div class="ffp-sub-toggles">
+                  <button class="subtool-btn micro-btn" id="ego-hop-1-btn" title="1-Hop neighbourhood"
+                    style="font-size:11px;font-weight:700">1°</button>
+                  <button class="subtool-btn micro-btn" id="ego-hop-2-btn" title="2-Hop neighbourhood"
+                    style="font-size:11px;font-weight:700">2°</button>
+                </div>
+              </div>
+            </div>
+          </div>
           <button
             class="subtool-btn mt-2"
             id="inverse-select-btn"
             title="Inverse Selection"
           >
             <i data-lucide="contrast"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn"
+            id="collapse-singletons-btn"
+            title="Collapse singleton nodes into their hub (toggle)"
+          >
+            <i data-lucide="git-merge"></i>
           </button>
         </div>
 
@@ -632,6 +714,14 @@
       >
         <i data-lucide="lock"></i>
       </div>
+      <div
+        class="radial-item"
+        id="btn-note-node"
+        title="Add / Edit Note"
+        style="--angle: 315deg"
+      >
+        <i data-lucide="pencil"></i>
+      </div>
     </div>
 
     <!-- Edge Radial Menu for Manual Links -->
@@ -751,6 +841,13 @@
           <span class="stat-label">Followers</span>
         </div>
       </div>
+      <!-- Note Snippet (hidden unless node has a note) -->
+      <div id="hover-note-row" class="hover-note-row hidden">
+        <span id="hover-note-snippet" class="hover-note-snippet"></span>
+        <button id="hover-note-expand-btn" class="icon-btn" title="View full note">
+          <i data-lucide="book-open"></i>
+        </button>
+      </div>
       <div
         class="hover-footer"
         style="
@@ -775,7 +872,80 @@
       </div>
     </div>
 
-    <script src="app.js?v=1048"></script>
+    <!-- Note Editor Modal -->
+    <div id="note-editor-backdrop" class="modal-backdrop hidden">
+      <div id="note-editor-modal" class="modal" style="width:560px">
+        <div class="modal-header">
+          <h2 id="note-editor-title">Add Note</h2>
+          <button id="close-note-editor-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body" style="gap:12px">
+          <!-- Rich-text toolbar -->
+          <div class="note-toolbar">
+            <button class="note-toolbar-btn" data-cmd="bold" title="Bold"><strong>B</strong></button>
+            <button class="note-toolbar-btn" data-cmd="italic" title="Italic"><em>I</em></button>
+            <button class="note-toolbar-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+            <div class="note-toolbar-sep"></div>
+            <button class="note-toolbar-btn" id="note-link-btn" title="Insert link"><i data-lucide="link"></i></button>
+            <button class="note-toolbar-btn" id="note-unlink-btn" title="Remove link"><i data-lucide="unlink"></i></button>
+            <div class="note-toolbar-sep"></div>
+            <button class="note-toolbar-btn" data-cmd="insertUnorderedList" title="Bullet list"><i data-lucide="list"></i></button>
+          </div>
+          <!-- Editable note area -->
+          <div
+            id="note-editor-area"
+            class="note-editor-area"
+            contenteditable="true"
+            placeholder="Type your note here…"
+          ></div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-note-editor-btn" class="btn btn-secondary">Cancel</button>
+          <button id="save-note-btn" class="btn btn-primary">Save Note</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Note Viewer Modal -->
+    <div id="note-viewer-backdrop" class="modal-backdrop hidden">
+      <div id="note-viewer-modal" class="modal" style="width:560px">
+        <div class="modal-header">
+          <h2 id="note-viewer-title">Note</h2>
+          <button id="close-note-viewer-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div id="note-viewer-body" class="note-viewer-body"></div>
+        </div>
+        <div class="modal-footer" style="justify-content:space-between">
+          <button id="delete-note-btn" class="btn btn-secondary" style="color:#ef4444;border-color:rgba(239,68,68,0.4)">
+            <i data-lucide="trash-2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>Delete
+          </button>
+          <div style="display:flex;gap:8px">
+            <button id="edit-note-btn" class="btn btn-secondary">Edit</button>
+            <button id="viewer-close-btn" class="btn btn-primary">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Deletion History Drawer -->
+    <div id="deletion-history-panel" class="deletion-history-panel hidden">
+      <div class="deletion-history-header">
+        <span>Deletion History</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button id="clear-deletion-history-btn" class="btn btn-secondary" style="font-size:11px;padding:4px 8px">Clear</button>
+          <button id="close-deletion-history-btn" class="icon-btn"><i data-lucide="x"></i></button>
+        </div>
+      </div>
+      <div id="deletion-history-list" class="deletion-history-list">
+        <div class="deletion-history-empty">No deletions yet.</div>
+      </div>
+    </div>
+
+    <script src="app.js?v=1049"></script>
     <script>
       lucide.createIcons();
     </script>

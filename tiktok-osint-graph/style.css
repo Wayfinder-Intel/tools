@@ -281,6 +281,35 @@ body.light-mode {
   z-index: 100;
 }
 
+/* Selection Counter Badge */
+#selection-counter {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 600;
+  background: var(--ui-bg-translucent);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-text);
+  padding: 8px 14px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: "Inter", system-ui, sans-serif;
+  pointer-events: none;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+#selection-counter.hidden {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}
+
+
 .toast {
   background: var(--ui-bg);
   border: 1px solid var(--ui-border);
@@ -330,6 +359,17 @@ body.light-mode {
     opacity 350ms ease;
   padding: 16px;
   margin: -16px;
+}
+
+/* Ego sub-tray: CSS-hover driven (retract when mouse leaves) */
+#ego-sub-toggles {
+  max-width: 0;
+  opacity: 0;
+}
+
+#ego-controls-container:hover #ego-sub-toggles {
+  max-width: 120px;
+  opacity: 1;
 }
 
 /* Inner flex row */
@@ -848,4 +888,393 @@ body.light-mode {
   background: #ef4444;
   border-color: #ef4444;
   color: #fff;
+}
+
+/* ============================
+   Note Feature Styles
+   ============================ */
+
+/* Toolbar row in note editor */
+.note-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+}
+
+.note-toolbar-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ui-text);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  transition: all 120ms ease;
+}
+
+.note-toolbar-btn:hover {
+  background: var(--ui-hover);
+  border-color: var(--ui-border);
+}
+
+.note-toolbar-btn.active {
+  background: rgba(46, 168, 255, 0.15);
+  border-color: var(--ui-active);
+  color: var(--ui-active);
+}
+
+.note-toolbar-btn i,
+.note-toolbar-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.note-toolbar-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--ui-border);
+  margin: 0 4px;
+}
+
+/* Editable area inside the note editor modal */
+.note-editor-area {
+  min-height: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: #0a0d13;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  padding: 12px;
+  color: var(--ui-text);
+  font-size: 14px;
+  line-height: 1.6;
+  outline: none;
+  transition: border-color 150ms ease;
+}
+
+.note-editor-area:focus {
+  border-color: var(--ui-active);
+}
+
+.note-editor-area:empty:before {
+  content: attr(placeholder);
+  color: var(--ui-muted);
+  pointer-events: none;
+}
+
+/* Links inside editor and viewer */
+.note-editor-area a,
+.note-viewer-body a {
+  color: var(--ui-active);
+  text-decoration: underline;
+}
+
+/* Viewer body — rendered rich-text display */
+.note-viewer-body {
+  min-height: 80px;
+  max-height: 500px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ui-text);
+  padding: 4px 0;
+}
+
+.note-viewer-body ul {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+/* Hover panel note snippet row */
+.hover-note-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--ui-border);
+  background: rgba(46, 168, 255, 0.05);
+}
+
+.hover-note-row.hidden {
+  display: none;
+}
+
+.hover-note-snippet {
+  font-size: 13px;
+  color: var(--ui-muted);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-style: italic;
+}
+
+/* Node note badge — floats above graph nodes */
+.note-badge {
+  position: absolute;
+  z-index: 500;
+  pointer-events: auto;
+  cursor: pointer;
+  background: rgba(46, 168, 255, 0.9);
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.6);
+  transition: transform 150ms ease, background 150ms ease;
+}
+
+.note-badge:hover {
+  background: rgba(46, 168, 255, 1);
+  transform: scale(1.2);
+}
+
+.note-badge svg {
+  width: 8px;
+  height: 8px;
+  color: #fff;
+  stroke: #fff;
+}
+
+/* Node lock badge — amber, sits top-left of avatar */
+.lock-badge {
+  position: absolute;
+  z-index: 500;
+  pointer-events: auto;
+  cursor: pointer;
+  background: rgba(245, 158, 11, 0.9);
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.6);
+  transition: transform 150ms ease, background 150ms ease;
+}
+
+.lock-badge:hover {
+  background: rgba(245, 158, 11, 1);
+  transform: scale(1.2);
+}
+
+.lock-badge svg {
+  width: 8px;
+  height: 8px;
+  color: #fff;
+  stroke: #fff;
+}
+
+/* Node seed badge — green, sits at bottom of avatar */
+.seed-badge {
+  position: absolute;
+  z-index: 500;
+  pointer-events: auto;
+  cursor: pointer;
+  background: rgba(34, 197, 94, 0.9);
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.6);
+  transition: transform 150ms ease, background 150ms ease;
+}
+
+.seed-badge:hover {
+  background: rgba(34, 197, 94, 1);
+  transform: scale(1.2);
+}
+
+.seed-badge svg {
+  width: 8px;
+  height: 8px;
+  color: #fff;
+  stroke: #fff;
+}
+
+/* ============================
+   Deletion History Panel
+   ============================ */
+.deletion-history-panel {
+  position: fixed;
+  top: 72px;
+  left: 76px;
+  width: 300px;
+  max-height: calc(100vh - 96px);
+  background: var(--ui-bg-translucent);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  z-index: 700;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.deletion-history-panel.hidden {
+  opacity: 0;
+  transform: translateX(-20px);
+  pointer-events: none;
+}
+
+.deletion-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ui-border);
+  background: rgba(255,255,255,0.03);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-text);
+  flex-shrink: 0;
+}
+
+.deletion-history-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.deletion-history-empty {
+  color: var(--ui-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px 0;
+}
+
+.deletion-history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--ui-border);
+  background: rgba(255,255,255,0.02);
+  font-size: 12px;
+  animation: toastSlideIn 150ms ease-out;
+}
+
+.deletion-history-item:hover {
+  background: var(--ui-hover);
+}
+
+.deletion-item-label {
+  flex: 1;
+  color: var(--ui-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.deletion-item-meta {
+  font-size: 10px;
+  color: var(--ui-muted);
+}
+
+.deletion-item-restore {
+  background: transparent;
+  border: 1px solid var(--ui-border);
+  color: var(--ui-active);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 120ms ease;
+  flex-shrink: 0;
+}
+
+.deletion-item-restore:hover {
+  background: rgba(46,168,255,0.15);
+  border-color: var(--ui-active);
+}
+
+/* ============================
+   Ego Network Mode Banner
+   ============================ */
+#ego-mode-banner {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 800;
+  background: rgba(46, 168, 255, 0.15);
+  border: 1px solid rgba(46, 168, 255, 0.5);
+  backdrop-filter: blur(8px);
+  border-radius: 20px;
+  padding: 6px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #2ea8ff;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  pointer-events: auto;
+  white-space: nowrap;
+  transition: opacity 200ms ease;
+}
+#ego-mode-banner.hidden { opacity: 0; pointer-events: none; }
+#ego-mode-banner strong { color: #fff; font-weight: 600; }
+#ego-exit-btn {
+  background: rgba(46,168,255,0.2);
+  border: 1px solid rgba(46,168,255,0.4);
+  border-radius: 12px;
+  color: #2ea8ff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 12px;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+#ego-exit-btn:hover { background: rgba(46,168,255,0.4); color: #fff; }
+
+/* Singleton count badge — purple, bottom-right of hub node */
+.singleton-count-badge {
+  position: absolute;
+  z-index: 500;
+  pointer-events: auto;
+  cursor: pointer;
+  background: rgba(139, 92, 246, 0.9);
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.6);
+  font-size: 7px;
+  font-weight: 700;
+  color: #fff;
+  font-family: "Inter", system-ui, sans-serif;
+  letter-spacing: -0.5px;
+  transition: transform 150ms ease, background 150ms ease;
+}
+
+.singleton-count-badge:hover {
+  background: rgba(139, 92, 246, 1);
+  transform: scale(1.2);
 }

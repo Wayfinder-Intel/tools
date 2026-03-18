@@ -41,14 +41,9 @@ class GraphApp {
             const label = ele.data("label");
             const isSeed = ele.data("type") === "seed";
             const isLocked = ele.data("locked");
-            let prefix = isSeed ? "🌱 " : "";
-
-            let displayLabelStr = prefix + "@" + id;
+            let displayLabelStr = "@" + id;
             if (label) {
               displayLabelStr += "\n" + label;
-            }
-            if (isLocked) {
-              displayLabelStr += " 🔒";
             }
             return displayLabelStr;
           },
@@ -670,6 +665,173 @@ class GraphApp {
       });
     }
 
+    // =============================================
+    // COLLAPSE SINGLETONS — per-hub independent toggle
+    // =============================================
+    this.collapsedHubs = new Map(); // hubId -> Set<singletonId>
+
+    const collapseBtn = document.getElementById("collapse-singletons-btn");
+
+    // Returns Map<hubId, singletonNode[]> for all nodes in graph
+    const getSingletonMap = () => {
+      const map = new Map();
+      this.cy.nodes().forEach(node => {
+        if (node.connectedEdges().length === 1) {
+          const hub = node.connectedEdges()[0].connectedNodes().difference(node).first();
+          if (!hub.empty()) {
+            if (!map.has(hub.id())) map.set(hub.id(), []);
+            map.get(hub.id()).push(node);
+          }
+        }
+      });
+      return map;
+    };
+
+    const removeSingletonBadges = () => {
+      this.cy.container().querySelectorAll(".singleton-count-badge").forEach(el => el.remove());
+    };
+
+    const repositionSingletonBadges = () => {
+      const zoom = this.cy.zoom();
+      const badgeSize = Math.min(40, Math.max(12, Math.round(16 * zoom)));
+      const container = this.cy.container();
+      container.querySelectorAll(".singleton-count-badge").forEach(badge => {
+        const node = this.cy.getElementById(badge.dataset.nodeId);
+        if (node.empty()) { badge.remove(); return; }
+        const hidden = !node.visible();
+        badge.style.display = hidden ? "none" : "";
+        if (hidden) return;
+        const pos   = node.renderedPosition();
+        const halfW = parseFloat(node.renderedStyle("width")) / 2;
+        const angle = Math.PI / 4; // bottom-right rim
+        badge.style.width    = `${badgeSize}px`;
+        badge.style.height   = `${badgeSize}px`;
+        badge.style.fontSize = `${Math.max(7, Math.round(badgeSize * 0.44))}px`;
+        badge.style.left = `${pos.x + halfW * Math.cos(angle) - badgeSize / 2}px`;
+        badge.style.top  = `${pos.y + halfW * Math.sin(angle) - badgeSize / 2}px`;
+      });
+    };
+
+    this.refreshSingletonBadges = () => {
+      removeSingletonBadges();
+      const container = this.cy.container();
+      const singletonMap = getSingletonMap();
+
+      singletonMap.forEach((singletonNodes, hubId) => {
+        const hub = this.cy.getElementById(hubId);
+        if (hub.empty()) return;
+
+        const isCollapsed = this.collapsedHubs.has(hubId);
+        const count = singletonNodes.length;
+
+        const badge = document.createElement("div");
+        badge.className = "singleton-count-badge";
+        badge.dataset.nodeId = hubId;
+        badge.textContent = isCollapsed ? `+${count}` : "−";
+        badge.title = isCollapsed
+          ? `${count} singleton${count !== 1 ? "s" : ""} collapsed — click to expand`
+          : "Click to collapse singleton nodes";
+
+        badge.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (this.collapsedHubs.has(hubId)) {
+            // Expand: restore this hub's singletons
+            const hiddenIds = this.collapsedHubs.get(hubId);
+            hiddenIds.forEach(id => {
+              const n = this.cy.getElementById(id);
+              if (!n.empty()) { n.show(); n.connectedEdges().show(); }
+            });
+            this.collapsedHubs.delete(hubId);
+          } else {
+            // Collapse: hide this hub's visible singletons
+            const toCollapse = singletonNodes.filter(n => !n.hidden());
+            if (toCollapse.length === 0) return;
+            const hiddenIds = new Set(toCollapse.map(n => n.id()));
+            toCollapse.forEach(n => { n.hide(); n.connectedEdges().hide(); });
+            this.collapsedHubs.set(hubId, hiddenIds);
+          }
+          this.refreshSingletonBadges();
+        });
+
+        container.appendChild(badge);
+      });
+
+      repositionSingletonBadges();
+      if (this._singletonBadgePanHandler) {
+        this.cy.off("pan zoom render", this._singletonBadgePanHandler);
+      }
+      this._singletonBadgePanHandler = repositionSingletonBadges;
+      this.cy.on("pan zoom render", this._singletonBadgePanHandler);
+    };
+
+    // Update toolbar button colour based on collapse state
+    const updateCollapseBtnState = () => {
+      if (!collapseBtn) return;
+      const singletonMap = getSingletonMap();
+      const totalHubs    = singletonMap.size;
+      const collapsedCount = [...singletonMap.keys()].filter(id => this.collapsedHubs.has(id)).length;
+
+      collapseBtn.classList.remove("active", "btn-ffp-partial");
+      if (collapsedCount === 0) {
+        // None collapsed — default state
+      } else if (collapsedCount < totalHubs) {
+        // Some collapsed — orange partial
+        collapseBtn.classList.add("btn-ffp-partial");
+      } else {
+        // All collapsed — red active
+        collapseBtn.classList.add("active");
+      }
+    };
+
+    // Toolbar button: collapse-all when nothing collapsed, expand-all when anything is
+    if (collapseBtn) {
+      collapseBtn.addEventListener("click", () => {
+        const singletonMap = getSingletonMap();
+        const anyCollapsed = [...singletonMap.keys()].some(id => this.collapsedHubs.has(id));
+
+        if (anyCollapsed) {
+          // Expand all currently collapsed hubs
+          let total = 0;
+          this.collapsedHubs.forEach((hiddenIds, hubId) => {
+            hiddenIds.forEach(id => {
+              const n = this.cy.getElementById(id);
+              if (!n.empty()) { n.show(); n.connectedEdges().show(); }
+            });
+            total += hiddenIds.size;
+          });
+          this.collapsedHubs.clear();
+          this.refreshSingletonBadges();
+          updateCollapseBtnState();
+          this.showToast(`Expanded ${total} singleton${total !== 1 ? "s" : ""}.`);
+        } else {
+          // Collapse all visible singletons
+          let total = 0;
+          singletonMap.forEach((singletonNodes, hubId) => {
+            const toCollapse = singletonNodes.filter(n => !n.hidden());
+            if (toCollapse.length === 0) return;
+            this.collapsedHubs.set(hubId, new Set(toCollapse.map(n => n.id())));
+            toCollapse.forEach(n => { n.hide(); n.connectedEdges().hide(); });
+            total += toCollapse.length;
+          });
+          this.refreshSingletonBadges();
+          updateCollapseBtnState();
+          this.showToast(total > 0
+            ? `Collapsed ${total} singleton${total !== 1 ? "s" : ""}.`
+            : "No singletons to collapse.");
+        }
+      });
+    }
+
+    // Wrap refreshSingletonBadges to always sync button colour
+    const _origRefreshSingletonBadges = this.refreshSingletonBadges.bind(this);
+    this.refreshSingletonBadges = () => {
+      _origRefreshSingletonBadges();
+      updateCollapseBtnState();
+    };
+
+    // Run once on init
+    this.refreshSingletonBadges();
+
     // Tracking for simulated double-click
     let lastTapTime = 0;
     let lastTappedNode = null;
@@ -953,8 +1115,173 @@ class GraphApp {
       });
     }
 
+    // PNG Export
+    const exportPngBtn = document.getElementById("export-png-btn");
+    if (exportPngBtn) {
+      exportPngBtn.addEventListener("click", () => {
+        const bg = this.isLightMode ? "#f8f9fa" : "#0a0d13";
+        const dataUri = this.cy.png({
+          output: "base64uri",
+          full: true,       // capture all nodes, even off-screen
+          scale: 2,         // 2× resolution for crisp export
+          bg,
+        });
+        const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        const a = document.createElement("a");
+        a.href = dataUri;
+        a.download = `tiktok-graph-${ts}.png`;
+        a.click();
+        this.showToast("Graph exported as PNG.");
+      });
+    }
+
+    // =============================================
+    // DELETE SELECTED + DELETION HISTORY
+    // =============================================
+    this.deletionLog = []; // Persistent across deletes
+
+    const deletionHistoryPanel  = document.getElementById("deletion-history-panel");
+    const deletionHistoryList   = document.getElementById("deletion-history-list");
+    const deletionHistoryBtn    = document.getElementById("deletion-history-btn");
+    const closeDeletionHistory  = document.getElementById("close-deletion-history-btn");
+    const clearDeletionHistory  = document.getElementById("clear-deletion-history-btn");
+    const deleteSelectedBtn     = document.getElementById("delete-selected-btn");
+
+    const renderDeletionHistory = () => {
+      deletionHistoryList.innerHTML = "";
+      if (this.deletionLog.length === 0) {
+        deletionHistoryList.innerHTML = `<div class="deletion-history-empty">No deletions yet.</div>`;
+        return;
+      }
+      // Show newest first
+      [...this.deletionLog].reverse().forEach((entry) => {
+        const item = document.createElement("div");
+        item.className = "deletion-history-item";
+
+        const label = document.createElement("div");
+        label.className = "deletion-item-label";
+        label.title = entry.label;
+        label.innerHTML = `<strong>${entry.icon}</strong> ${entry.label}<br><span class="deletion-item-meta">${entry.time}</span>`;
+
+        const restoreBtn = document.createElement("button");
+        restoreBtn.className = "deletion-item-restore";
+        restoreBtn.textContent = "Restore";
+        restoreBtn.addEventListener("click", () => {
+          this.saveState();
+          this.cy.batch(() => {
+            this.cy.add(entry.elements);
+            // Re-lock any previously locked nodes
+            entry.elements.filter(el => el.data && el.data.locked && el.group === "nodes").forEach(el => {
+              const n = this.cy.getElementById(el.data.id);
+              if (!n.empty()) n.lock();
+            });
+          });
+          // Remove from log now that it's restored
+          const idx = this.deletionLog.indexOf(entry);
+          if (idx !== -1) this.deletionLog.splice(idx, 1);
+          renderDeletionHistory();
+          this.refreshNoteBadges();
+          this.refreshLockBadges();
+          this.refreshSeedBadges();
+          this.showToast(`Restored: ${entry.label}`);
+        });
+
+        item.appendChild(label);
+        item.appendChild(restoreBtn);
+        deletionHistoryList.appendChild(item);
+      });
+    };
+
+    this.deleteSelected = () => {
+      const selected = this.cy.elements(":selected");
+      if (selected.length === 0) {
+        this.showToast("Nothing selected to delete.");
+        return;
+      }
+      this.saveState();
+
+      // For each selected node, also collect its connected edges
+      const toRemove = selected.union(selected.connectedEdges());
+
+      // Build a human-readable label for the log entry
+      const nodeCount = toRemove.nodes().length;
+      const edgeCount = toRemove.edges().length;
+      const parts = [];
+      if (nodeCount > 0) parts.push(`${nodeCount} node${nodeCount !== 1 ? "s" : ""}`);
+      if (edgeCount > 0) parts.push(`${edgeCount} link${edgeCount !== 1 ? "s" : ""}`);
+
+      // Build a first-node name for the label
+      const firstNode = toRemove.nodes().first();
+      const firstName = firstNode.empty()
+        ? toRemove.edges().first().data("id")
+        : (firstNode.data("label") || "@" + firstNode.id());
+      const suffix = nodeCount + edgeCount > 1 ? ` (+${nodeCount + edgeCount - 1} more)` : "";
+
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+      // Serialise elements before removal so we can restore them
+      const serialized = toRemove.jsons();
+
+      this.deletionLog.push({
+        icon: nodeCount > 0 ? "🗑️" : "🔗",
+        label: firstName + suffix,
+        time: `${parts.join(", ")} — ${timeStr}`,
+        elements: serialized,
+      });
+
+      toRemove.remove();
+
+      this.refreshNoteBadges();
+      this.refreshLockBadges();
+      this.refreshSeedBadges();
+      renderDeletionHistory();
+      this.showToast(`Deleted ${parts.join(", ")}`);
+    };
+
+    // Button
+    if (deleteSelectedBtn) {
+      deleteSelectedBtn.addEventListener("click", () => this.deleteSelected());
+    }
+
+    // Keyboard shortcut: Delete or Backspace (guard against form fields)
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || document.activeElement?.isContentEditable) return;
+      e.preventDefault();
+      this.deleteSelected();
+    });
+
+    // History panel toggle
+    if (deletionHistoryBtn) {
+      deletionHistoryBtn.addEventListener("click", () => {
+        const isOpen = deletionHistoryPanel.classList.toggle("hidden") === false;
+        deletionHistoryBtn.classList.toggle("active", isOpen);
+        if (isOpen) {
+          renderDeletionHistory();
+          if (typeof lucide !== "undefined") lucide.createIcons();
+        }
+      });
+    }
+
+    if (closeDeletionHistory) {
+      closeDeletionHistory.addEventListener("click", () => {
+        deletionHistoryPanel.classList.add("hidden");
+        deletionHistoryBtn.classList.remove("active");
+      });
+    }
+
+    if (clearDeletionHistory) {
+      clearDeletionHistory.addEventListener("click", () => {
+        this.deletionLog = [];
+        renderDeletionHistory();
+      });
+    }
+
     // Reheat: re-run force layout to spread nodes
     const reheatBtn = document.getElementById("reheat-btn");
+
     if (reheatBtn) {
       reheatBtn.addEventListener("click", () => {
         const selectedNodes = this.cy.nodes(":selected");
@@ -999,7 +1326,99 @@ class GraphApp {
               avoidOverlap: true,
             };
 
-        targetNodes.layout(layoutOptions).run();
+        const layout = targetNodes.layout(layoutOptions);
+        layout.run();
+
+        // If it's a global reheat on a dense star topology, the physics engine will 
+        // often clump it too tight. Once the layout finishes, automatically stretch 
+        // the coordinates mathematically to spread them out.
+        if (isGlobal || true) { // Always run this for both global and cluster
+          layout.promiseOn("layoutstop").then(() => {
+            
+            // --- Custom Singleton Fan-Out Pass ---
+            // Find nodes with only 1 edge (leaves) and arrange them cleanly around their parent
+            const minRadius = 80; // Starting radius
+            const nodeSpacing = 40; // Pixels required between each node
+            
+            targetNodes.forEach(node => {
+              const connectedEdges = node.connectedEdges();
+              if (connectedEdges.length < 2) return; // Not a hub
+
+              const leaves = connectedEdges.connectedNodes().filter(n => n.id() !== node.id() && n.connectedEdges().length === 1);
+              if (leaves.length === 0) return;
+
+              const parentPos = node.position();
+              
+              // We want to pack nodes in rings. Each ring can only hold so many nodes based on circumference
+              // circumference = 2 * PI * radius
+              // maxNodesInRing = circumference / nodeSpacing
+              
+              let currentRadius = minRadius;
+              let currentRingCapacity = Math.floor((2 * Math.PI * currentRadius) / nodeSpacing);
+              let nodesPlacedInRing = 0;
+              let currentAngleOffset = 0;
+              
+              leaves.forEach(leaf => {
+                // If the current ring is full, move outwards
+                if (nodesPlacedInRing >= currentRingCapacity) {
+                  currentRadius += nodeSpacing; // Push out by the size of a node
+                  currentRingCapacity = Math.floor((2 * Math.PI * currentRadius) / nodeSpacing);
+                  nodesPlacedInRing = 0;
+                  currentAngleOffset += (Math.PI / 4); // Stagger the next ring slightly
+                }
+
+                // Distribute evenly around the current ring
+                const angle = (nodesPlacedInRing / currentRingCapacity) * (Math.PI * 2) + currentAngleOffset;
+                
+                leaf.position({
+                  x: parentPos.x + Math.cos(angle) * currentRadius,
+                  y: parentPos.y + Math.sin(angle) * currentRadius
+                });
+                
+                nodesPlacedInRing++;
+              });
+            });
+
+            // --- Global Scale Pass ---
+            // Scale everything afterwards to give clusters breathing room
+            const scaleDir = isGlobal ? 3.0 : 1.5; 
+            const bbAfterLeaves = targetNodes.boundingBox();
+            const center = {
+              x: (bbAfterLeaves.x1 + bbAfterLeaves.x2) / 2,
+              y: (bbAfterLeaves.y1 + bbAfterLeaves.y2) / 2,
+            };
+
+            const newPositions = {};
+            targetNodes.forEach((node) => {
+              const pos = node.position();
+              newPositions[node.id()] = {
+                x: center.x + (pos.x - center.x) * scaleDir,
+                y: center.y + (pos.y - center.y) * scaleDir,
+              };
+            });
+
+            targetNodes
+              .layout({
+                name: "preset",
+                positions: newPositions,
+                animate: true,
+                animationDuration: 400,
+                fit: false,
+              })
+              .run();
+
+            // Zoom out to see the new stretched graph
+            if (isGlobal || scaleDir > 1.2) {
+              this.cy.animate(
+                {
+                  zoom: this.cy.zoom() * (1 / scaleDir),
+                  center: { eles: this.cy.nodes() },
+                },
+                { duration: 400 }
+              );
+            }
+          });
+        }
       });
     }
 
@@ -1411,8 +1830,95 @@ class GraphApp {
       });
     }
 
+    // =============================================
+    // EGO NETWORK VIEW
+    // =============================================
+    let egoMode = false;
+    let egoNode = null;
+    let egoDepth = 1;
+
+    const egoToggleBtn  = document.getElementById("ego-toggle-btn");
+    const egoHop1Btn    = document.getElementById("ego-hop-1-btn");
+    const egoHop2Btn    = document.getElementById("ego-hop-2-btn");
+    const egoSubToggles = document.getElementById("ego-sub-toggles");
+    const egoModeBanner = document.getElementById("ego-mode-banner");
+    const egoModeLabel  = document.getElementById("ego-mode-label");
+    const egoHopLabel   = document.getElementById("ego-hop-label");
+    const egoExitBtn    = document.getElementById("ego-exit-btn");
+
+    const enterEgoMode = (node, depth) => {
+      egoMode  = true;
+      egoNode  = node;
+      egoDepth = depth;
+
+      // Collect the ego node + its N-hop neighbourhood
+      let neighbourhood = this.cy.collection().add(node);
+      for (let i = 0; i < depth; i++) {
+        neighbourhood = neighbourhood.union(neighbourhood.neighborhood());
+      }
+
+      // Show only those elements, hide everything else
+      this.cy.elements().hide();
+      neighbourhood.show();
+
+      // Update UI
+      const name = node.data("label") || "@" + node.id();
+      egoModeLabel.textContent = name;
+      egoHopLabel.textContent  = `${depth}-hop neighbourhood · ${neighbourhood.nodes().length} nodes`;
+      egoModeBanner.classList.remove("hidden");
+      egoToggleBtn.classList.add("active");
+      egoHop1Btn.classList.toggle("active", depth === 1);
+      egoHop2Btn.classList.toggle("active", depth === 2);
+    };
+
+    const exitEgoMode = () => {
+      egoMode = false;
+      egoNode = null;
+      this.cy.elements().show();
+      egoModeBanner.classList.add("hidden");
+      egoToggleBtn.classList.remove("active");
+      egoHop1Btn.classList.remove("active");
+      egoHop2Btn.classList.remove("active");
+    };
+
+    if (egoToggleBtn) {
+      egoToggleBtn.addEventListener("click", () => {
+        if (egoMode) {
+          exitEgoMode();
+          return;
+        }
+        // Require exactly one selected node
+        const selected = this.cy.nodes(":selected");
+        if (selected.length !== 1) {
+          this.showToast("Select exactly one node to enter Ego view.");
+          return;
+        }
+        enterEgoMode(selected.first(), egoDepth);
+      });
+    }
+
+    if (egoHop1Btn) {
+      egoHop1Btn.addEventListener("click", () => {
+        if (egoMode && egoNode) enterEgoMode(egoNode, 1);
+      });
+    }
+    if (egoHop2Btn) {
+      egoHop2Btn.addEventListener("click", () => {
+        if (egoMode && egoNode) enterEgoMode(egoNode, 2);
+      });
+    }
+    if (egoExitBtn) {
+      egoExitBtn.addEventListener("click", exitEgoMode);
+    }
+
+    // Pressing Escape also exits ego mode
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && egoMode) exitEgoMode();
+    });
+
     // --- Hover Panel Logic ---
     const hoverPanel = document.getElementById("node-hover-panel");
+
     const hoverDisplayName = document.getElementById("hover-display-name");
     const hoverUsername = document.getElementById("hover-username");
     const hoverBio = document.getElementById("hover-bio");
@@ -1467,6 +1973,25 @@ class GraphApp {
         hoverBio.textContent = data.bio || "No bio available.";
         hoverFollowing.textContent = data.following || "Unknown";
         hoverFollowers.textContent = data.followers || "Unknown";
+
+        // Note snippet
+        const hoverNoteRow = document.getElementById("hover-note-row");
+        const hoverNoteSnippet = document.getElementById("hover-note-snippet");
+        const hoverNoteExpandBtn = document.getElementById("hover-note-expand-btn");
+        if (data.note && data.note.trim()) {
+          // Strip HTML tags for the snippet text
+          const tmp = document.createElement("div");
+          tmp.innerHTML = data.note;
+          const plainText = tmp.textContent || tmp.innerText || "";
+          hoverNoteSnippet.textContent = "✏️ " + plainText.split("\n")[0].slice(0, 80);
+          hoverNoteRow.classList.remove("hidden");
+          hoverNoteExpandBtn.onclick = () => {
+            hoverPanel.classList.add("hidden");
+            this.openNoteViewer(node);
+          };
+        } else {
+          hoverNoteRow.classList.add("hidden");
+        }
 
         if (data.ingestTime) {
           try {
@@ -1566,6 +2091,23 @@ class GraphApp {
       }
     });
 
+    // --- Selection Counter ---
+    const selectionCounter = document.getElementById("selection-counter");
+    const updateSelectionCounter = () => {
+      const nodes = this.cy.nodes(":selected").length;
+      const edges = this.cy.edges(":selected").length;
+      if (nodes === 0 && edges === 0) {
+        selectionCounter.classList.add("hidden");
+        return;
+      }
+      let parts = [];
+      if (nodes > 0) parts.push(`${nodes} node${nodes !== 1 ? "s" : ""}`);
+      if (edges > 0) parts.push(`${edges} link${edges !== 1 ? "s" : ""}`);
+      selectionCounter.textContent = parts.join(", ") + " selected";
+      selectionCounter.classList.remove("hidden");
+    };
+    this.cy.on("select unselect", updateSelectionCounter);
+
     // --- Right-Click Radial Menu ---
     const radialMenu = document.getElementById("radial-menu");
     const btnLockNode = document.getElementById("btn-lock-node");
@@ -1575,6 +2117,7 @@ class GraphApp {
       radialMenu.classList.add("hidden");
       activeRadialNode = null;
     };
+
 
     this.cy.on("cxttap", "node", (e) => {
       if (e.originalEvent) e.originalEvent.preventDefault();
@@ -1598,17 +2141,11 @@ class GraphApp {
         btnLockNode.title = "Lock Selected Nodes";
       }
 
-      // Position menu at mouse click
+      // Always position menu centred on the node itself, not the mouse cursor
       const rect = this.cy.container().getBoundingClientRect();
-      if (e.renderedPosition) {
-        radialMenu.style.left = `${rect.left + e.renderedPosition.x}px`;
-        radialMenu.style.top = `${rect.top + e.renderedPosition.y}px`;
-      } else {
-        // Fallback if triggered without a real mouse event (e.g. touch device)
-        const pos = node.renderedPosition();
-        radialMenu.style.left = `${rect.left + pos.x}px`;
-        radialMenu.style.top = `${rect.top + pos.y}px`;
-      }
+      const pos = node.renderedPosition();
+      radialMenu.style.left = `${rect.left + pos.x}px`;
+      radialMenu.style.top  = `${rect.top  + pos.y}px`;
       radialMenu.classList.remove("hidden");
     });
 
@@ -1647,6 +2184,7 @@ class GraphApp {
           ? `Locked ${selectedNodes.length} node(s)`
           : `Unlocked ${selectedNodes.length} node(s)`,
       );
+      this.refreshLockBadges();
       hideRadialMenu();
     });
 
@@ -1839,6 +2377,338 @@ class GraphApp {
     this.cy.on("tap drag pan zoom", hideEdgeRadialMenu);
 
     // Keep menu open handled in click listener, hide on explicit actions handled above
+
+    // =============================================
+    // NOTE SYSTEM
+    // =============================================
+    let activeNoteNode = null;
+
+    const noteEditorBackdrop = document.getElementById("note-editor-backdrop");
+    const noteEditorArea = document.getElementById("note-editor-area");
+    const noteEditorTitle = document.getElementById("note-editor-title");
+    const noteViewerBackdrop = document.getElementById("note-viewer-backdrop");
+    const noteViewerBody = document.getElementById("note-viewer-body");
+    const noteViewerTitle = document.getElementById("note-viewer-title");
+
+    // ---- Editor ----
+    this.openNoteEditor = (node) => {
+      activeNoteNode = node;
+      const existing = node.data("note") || "";
+      noteEditorTitle.textContent = existing ? "Edit Note" : "Add Note";
+      noteEditorArea.innerHTML = existing;
+      noteEditorArea.focus();
+      noteEditorBackdrop.classList.remove("hidden");
+      hideRadialMenu();
+      // Re-init lucide icons inside modal
+      if (typeof lucide !== "undefined") lucide.createIcons();
+    };
+
+    const closeNoteEditor = () => {
+      noteEditorBackdrop.classList.add("hidden");
+      noteEditorArea.innerHTML = "";
+    };
+
+    document.getElementById("close-note-editor-btn").addEventListener("click", closeNoteEditor);
+    document.getElementById("cancel-note-editor-btn").addEventListener("click", closeNoteEditor);
+
+    document.getElementById("save-note-btn").addEventListener("click", () => {
+      if (!activeNoteNode) return;
+      this.saveState();
+      const html = noteEditorArea.innerHTML.trim();
+      activeNoteNode.data("note", html || null);
+      this.refreshNoteBadges();
+      closeNoteEditor();
+      this.showToast(html ? "Note saved." : "Note cleared.");
+    });
+
+    // Rich-text toolbar buttons
+    document.querySelectorAll(".note-toolbar-btn[data-cmd]").forEach(btn => {
+      btn.addEventListener("mousedown", (e) => {
+        e.preventDefault(); // Don't blur the editor
+        document.execCommand(btn.dataset.cmd, false, null);
+      });
+    });
+
+    document.getElementById("note-link-btn").addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      const url = prompt("Enter URL:");
+      if (url) document.execCommand("createLink", false, url);
+    });
+
+    document.getElementById("note-unlink-btn").addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      document.execCommand("unlink", false, null);
+    });
+
+    // ---- Viewer ----
+    this.openNoteViewer = (node) => {
+      activeNoteNode = node;
+      const note = node.data("note") || "";
+      noteViewerTitle.textContent = `Note — @${node.id()}`;
+      noteViewerBody.innerHTML = note;
+      // Make links open in new tab
+      noteViewerBody.querySelectorAll("a").forEach(a => { a.target = "_blank"; a.rel = "noopener noreferrer"; });
+      noteViewerBackdrop.classList.remove("hidden");
+      if (typeof lucide !== "undefined") lucide.createIcons();
+    };
+
+    const closeNoteViewer = () => {
+      noteViewerBackdrop.classList.add("hidden");
+    };
+
+    document.getElementById("close-note-viewer-btn").addEventListener("click", closeNoteViewer);
+    document.getElementById("viewer-close-btn").addEventListener("click", closeNoteViewer);
+
+    document.getElementById("edit-note-btn").addEventListener("click", () => {
+      closeNoteViewer();
+      if (activeNoteNode) this.openNoteEditor(activeNoteNode);
+    });
+
+    document.getElementById("delete-note-btn").addEventListener("click", () => {
+      if (!activeNoteNode) return;
+      this.saveState();
+      activeNoteNode.data("note", null);
+      this.refreshNoteBadges();
+      closeNoteViewer();
+      this.showToast("Note deleted.");
+    });
+
+    // ---- Radial button ----
+    const btnNoteNode = document.getElementById("btn-note-node");
+    if (btnNoteNode) {
+      btnNoteNode.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const target = activeRadialNode;
+        if (!target) return;
+        this.openNoteEditor(target);
+      });
+    }
+
+    // ---- Badges ----
+    /**
+     * Sync DOM note-badge overlays with nodes that have a note.
+     * Badges follow the node on pan/zoom via a shared reposition handler.
+     */
+    this.refreshNoteBadges = () => {
+      const container = this.cy.container();
+      // Remove all existing badges
+      container.querySelectorAll(".note-badge").forEach(el => el.remove());
+
+      const repositionAll = () => {
+        const zoom = this.cy.zoom();
+        // Scale badge from 16px at zoom=1, clamped between 12 and 40px
+        const badgeSize = Math.min(40, Math.max(12, Math.round(16 * zoom)));
+        const iconSize  = Math.round(badgeSize * 0.55);
+        container.querySelectorAll(".note-badge").forEach(badge => {
+          const nodeId = badge.dataset.nodeId;
+          const node = this.cy.getElementById(nodeId);
+          if (node.empty()) { badge.remove(); return; }
+          const hidden = !node.visible();
+          badge.style.display = hidden ? "none" : "";
+          if (hidden) return;
+          const pos = node.renderedPosition();
+          // Use actual node circle size, not bounding box (which includes label text)
+          const halfW = parseFloat(node.renderedStyle('width')) / 2;
+          // Place badge on the circle rim (inset=1.0 = exactly on the border)
+          const inset = 1.0;
+          badge.style.width  = `${badgeSize}px`;
+          badge.style.height = `${badgeSize}px`;
+          badge.style.left = `${pos.x + halfW * inset * Math.cos(-Math.PI / 4) - badgeSize / 2}px`;
+          badge.style.top  = `${pos.y + halfW * inset * Math.sin(-Math.PI / 4) - badgeSize / 2}px`;
+          // Scale the SVG icon inside
+          const svg = badge.querySelector("svg");
+          if (svg) {
+            svg.style.width  = `${iconSize}px`;
+            svg.style.height = `${iconSize}px`;
+          }
+        });
+      };
+
+      // Remove any old listener and add a fresh one
+      if (this._badgePanHandler) {
+        this.cy.off("pan zoom render", this._badgePanHandler);
+      }
+
+      this.cy.nodes().forEach(node => {
+        const note = node.data("note");
+        if (!note || !note.trim()) return;
+
+        const badge = document.createElement("div");
+        badge.className = "note-badge";
+        badge.dataset.nodeId = node.id();
+        badge.title = "Edit note";
+        badge.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>`;
+        badge.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.openNoteEditor(node);
+        });
+        container.appendChild(badge);
+      });
+
+      repositionAll();
+      this._badgePanHandler = repositionAll;
+      this.cy.on("pan zoom render", this._badgePanHandler);
+    };
+
+    // Run once on load so imported notes get badges
+    this.refreshNoteBadges();
+
+    // ---- Lock Badges ----
+    /**
+     * Sync DOM lock-badge overlays with nodes that have locked=true.
+     * Sits at the top-LEFT of the avatar (opposite side from note badge).
+     */
+    this.refreshLockBadges = () => {
+      const container = this.cy.container();
+      container.querySelectorAll(".lock-badge").forEach(el => el.remove());
+
+      const repositionAll = () => {
+        const zoom = this.cy.zoom();
+        const badgeSize = Math.min(40, Math.max(12, Math.round(16 * zoom)));
+        const iconSize  = Math.round(badgeSize * 0.55);
+        container.querySelectorAll(".lock-badge").forEach(badge => {
+          const nodeId = badge.dataset.nodeId;
+          const node = this.cy.getElementById(nodeId);
+          if (node.empty()) { badge.remove(); return; }
+          const hidden = !node.visible();
+          badge.style.display = hidden ? "none" : "";
+          if (hidden) return;
+          const pos = node.renderedPosition();
+          const halfW = parseFloat(node.renderedStyle('width')) / 2;
+          const inset = 1.0;
+          const angle = -3 * Math.PI / 4;
+          badge.style.width  = `${badgeSize}px`;
+          badge.style.height = `${badgeSize}px`;
+          badge.style.left = `${pos.x + halfW * inset * Math.cos(angle) - badgeSize / 2}px`;
+          badge.style.top  = `${pos.y + halfW * inset * Math.sin(angle) - badgeSize / 2}px`;
+          const svg = badge.querySelector("svg");
+          if (svg) { svg.style.width = `${iconSize}px`; svg.style.height = `${iconSize}px`; }
+        });
+      };
+
+      if (this._lockBadgePanHandler) {
+        this.cy.off("pan zoom render", this._lockBadgePanHandler);
+      }
+
+      this.cy.nodes().forEach(node => {
+        if (!node.data("locked")) return;
+        const badge = document.createElement("div");
+        badge.className = "lock-badge";
+        badge.dataset.nodeId = node.id();
+        badge.title = "Click to unlock";
+        badge.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+        badge.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.saveState();
+          // Unlock this node plus any selected locked nodes; skip unlocked nodes
+          const toUnlock = this.cy.collection().add(node);
+          this.cy.nodes(":selected").forEach(n => {
+            if (n.data("locked")) toUnlock.merge(n);
+          });
+          this.cy.batch(() => {
+            toUnlock.forEach(n => {
+              n.data("locked", false);
+              n.unlock();
+            });
+          });
+          const count = toUnlock.length;
+          this.showToast(`Unlocked ${count} node${count > 1 ? "s" : ""}`);
+          this.refreshLockBadges();
+        });
+        container.appendChild(badge);
+      });
+
+      repositionAll();
+      this._lockBadgePanHandler = repositionAll;
+      this.cy.on("pan zoom render", this._lockBadgePanHandler);
+    };
+
+    // Run once so any locked nodes from a fresh import get badges
+    this.refreshLockBadges();
+
+    // ---- Seed Badges ----
+    /**
+     * Sync DOM seed-badge overlays with seed-type nodes.
+     * Sits at the BOTTOM of the avatar (angle = +90°).
+     * Clicking selects ALL seed nodes on the graph.
+     */
+    this.refreshSeedBadges = () => {
+      const container = this.cy.container();
+      container.querySelectorAll(".seed-badge").forEach(el => el.remove());
+
+      const repositionAll = () => {
+        const zoom = this.cy.zoom();
+        const badgeSize = Math.min(40, Math.max(12, Math.round(16 * zoom)));
+        const iconSize  = Math.round(badgeSize * 0.55);
+        container.querySelectorAll(".seed-badge").forEach(badge => {
+          const nodeId = badge.dataset.nodeId;
+          const node = this.cy.getElementById(nodeId);
+          if (node.empty()) { badge.remove(); return; }
+          const hidden = !node.visible();
+          badge.style.display = hidden ? "none" : "";
+          if (hidden) return;
+          const pos = node.renderedPosition();
+          const halfW = parseFloat(node.renderedStyle("width")) / 2;
+          const inset = 1.0; // on the rim
+          const angle = Math.PI / 2; // straight down
+          badge.style.width  = `${badgeSize}px`;
+          badge.style.height = `${badgeSize}px`;
+          badge.style.left = `${pos.x + halfW * inset * Math.cos(angle) - badgeSize / 2}px`;
+          badge.style.top  = `${pos.y + halfW * inset * Math.sin(angle) - badgeSize / 2}px`;
+          const svg = badge.querySelector("svg");
+          if (svg) { svg.style.width = `${iconSize}px`; svg.style.height = `${iconSize}px`; }
+        });
+      };
+
+      if (this._seedBadgePanHandler) {
+        this.cy.off("pan zoom render", this._seedBadgePanHandler);
+      }
+
+      this.cy.nodes('[type="seed"]').forEach(node => {
+        const badge = document.createElement("div");
+        badge.className = "seed-badge";
+        badge.dataset.nodeId = node.id();
+        badge.title = "Seed node — click to select all seeds";
+        // Seedling SVG icon
+        badge.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V11"/><path d="M12 11 Q9 8 7 4 Q11 4 12 11"/><path d="M12 11 Q15 8 17 4 Q13 4 12 11"/></svg>`;
+        badge.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.cy.elements().unselect();
+          this.cy.nodes('[type="seed"]').select();
+          const count = this.cy.nodes('[type="seed"]').length;
+          this.showToast(`Selected ${count} seed node${count !== 1 ? "s" : ""}`);
+        });
+        container.appendChild(badge);
+      });
+
+      repositionAll();
+      this._seedBadgePanHandler = repositionAll;
+      this.cy.on("pan zoom render", this._seedBadgePanHandler);
+    };
+
+    // Run once on init
+    this.refreshSeedBadges();
+
+    // ---- Badge visibility sync with node hide/show ----
+    // DOM badges are outside the canvas so Cytoscape hide/show doesn't affect them.
+    // Sync manually via events.
+    const badgeSelectors = ".note-badge, .lock-badge, .seed-badge";
+    const setBadgeVisibility = (nodeId, visible) => {
+      const container = this.cy.container();
+      container.querySelectorAll(badgeSelectors).forEach(badge => {
+        if (badge.dataset.nodeId === nodeId) {
+          badge.style.display = visible ? "" : "none";
+        }
+      });
+    };
+
+    this.cy.on("hide", "node", (e) => {
+      setBadgeVisibility(e.target.id(), false);
+    });
+    this.cy.on("show", "node", (e) => {
+      // Only show badge if the node actually has the relevant data
+      setBadgeVisibility(e.target.id(), true);
+    });
   }
 
   showToast(message) {
@@ -2308,6 +3178,24 @@ class GraphApp {
 
         if (this.ffpMode !== "off") {
           this.applyFFPStyles();
+        }
+
+        // Refresh note badges for any imported nodes that have notes
+        if (typeof this.refreshNoteBadges === "function") {
+          this.refreshNoteBadges();
+        }
+        // Refresh lock badges for any imported locked nodes
+        if (typeof this.refreshLockBadges === "function") {
+          this.refreshLockBadges();
+        }
+        // Refresh seed badges for any imported seed nodes
+        if (typeof this.refreshSeedBadges === "function") {
+          this.refreshSeedBadges();
+        }
+        // Refresh singleton collapse badges (clear stale hub state first)
+        if (typeof this.refreshSingletonBadges === "function") {
+          if (this.collapsedHubs) this.collapsedHubs.clear();
+          this.refreshSingletonBadges();
         }
       } catch (err) {
         console.error(err);

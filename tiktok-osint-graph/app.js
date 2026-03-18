@@ -32,21 +32,42 @@ class GraphApp {
           width: 60,
           height: 60,
           "background-color": "#333",
+          // Deterministic hue from username for consistent per-node colour
+          "background-color": function (ele) {
+            const id = ele.data("id") || "?";
+            const hue = [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) & 0xffff, 0) % 360;
+            return `hsl(${hue},50%,32%)`;
+          },
           "background-image": function (ele) {
-            const img = ele.data("image");
-            if (!img) return "none";
-            // Proxy TikTok CDN through wsrv.nl to bypass 403/CORS on GitHub Pages
+            const img  = ele.data("image");
+            const id   = ele.data("id") || "?";
+            // Build an SVG initials badge as the lower fallback layer
+            const letter = id[0].toUpperCase();
+            const hue    = [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) & 0xffff, 0) % 360;
+            const svgSrc = `data:image/svg+xml,${encodeURIComponent(
+              `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60">` +
+              `<circle cx="30" cy="30" r="30" fill="hsl(${hue},50%,32%)"/>` +
+              `<text x="30" y="41" text-anchor="middle" font-size="28" ` +
+              `font-family="Inter,sans-serif" fill="white" font-weight="700">${letter}</text>` +
+              `</svg>`
+            )}`;
+            if (!img) return svgSrc;
+            // Proxy TikTok CDN through wsrv.nl so GitHub Pages can load it
+            let photoSrc = img;
             if (
               !img.startsWith("data:") &&
               !img.includes("wsrv.nl") &&
               !img.includes("dicebear.com") &&
               (img.includes("tiktokcdn.com") || img.includes("tiktok.com"))
             ) {
-              return `https://wsrv.nl/?url=${encodeURIComponent(img)}&w=200&output=webp`;
+              photoSrc = `https://wsrv.nl/?url=${encodeURIComponent(img)}&w=200&output=webp`;
             }
-            return img;
-          }, // Proxy TikTok CDN URLs through wsrv.nl to fix 403 on GitHub Pages
-          "background-fit": "cover",
+            // Return photo on top, initials below — semicolon-separated list
+            return `${photoSrc};${svgSrc}`;
+          },
+          "background-fit": "cover cover",
+          "background-clip": "node node",
+
           "border-width": 2,
           "border-color": "#94a3b8",
           label: function (ele) {

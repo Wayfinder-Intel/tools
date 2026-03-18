@@ -32,7 +32,20 @@ class GraphApp {
           width: 60,
           height: 60,
           "background-color": "#333",
-          "background-image": "data(image)", // We will inject image URLs here
+          "background-image": function (ele) {
+            const img = ele.data("image");
+            if (!img) return "none";
+            // Proxy TikTok CDN through wsrv.nl to bypass 403/CORS on GitHub Pages
+            if (
+              !img.startsWith("data:") &&
+              !img.includes("wsrv.nl") &&
+              !img.includes("dicebear.com") &&
+              (img.includes("tiktokcdn.com") || img.includes("tiktok.com"))
+            ) {
+              return `https://wsrv.nl/?url=${encodeURIComponent(img)}&w=200&output=webp`;
+            }
+            return img;
+          }, // Proxy TikTok CDN URLs through wsrv.nl to fix 403 on GitHub Pages
           "background-fit": "cover",
           "border-width": 2,
           "border-color": "#94a3b8",
@@ -92,7 +105,17 @@ class GraphApp {
           width: 15,
           height: 15,
           "background-image": function (ele) {
-            return ele.data("avatar") || "none";
+            const img = ele.data("avatar") || ele.data("image");
+            if (!img) return "none";
+            if (
+              !img.startsWith("data:") &&
+              !img.includes("wsrv.nl") &&
+              !img.includes("dicebear.com") &&
+              (img.includes("tiktokcdn.com") || img.includes("tiktok.com"))
+            ) {
+              return `https://wsrv.nl/?url=${encodeURIComponent(img)}&w=200&output=webp`;
+            }
+            return img;
           },
           "background-fit": "cover",
           "background-clip": "node",

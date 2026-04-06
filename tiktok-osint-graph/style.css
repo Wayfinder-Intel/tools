@@ -461,10 +461,6 @@ body.light-mode {
   pointer-events: none;
 }
 
-.ffp-depth-toast.hidden {
-  opacity: 0;
-}
-
 /* Modal UI */
 .modal-backdrop {
   position: fixed;

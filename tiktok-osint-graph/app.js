@@ -11,7 +11,6 @@ class GraphApp {
     this.edgeSet = new Set();
 
     this.cy = null;
-    this.cy = null;
     this.isDarkMode = true;
     this.isLightMode = false;
 
@@ -20,6 +19,7 @@ class GraphApp {
       scatterRadius: 300,
       idealEdgeLength: 120,
       nodeRepulsion: 12000,
+      snapGrid: 100,
       avatarStyle: "avatar", // "avatar" or "dot"
     };
 
@@ -29,6 +29,7 @@ class GraphApp {
   }
 
   initCy() {
+    const app = this;
     const rootStyles = getComputedStyle(document.documentElement);
     const brandColor =
       rootStyles.getPropertyValue("--brand").trim() || "#2ea8ff";
@@ -48,7 +49,7 @@ class GraphApp {
             return `hsl(${hue},50%,32%)`;
           },
           "background-image": function (ele) {
-            const img  = ele.data("image");
+            const img = app.getPreferredAvatarSource(ele.data());
             const id   = ele.data("id") || "?";
             // Build an SVG initials badge as the lower fallback layer
             const letter = id[0].toUpperCase();
@@ -61,18 +62,8 @@ class GraphApp {
               `</svg>`
             )}`;
             if (!img) return svgSrc;
-            // Proxy TikTok CDN through wsrv.nl so GitHub Pages can load it
-            let photoSrc = img;
-            if (
-              !img.startsWith("data:") &&
-              !img.includes("wsrv.nl") &&
-              !img.includes("dicebear.com") &&
-              (img.includes("tiktokcdn.com") || img.includes("tiktok.com"))
-            ) {
-              photoSrc = `https://wsrv.nl/?url=${encodeURIComponent(img)}&w=200&output=webp`;
-            }
             // Return photo on top, initials below — semicolon-separated list
-            return `${photoSrc};${svgSrc}`;
+            return `${img};${svgSrc}`;
           },
           "background-fit": "cover cover",
           "background-clip": "node node",
@@ -135,16 +126,8 @@ class GraphApp {
           width: 15,
           height: 15,
           "background-image": function (ele) {
-            const img = ele.data("avatar") || ele.data("image");
+            const img = app.getPreferredAvatarSource(ele.data());
             if (!img) return "none";
-            if (
-              !img.startsWith("data:") &&
-              !img.includes("wsrv.nl") &&
-              !img.includes("dicebear.com") &&
-              (img.includes("tiktokcdn.com") || img.includes("tiktok.com"))
-            ) {
-              return `https://wsrv.nl/?url=${encodeURIComponent(img)}&w=200&output=webp`;
-            }
             return img;
           },
           "background-fit": "cover",
@@ -493,7 +476,7 @@ class GraphApp {
     }
 
     this.updateStats();
-    this.updateDropown();
+    this.updateDropdown();
     this.showToast("Undo successful");
   }
 
@@ -962,36 +945,45 @@ class GraphApp {
     const btnSubmitIngest = document.getElementById("submit-ingest-btn");
     const radioTypes = document.querySelectorAll('input[name="ingest-type"]');
     const seedSelectGroup = document.getElementById("seed-select-group");
-    let activeSubtoolBtn = null;
-
-    const openIngestModal = (triggerBtn) => {
-      activeSubtoolBtn = triggerBtn;
-      triggerBtn.classList.add("active");
-      ingestModalBackdrop.classList.remove("hidden");
+    const onClickIf = (el, handler) => {
+      if (el) el.addEventListener("click", handler);
+    };
+    const createModalController = (backdropEl, options = {}) => {
+      const { onOpen, onClose } = options;
+      let activeTrigger = null;
+      return {
+        open: (triggerBtn) => {
+          activeTrigger = triggerBtn || activeTrigger;
+          if (activeTrigger) activeTrigger.classList.add("active");
+          if (backdropEl) backdropEl.classList.remove("hidden");
+          if (onOpen) onOpen(activeTrigger);
+        },
+        close: () => {
+          if (activeTrigger) activeTrigger.classList.remove("active");
+          activeTrigger = null;
+          if (onClose) onClose();
+          if (backdropEl) backdropEl.classList.add("hidden");
+        },
+      };
     };
 
-    const closeIngestModal = () => {
-      if (activeSubtoolBtn) {
-        activeSubtoolBtn.classList.remove("active");
-        activeSubtoolBtn = null;
-      }
-      // Clear any pasted content
-      const pasteArea = document.getElementById("html-paste-area");
-      if (pasteArea) pasteArea.innerHTML = "";
-      ingestModalBackdrop.classList.add("hidden");
-    };
+    const ingestModal = createModalController(ingestModalBackdrop, {
+      onClose: () => {
+        const pasteArea = document.getElementById("html-paste-area");
+        if (pasteArea) pasteArea.innerHTML = "";
+      },
+    });
+    const openIngestModal = (triggerBtn) => ingestModal.open(triggerBtn);
+    const closeIngestModal = () => ingestModal.close();
 
     // Wire Ingest Button
     const ingestBtn = document.querySelector('[data-action="Ingest"]');
-    if (ingestBtn) {
-      ingestBtn.addEventListener("click", () => {
-        this.updateDropown(); // ensure seeds are populated
-        openIngestModal(ingestBtn);
-      });
-    }
-
-    btnCloseModal.addEventListener("click", closeIngestModal);
-    btnCancelIngest.addEventListener("click", closeIngestModal);
+    onClickIf(ingestBtn, () => {
+      this.updateDropdown(); // ensure seeds are populated
+      openIngestModal(ingestBtn);
+    });
+    onClickIf(btnCloseModal, closeIngestModal);
+    onClickIf(btnCancelIngest, closeIngestModal);
 
     // Hide/Show seed dropdown based on type selection
     radioTypes.forEach((radio) => {
@@ -1004,7 +996,7 @@ class GraphApp {
       });
     });
 
-    btnSubmitIngest.addEventListener("click", () => {
+    onClickIf(btnSubmitIngest, () => {
       this.handleImport();
       closeIngestModal();
     });
@@ -1016,55 +1008,36 @@ class GraphApp {
         // Use setTimeout so the DOM updates with pasted content first
         setTimeout(() => {
           const rawText = ingestPasteArea.innerText || ingestPasteArea.textContent;
-          const lines = rawText.split("\n").map(l => l.trim()).filter(l => l);
-          if (lines.length < 2) return;
+          const detected = this.detectIngestPasteContext(rawText);
+          if (!detected) return;
 
-          // The first non-empty line of a TikTok follower/following panel
-          // is the seed username (e.g. "fk1time")
-          const candidateSeed = lines[0].replace(/[@]/g, "");
-
-          // Try to match against known seeds in the dropdown
+          const { candidateSeed, detectedType } = detected;
           const seedSelect = document.getElementById("active-seed");
           if (!seedSelect) return;
 
-          let matched = false;
-          for (let i = 0; i < seedSelect.options.length; i++) {
-            if (seedSelect.options[i].value === candidateSeed) {
-              seedSelect.value = candidateSeed;
-              matched = true;
-              break;
-            }
-          }
-
-          if (!matched) return; // First line doesn't match a known seed, bail
-
-          // Auto-detect ingest type from header lines like "Following 19" or "Followers 1446"
-          // Scan the first few lines for these keywords
-          let detectedType = null;
-          for (let i = 1; i < Math.min(lines.length, 5); i++) {
-            if (/^following\s+\d/i.test(lines[i])) {
-              detectedType = "following";
-              break;
-            }
-            if (/^followers\s+\d/i.test(lines[i])) {
-              detectedType = "followers";
-              break;
-            }
-          }
+          const seedFound = Array.from(seedSelect.options).some((opt) => {
+            if (opt.value !== candidateSeed) return false;
+            seedSelect.value = candidateSeed;
+            return true;
+          });
+          if (!seedFound) return;
 
           if (detectedType) {
-            // Switch the radio button to the detected type
-            const radio = document.querySelector(`input[name="ingest-type"][value="${detectedType}"]`);
+            const radio = document.querySelector(
+              `input[name="ingest-type"][value="${detectedType}"]`,
+            );
             if (radio) {
               radio.checked = true;
               radio.dispatchEvent(new Event("change", { bubbles: true }));
             }
           } else {
-            // If we matched a seed but couldn't determine the type,
-            // at least switch away from "seed" mode since this is clearly a list
-            const currentType = document.querySelector('input[name="ingest-type"]:checked')?.value;
+            const currentType = document.querySelector(
+              'input[name="ingest-type"]:checked',
+            )?.value;
             if (currentType === "seed") {
-              const followingRadio = document.querySelector('input[name="ingest-type"][value="following"]');
+              const followingRadio = document.querySelector(
+                'input[name="ingest-type"][value="following"]',
+              );
               if (followingRadio) {
                 followingRadio.checked = true;
                 followingRadio.dispatchEvent(new Event("change", { bubbles: true }));
@@ -1072,7 +1045,9 @@ class GraphApp {
             }
           }
 
-          this.showToast(`Auto-detected seed: @${candidateSeed}${detectedType ? ` (${detectedType})` : ""}`);
+          this.showToast(
+            `Auto-detected seed: @${candidateSeed}${detectedType ? ` (${detectedType})` : ""}`,
+          );
         }, 100);
       });
     }
@@ -1095,7 +1070,7 @@ class GraphApp {
 
       this.saveState(); // Save before snapping
 
-      const gridSize = 100; // 100px grid
+      const gridSize = this.settings.snapGrid || 100;
 
       // If dragging a single node vs a selected group
       const draggedNode = e.target;
@@ -1123,30 +1098,13 @@ class GraphApp {
     const btnCloseWipe = document.getElementById("close-wipe-modal-btn");
     const btnCancelWipe = document.getElementById("cancel-wipe-btn");
     const btnSubmitWipe = document.getElementById("submit-wipe-btn");
-    let activeWipeBtn = null;
+    const wipeModal = createModalController(wipeModalBackdrop);
+    const openWipeModal = (triggerBtn) => wipeModal.open(triggerBtn);
+    const closeWipeModal = () => wipeModal.close();
 
-    const openWipeModal = (triggerBtn) => {
-      activeWipeBtn = triggerBtn;
-      triggerBtn.classList.add("active");
-      wipeModalBackdrop.classList.remove("hidden");
-    };
-
-    const closeWipeModal = () => {
-      if (activeWipeBtn) {
-        activeWipeBtn.classList.remove("active");
-        activeWipeBtn = null;
-      }
-      wipeModalBackdrop.classList.add("hidden");
-    };
-
-    if (btnWipeGraph) {
-      btnWipeGraph.addEventListener("click", () => {
-        openWipeModal(btnWipeGraph);
-      });
-    }
-
-    if (btnCloseWipe) btnCloseWipe.addEventListener("click", closeWipeModal);
-    if (btnCancelWipe) btnCancelWipe.addEventListener("click", closeWipeModal);
+    onClickIf(btnWipeGraph, () => openWipeModal(btnWipeGraph));
+    onClickIf(btnCloseWipe, closeWipeModal);
+    onClickIf(btnCancelWipe, closeWipeModal);
 
     if (btnSubmitWipe) {
       btnSubmitWipe.addEventListener("click", () => {
@@ -1164,7 +1122,7 @@ class GraphApp {
 
         this.updateFFPUI();
         this.updateStats();
-        this.updateDropown();
+        this.updateDropdown();
 
         this.showToast("Graph wiped completely.");
         closeWipeModal();
@@ -1177,31 +1135,15 @@ class GraphApp {
     const btnCloseDebug = document.getElementById("close-debug-modal-btn");
     const btnCancelDebug = document.getElementById("cancel-debug-btn");
     const btnDownloadDebug = document.getElementById("download-debug-btn");
-    let activeDebugBtn = null;
+    const debugModal = createModalController(debugModalBackdrop);
+    const openDebugModal = (triggerBtn) => debugModal.open(triggerBtn);
+    const closeDebugModal = () => debugModal.close();
 
-    const openDebugModal = (triggerBtn) => {
-      activeDebugBtn = triggerBtn;
-      triggerBtn.classList.add("active");
-      debugModalBackdrop.classList.remove("hidden");
-    };
+    onClickIf(btnDebugPaste, () => openDebugModal(btnDebugPaste));
+    onClickIf(btnCloseDebug, closeDebugModal);
+    onClickIf(btnCancelDebug, closeDebugModal);
 
-    const closeDebugModal = () => {
-      if (activeDebugBtn) {
-        activeDebugBtn.classList.remove("active");
-        activeDebugBtn = null;
-      }
-      debugModalBackdrop.classList.add("hidden");
-    };
-
-    if (btnDebugPaste) {
-      btnDebugPaste.addEventListener("click", () => {
-        openDebugModal(btnDebugPaste);
-      });
-    }
-    btnCloseDebug.addEventListener("click", closeDebugModal);
-    btnCancelDebug.addEventListener("click", closeDebugModal);
-
-    btnDownloadDebug.addEventListener("click", () => {
+    onClickIf(btnDownloadDebug, () => {
       const pasteArea = document.getElementById("debug-paste-area");
       if (pasteArea && pasteArea.innerHTML.trim() !== "") {
         const dataStr =
@@ -1237,11 +1179,8 @@ class GraphApp {
     const btnClosePref = document.getElementById("close-pref-modal-btn");
     const btnCancelPref = document.getElementById("cancel-pref-btn");
     const btnSavePref = document.getElementById("save-pref-btn");
-
-    const openPrefModal = () => {
-      if (!btnPreferences) return;
-      btnPreferences.classList.add("active");
-      
+    const prefModal = createModalController(prefModalBackdrop, {
+      onOpen: () => {
       // Populate fields from current settings
       document.getElementById("pref-scatter-radius").value = this.settings.scatterRadius;
       document.getElementById("val-scatter-radius").textContent = this.settings.scatterRadius;
@@ -1252,25 +1191,22 @@ class GraphApp {
       document.getElementById("pref-repulsion").value = this.settings.nodeRepulsion;
       document.getElementById("val-repulsion").textContent = this.settings.nodeRepulsion;
 
+      document.getElementById("pref-snap-grid").value = this.settings.snapGrid;
+      document.getElementById("val-snap-grid").textContent = this.settings.snapGrid;
+
       const avatarRad = document.querySelector(`input[name="pref-avatar-style"][value="${this.settings.avatarStyle}"]`);
       if (avatarRad) avatarRad.checked = true;
+      },
+    });
+    const openPrefModal = () => prefModal.open(btnPreferences);
+    const closePrefModal = () => prefModal.close();
 
-      prefModalBackdrop.classList.remove("hidden");
-    };
-
-    const closePrefModal = () => {
-      if (btnPreferences) btnPreferences.classList.remove("active");
-      prefModalBackdrop.classList.add("hidden");
-    };
-
-    if (btnPreferences) {
-      btnPreferences.addEventListener("click", openPrefModal);
-    }
-    if (btnClosePref) btnClosePref.addEventListener("click", closePrefModal);
-    if (btnCancelPref) btnCancelPref.addEventListener("click", closePrefModal);
+    onClickIf(btnPreferences, () => openPrefModal());
+    onClickIf(btnClosePref, closePrefModal);
+    onClickIf(btnCancelPref, closePrefModal);
 
     // Sync slider display values
-    ["scatter-radius", "ideal-edge", "repulsion"].forEach(id => {
+    ["scatter-radius", "ideal-edge", "repulsion", "snap-grid"].forEach(id => {
       const input = document.getElementById(`pref-${id}`);
       const val = document.getElementById(`val-${id}`);
       if (input && val) {
@@ -1285,6 +1221,7 @@ class GraphApp {
         this.settings.scatterRadius = parseInt(document.getElementById("pref-scatter-radius").value);
         this.settings.idealEdgeLength = parseInt(document.getElementById("pref-ideal-edge").value);
         this.settings.nodeRepulsion = parseInt(document.getElementById("pref-repulsion").value);
+        this.settings.snapGrid = parseInt(document.getElementById("pref-snap-grid").value);
         
         const avatarStyle = document.querySelector('input[name="pref-avatar-style"]:checked').value;
         const styleChanged = (this.settings.avatarStyle !== avatarStyle);
@@ -1310,11 +1247,8 @@ class GraphApp {
     const btnCloseBulkNote = document.getElementById("close-bulk-note-btn");
     const btnCancelBulkNote = document.getElementById("cancel-bulk-note-btn");
     const btnSubmitBulkNote = document.getElementById("submit-bulk-note-btn");
-
-    const openBulkNoteModal = () => {
-      if (!btnBulkNote) return;
-      btnBulkNote.classList.add("active");
-
+    const bulkNoteModal = createModalController(bulkNoteBackdrop, {
+      onOpen: () => {
       const area = document.getElementById("bulk-note-area");
       const selectedNodes = this.cy.nodes(":selected");
 
@@ -1330,20 +1264,15 @@ class GraphApp {
         area.value = "";
       }
 
-      bulkNoteBackdrop.classList.remove("hidden");
       area.focus();
-    };
+      },
+    });
+    const openBulkNoteModal = () => bulkNoteModal.open(btnBulkNote);
+    const closeBulkNoteModal = () => bulkNoteModal.close();
 
-    const closeBulkNoteModal = () => {
-      if (btnBulkNote) btnBulkNote.classList.remove("active");
-      bulkNoteBackdrop.classList.add("hidden");
-    };
-
-    if (btnBulkNote) {
-      btnBulkNote.addEventListener("click", openBulkNoteModal);
-    }
-    if (btnCloseBulkNote) btnCloseBulkNote.addEventListener("click", closeBulkNoteModal);
-    if (btnCancelBulkNote) btnCancelBulkNote.addEventListener("click", closeBulkNoteModal);
+    onClickIf(btnBulkNote, () => openBulkNoteModal());
+    onClickIf(btnCloseBulkNote, closeBulkNoteModal);
+    onClickIf(btnCancelBulkNote, closeBulkNoteModal);
 
     if (btnSubmitBulkNote) {
       btnSubmitBulkNote.addEventListener("click", () => {
@@ -1388,55 +1317,8 @@ class GraphApp {
       });
     }
 
-    // JSON Export/Import Events
-    const exportBtn = document.getElementById("export-json-btn");
-    if (exportBtn) {
-      exportBtn.addEventListener("click", () => {
-        this.exportToJSON();
-      });
-    }
-
-    // PNG Export
-    const exportPngBtn = document.getElementById("export-png-btn");
-    if (exportPngBtn) {
-      exportPngBtn.addEventListener("click", () => {
-        const bg = this.isLightMode ? "#f8f9fa" : "#0a0d13";
-        const dataUri = this.cy.png({
-          output: "base64uri",
-          full: true,       // capture all nodes, even off-screen
-          scale: 2,         // 2× resolution for crisp export
-          bg,
-        });
-        this.downloadFile(dataUri, `tiktok-graph-${this.getTimestamp()}.png`);
-        this.showToast("Graph exported as PNG.");
-      });
-    }
-
-    // SVG Export
-    const exportSvgBtn = document.getElementById("export-svg-btn");
-    if (exportSvgBtn) {
-      exportSvgBtn.addEventListener("click", () => {
-        const bg = this.isLightMode ? "#f8f9fa" : "#0a0d13";
-        // cytoscape-svg extension provides this method
-        const svgContent = this.cy.svg({
-          full: true,
-          scale: 1,
-          bg: bg,
-        });
-        const blob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        this.downloadFile(url, `tiktok-graph-${this.getTimestamp()}.svg`);
-        this.showToast("Graph exported as High-Res SVG.");
-      });
-    }
-
-    // CSV Metadata Export
-    const exportCsvBtn = document.getElementById("export-csv-btn");
-    if (exportCsvBtn) {
-      exportCsvBtn.addEventListener("click", () => {
-        this.exportToCSV();
-      });
-    }
+    // Export/Import Events
+    this.bindExportActions(onClickIf);
 
     // =============================================
     // DELETE SELECTED + DELETION HISTORY
@@ -1608,134 +1490,17 @@ class GraphApp {
         if (targetNodes.length === 0) return;
 
         this.saveState();
-        this.showToast(isGlobal ? "Reheating graph…" : "Reheating cluster…");
+        this.showToast(
+          `${isGlobal ? "Reheating graph…" : "Reheating cluster…"} (Repulsion: ${this.settings.nodeRepulsion}, Edge: ${this.settings.idealEdgeLength}px)`
+        );
 
-        // Give the bounding box plenty of space so the physics engine can push nodes apart
-        if (bb.w < 1200) {
-          bb.x1 -= 600;
-          bb.w = 1200;
-        }
-        if (bb.h < 1200) {
-          bb.y1 -= 600;
-          bb.h = 1200;
-        }
-
-        const layoutOptions = isGlobal
-          ? {
-              name: "cose",
-              padding: 80,
-              idealEdgeLength: 120,
-              nodeRepulsion: 12000,
-              animate: true,
-              animationDuration: 800,
-              fit: true,
-              randomize: true, // Forces random initial positions
-              componentSpacing: 100,
-            }
-          : {
-              name: "concentric",
-              fit: false,
-              animate: true,
-              animationDuration: 800,
-              boundingBox: { x1: bb.x1, y1: bb.y1, w: bb.w, h: bb.h },
-              spacingFactor: 1.6,
-              minNodeSpacing: 60,
-              avoidOverlap: true,
-            };
-
-        const layout = targetNodes.layout(layoutOptions);
+        const bb = this.getExpandedBoundingBox(targetNodes);
+        const layout = targetNodes.layout(this.buildReheatLayoutOptions(isGlobal, bb));
         layout.run();
 
-        // If it's a global reheat on a dense star topology, the physics engine will 
-        // often clump it too tight. Once the layout finishes, automatically stretch 
-        // the coordinates mathematically to spread them out.
-        if (isGlobal || true) { // Always run this for both global and cluster
-          layout.promiseOn("layoutstop").then(() => {
-            
-            // --- Custom Singleton Fan-Out Pass ---
-            // Find nodes with only 1 edge (leaves) and arrange them cleanly around their parent
-            const minRadius = 80; // Starting radius
-            const nodeSpacing = 40; // Pixels required between each node
-            
-            targetNodes.forEach(node => {
-              const connectedEdges = node.connectedEdges();
-              if (connectedEdges.length < 2) return; // Not a hub
-
-              const leaves = connectedEdges.connectedNodes().filter(n => n.id() !== node.id() && n.connectedEdges().length === 1);
-              if (leaves.length === 0) return;
-
-              const parentPos = node.position();
-              
-              // We want to pack nodes in rings. Each ring can only hold so many nodes based on circumference
-              // circumference = 2 * PI * radius
-              // maxNodesInRing = circumference / nodeSpacing
-              
-              let currentRadius = minRadius;
-              let currentRingCapacity = Math.floor((2 * Math.PI * currentRadius) / nodeSpacing);
-              let nodesPlacedInRing = 0;
-              let currentAngleOffset = 0;
-              
-              leaves.forEach(leaf => {
-                // If the current ring is full, move outwards
-                if (nodesPlacedInRing >= currentRingCapacity) {
-                  currentRadius += nodeSpacing; // Push out by the size of a node
-                  currentRingCapacity = Math.floor((2 * Math.PI * currentRadius) / nodeSpacing);
-                  nodesPlacedInRing = 0;
-                  currentAngleOffset += (Math.PI / 4); // Stagger the next ring slightly
-                }
-
-                // Distribute evenly around the current ring
-                const angle = (nodesPlacedInRing / currentRingCapacity) * (Math.PI * 2) + currentAngleOffset;
-                
-                leaf.position({
-                  x: parentPos.x + Math.cos(angle) * currentRadius,
-                  y: parentPos.y + Math.sin(angle) * currentRadius
-                });
-                
-                nodesPlacedInRing++;
-              });
-            });
-
-            // --- Global Scale Pass ---
-            // Scale everything afterwards to give clusters breathing room
-            const scaleDir = isGlobal ? 3.0 : 2.5; 
-            const bbAfterLeaves = targetNodes.boundingBox();
-            const center = {
-              x: (bbAfterLeaves.x1 + bbAfterLeaves.x2) / 2,
-              y: (bbAfterLeaves.y1 + bbAfterLeaves.y2) / 2,
-            };
-
-            const newPositions = {};
-            targetNodes.forEach((node) => {
-              const pos = node.position();
-              newPositions[node.id()] = {
-                x: center.x + (pos.x - center.x) * scaleDir,
-                y: center.y + (pos.y - center.y) * scaleDir,
-              };
-            });
-
-            targetNodes
-              .layout({
-                name: "preset",
-                positions: newPositions,
-                animate: true,
-                animationDuration: 400,
-                fit: false,
-              })
-              .run();
-
-            // Zoom out to see the new stretched graph
-            if (isGlobal || scaleDir > 1.2) {
-              this.cy.animate(
-                {
-                  zoom: this.cy.zoom() * (1 / scaleDir),
-                  center: { eles: this.cy.nodes() },
-                },
-                { duration: 400 }
-              );
-            }
-          });
-        }
+        layout.promiseOn("layoutstop").then(() => {
+          this.applyReheatPostProcessing(targetNodes, isGlobal);
+        });
       });
     }
 
@@ -3122,11 +2887,38 @@ class GraphApp {
       .update();
   }
 
+  detectIngestPasteContext(rawText) {
+    const lines = (rawText || "")
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l);
+    if (lines.length < 2) return null;
+
+    const candidateSeed = lines[0].replace(/[@]/g, "");
+    let detectedType = null;
+    for (let i = 1; i < Math.min(lines.length, 5); i++) {
+      if (/^following\s+\d/i.test(lines[i])) {
+        detectedType = "following";
+        break;
+      }
+      if (/^followers\s+\d/i.test(lines[i])) {
+        detectedType = "followers";
+        break;
+      }
+    }
+
+    return { candidateSeed, detectedType };
+  }
+
   updateStats() {
     const nodeStat = document.getElementById("stat-nodes");
     const edgeStat = document.getElementById("stat-edges");
     if (nodeStat) nodeStat.textContent = this.cy.nodes().length;
     if (edgeStat) edgeStat.textContent = this.cy.edges().length;
+  }
+
+  updateDropdown() {
+    return this.updateDropown();
   }
 
   updateDropown() {
@@ -3205,170 +2997,383 @@ class GraphApp {
       }
 
       this.saveState();
-      let newlyAddedElements = this.cy.collection();
       const existingNodeCount = this.cy.nodes().length;
+      let newlyAddedElements;
 
       this.cy.batch(() => {
-        // If it's a seed ingest, just add the seed node
-        if (typeSelect === "seed") {
-          profiles.forEach((p) => {
-            const alreadyExists = !this.cy.getElementById(p.id).empty();
-            this.addNodeToGraph(p, true);
-            const node = this.cy.getElementById(p.id);
-            if (alreadyExists) node.data("_wasExisting", true);
-            newlyAddedElements.merge(node);
-          });
-        } else {
-          // It's a follower/following ingest mapped to an existing seed
-          const seedNode = this.cy.getElementById(targetId);
-          if (typeSelect === "following") seedNode.data("hasFollowing", true);
-          if (typeSelect === "followers") seedNode.data("hasFollowers", true);
-
-          const totalNewProfiles = profiles.length;
-
-          profiles.forEach((p, index) => {
-            const alreadyExists = !this.cy.getElementById(p.id).empty();
-            this.addNodeToGraph(p, false);
-
-            const newNode = this.cy.getElementById(p.id);
-            // Only reposition truly new nodes — existing nodes stay where they are
-            if (!alreadyExists) {
-              newlyAddedElements.merge(newNode);
-            }
-
-            // FFP Chronological Rank: index 0 is newest, index L-1 is oldest (Rank 1)
-            const rank = totalNewProfiles - index;
-            const rankDirection = typeSelect; // 'following' or 'followers'
-
-            if (typeSelect === "following") {
-              this.addEdgeToGraph(targetId, p.id, rank, rankDirection);
-            } else {
-              this.addEdgeToGraph(p.id, targetId, rank, rankDirection);
-            }
-          });
-        }
-        this.updateDropown();
-
-        // Select all newly added nodes automatically
+        newlyAddedElements = this.ingestProfilesToGraph(
+          profiles,
+          typeSelect,
+          targetId,
+        );
+        this.updateDropdown();
         newlyAddedElements.select();
       });
 
       overlay.classList.add("hidden");
       this.updateStats();
-
-      // Only layout if this is the first ingest, otherwise use smarter positioning
-      if (existingNodeCount === 0) {
-        this.cy
-          .layout({ name: "cose", padding: 50, idealEdgeLength: 60 })
-          .run();
-      } else if (typeSelect === "seed") {
-        // Seed ingest: only position truly NEW nodes (not existing ones promoted to seed)
-        const viewCenter = {
-          x: this.cy.width() / 2 + (Math.random() * 200 - 100),
-          y: this.cy.height() / 2 + (Math.random() * 200 - 100),
-        };
-        newlyAddedElements.nodes().forEach((n) => {
-          // If the node was already in the graph before this ingest, don't move it
-          if (n.data("_wasExisting")) return;
-          const rad = this.settings.scatterRadius;
-          n.position({
-            x: viewCenter.x + (Math.random() * rad * 2 - rad),
-            y: viewCenter.y + (Math.random() * rad * 2 - rad),
-          });
-        });
-      } else {
-        // Follower/following ingest: fan ALL seed-only-connected nodes around the seed,
-        // then offset the cluster away from existing graph nodes if overlapping.
-        const seedNode = this.cy.getElementById(targetId);
-        const seedPos = seedNode.position();
-
-        // Collect existing singleton neighbors: nodes whose ONLY connections go to this seed
-        const existingSingletons = seedNode.neighborhood("node").filter(n => {
-          if (newlyAddedElements.nodes().contains(n)) return false; // skip newly added
-          // Check all edges: every edge must connect to this seed
-          return n.connectedEdges().every(e =>
-            e.data("source") === targetId || e.data("target") === targetId
-          );
-        });
-
-        // All nodes to fan: new nodes + existing singletons
-        const nodesToFan = newlyAddedElements.nodes().union(existingSingletons);
-        const count = nodesToFan.length;
-        const radius = Math.max(160, count * 16); // Scale radius with node count
-
-        nodesToFan.forEach((n, i) => {
-          const angle = (i / count) * Math.PI * 2;
-          n.position({
-            x: seedPos.x + Math.cos(angle) * radius,
-            y: seedPos.y + Math.sin(angle) * radius,
-          });
-        });
-
-        // The full cluster that moves together: seed + new nodes + existing singletons
-        const clusterNodes = nodesToFan.union(seedNode);
-        const clusterBB = clusterNodes.boundingBox();
-        const existingNodes = this.cy.nodes().difference(clusterNodes);
-
-        if (existingNodes.length > 0) {
-          const existingBB = existingNodes.boundingBox();
-          // Check for bounding-box overlap (with padding)
-          const pad = 80;
-          const overlapsX = clusterBB.x1 - pad < existingBB.x2 && clusterBB.x2 + pad > existingBB.x1;
-          const overlapsY = clusterBB.y1 - pad < existingBB.y2 && clusterBB.y2 + pad > existingBB.y1;
-
-          if (overlapsX && overlapsY) {
-            // Move cluster to the right of the existing graph with padding
-            const offsetX = existingBB.x2 + pad + (clusterBB.w / 2) - (clusterBB.x1 + clusterBB.x2) / 2;
-            const offsetY = (existingBB.y1 + existingBB.y2) / 2 - (clusterBB.y1 + clusterBB.y2) / 2;
-
-            clusterNodes.forEach(n => {
-              const pos = n.position();
-              n.position({ x: pos.x + offsetX, y: pos.y + offsetY });
-            });
-          }
-        }
-
-        // Select seed + newly added nodes (not existing singletons)
-        seedNode.select();
-      }
-
-      // Clean up temporary flag
-      newlyAddedElements.nodes().forEach(n => n.removeData("_wasExisting"));
-
-      this.showToast("Ingest complete!");
-
-      // Refresh all DOM badges so newly-added seeds get their seedling icon
-      this.refreshSeedBadges();
-
-      // Close the primary ingest modal backdrop as well
-      const ingestModalBackdrop = document.getElementById(
-        "ingest-modal-backdrop",
+      this.positionAfterIngest(
+        existingNodeCount,
+        typeSelect,
+        targetId,
+        newlyAddedElements,
       );
-      if (ingestModalBackdrop) {
-        ingestModalBackdrop.classList.add("hidden");
-      }
-
-      // Remove active state from the ingest button if it's still there
-      const ingestBtn = document.querySelector('[data-action="Ingest"]');
-      if (ingestBtn) {
-        ingestBtn.classList.remove("active");
-      }
-
-      // Re-apply FFP styles if active
-      if (this.ffpMode !== "off") {
-        this.applyFFPStyles();
-      }
+      newlyAddedElements.nodes().forEach((n) => n.removeData("_wasExisting"));
+      this.finalizeIngestUi();
     }, 100);
   }
 
-  exportToJSON() {
-    if (this.cy.nodes().length === 0) {
-      this.showToast("No data to export!");
+  ingestProfilesToGraph(profiles, typeSelect, targetId) {
+    const newlyAddedElements = this.cy.collection();
+
+    if (typeSelect === "seed") {
+      profiles.forEach((p) => {
+        const alreadyExists = !this.cy.getElementById(p.id).empty();
+        this.addNodeToGraph(p, true);
+        const node = this.cy.getElementById(p.id);
+        if (alreadyExists) node.data("_wasExisting", true);
+        newlyAddedElements.merge(node);
+      });
+      return newlyAddedElements;
+    }
+
+    const seedNode = this.cy.getElementById(targetId);
+    if (typeSelect === "following") seedNode.data("hasFollowing", true);
+    if (typeSelect === "followers") seedNode.data("hasFollowers", true);
+
+    const totalNewProfiles = profiles.length;
+    profiles.forEach((p, index) => {
+      const alreadyExists = !this.cy.getElementById(p.id).empty();
+      this.addNodeToGraph(p, false);
+
+      const newNode = this.cy.getElementById(p.id);
+      if (!alreadyExists) {
+        newlyAddedElements.merge(newNode);
+      }
+
+      const rank = totalNewProfiles - index;
+      const rankDirection = typeSelect;
+
+      if (typeSelect === "following") {
+        this.addEdgeToGraph(targetId, p.id, rank, rankDirection);
+      } else {
+        this.addEdgeToGraph(p.id, targetId, rank, rankDirection);
+      }
+    });
+
+    return newlyAddedElements;
+  }
+
+  positionAfterIngest(existingNodeCount, typeSelect, targetId, newlyAddedElements) {
+    if (existingNodeCount === 0) {
+      this.cy
+        .layout({
+          name: "cose",
+          padding: 50,
+          idealEdgeLength: this.settings.idealEdgeLength,
+          nodeRepulsion: this.settings.nodeRepulsion,
+        })
+        .run();
       return;
     }
 
-    const graphData = this.cy.json().elements;
-    const exportObj = {
+    if (typeSelect === "seed") {
+      this.positionSeedIngestNodes(newlyAddedElements);
+      return;
+    }
+
+    this.positionFollowerCluster(targetId, newlyAddedElements);
+  }
+
+  positionSeedIngestNodes(newlyAddedElements) {
+    const viewCenter = {
+      x: this.cy.width() / 2 + (Math.random() * 200 - 100),
+      y: this.cy.height() / 2 + (Math.random() * 200 - 100),
+    };
+
+    newlyAddedElements.nodes().forEach((n) => {
+      if (n.data("_wasExisting")) return;
+      const rad = this.settings.scatterRadius;
+      n.position({
+        x: viewCenter.x + (Math.random() * rad * 2 - rad),
+        y: viewCenter.y + (Math.random() * rad * 2 - rad),
+      });
+    });
+  }
+
+  positionFollowerCluster(targetId, newlyAddedElements) {
+    const seedNode = this.cy.getElementById(targetId);
+    const seedPos = seedNode.position();
+
+    const existingSingletons = seedNode.neighborhood("node").filter((n) => {
+      if (newlyAddedElements.nodes().contains(n)) return false;
+      return n
+        .connectedEdges()
+        .every((e) => e.data("source") === targetId || e.data("target") === targetId);
+    });
+
+    const nodesToFan = newlyAddedElements.nodes().union(existingSingletons);
+    const count = nodesToFan.length;
+    const radius = Math.max(160, count * 16);
+
+    nodesToFan.forEach((n, i) => {
+      const angle = (i / count) * Math.PI * 2;
+      n.position({
+        x: seedPos.x + Math.cos(angle) * radius,
+        y: seedPos.y + Math.sin(angle) * radius,
+      });
+    });
+
+    const clusterNodes = nodesToFan.union(seedNode);
+    const clusterBB = clusterNodes.boundingBox();
+    const existingNodes = this.cy.nodes().difference(clusterNodes);
+
+    if (existingNodes.length > 0) {
+      const existingBB = existingNodes.boundingBox();
+      const pad = 80;
+      const overlapsX =
+        clusterBB.x1 - pad < existingBB.x2 && clusterBB.x2 + pad > existingBB.x1;
+      const overlapsY =
+        clusterBB.y1 - pad < existingBB.y2 && clusterBB.y2 + pad > existingBB.y1;
+
+      if (overlapsX && overlapsY) {
+        const offsetX =
+          existingBB.x2 +
+          pad +
+          clusterBB.w / 2 -
+          (clusterBB.x1 + clusterBB.x2) / 2;
+        const offsetY =
+          (existingBB.y1 + existingBB.y2) / 2 -
+          (clusterBB.y1 + clusterBB.y2) / 2;
+
+        clusterNodes.forEach((n) => {
+          const pos = n.position();
+          n.position({ x: pos.x + offsetX, y: pos.y + offsetY });
+        });
+      }
+    }
+
+    seedNode.select();
+  }
+
+  finalizeIngestUi() {
+    this.showToast("Ingest complete!");
+    this.refreshSeedBadges();
+
+    const ingestModalBackdrop = document.getElementById("ingest-modal-backdrop");
+    if (ingestModalBackdrop) {
+      ingestModalBackdrop.classList.add("hidden");
+    }
+
+    const ingestBtn = document.querySelector('[data-action="Ingest"]');
+    if (ingestBtn) {
+      ingestBtn.classList.remove("active");
+    }
+
+    if (this.ffpMode !== "off") {
+      this.applyFFPStyles();
+    }
+  }
+
+  getExpandedBoundingBox(targetNodes) {
+    const bb = targetNodes.boundingBox();
+    if (bb.w < 1200) {
+      bb.x1 -= 600;
+      bb.w = 1200;
+    }
+    if (bb.h < 1200) {
+      bb.y1 -= 600;
+      bb.h = 1200;
+    }
+    return bb;
+  }
+
+  buildReheatLayoutOptions(isGlobal, bb) {
+    const baseOptions = {
+      name: "cose",
+      padding: 80,
+      idealEdgeLength: this.settings.idealEdgeLength,
+      nodeRepulsion: this.settings.nodeRepulsion,
+      animate: true,
+      animationDuration: 800,
+      fit: isGlobal,
+      randomize: false,
+      componentSpacing: 100,
+      nodeOverlap: 20,
+      nestingCoefficient: 1.2,
+      gravity: 0.25,
+      edgeElasticity: 100,
+    };
+
+    if (isGlobal) {
+      return {
+        ...baseOptions,
+        randomize: true,
+      };
+    }
+
+    return {
+      ...baseOptions,
+      boundingBox: { x1: bb.x1, y1: bb.y1, w: bb.w, h: bb.h },
+    };
+  }
+
+  fanOutLeafNodes(targetNodes) {
+    const minRadius = this.settings.idealEdgeLength * 0.8;
+    const nodeSpacing = this.settings.idealEdgeLength * 0.35;
+
+    targetNodes.forEach((node) => {
+      const connectedEdges = node.connectedEdges();
+      if (connectedEdges.length < 2) return;
+
+      const leaves = connectedEdges
+        .connectedNodes()
+        .filter(
+          (n) => n.id() !== node.id() && n.connectedEdges().length === 1,
+        );
+      if (leaves.length === 0) return;
+
+      const parentPos = node.position();
+      let currentRadius = minRadius;
+      let currentRingCapacity = Math.floor(
+        (2 * Math.PI * currentRadius) / nodeSpacing,
+      );
+      let nodesPlacedInRing = 0;
+      let currentAngleOffset = 0;
+
+      leaves.forEach((leaf) => {
+        if (nodesPlacedInRing >= currentRingCapacity) {
+          currentRadius += nodeSpacing;
+          currentRingCapacity = Math.floor(
+            (2 * Math.PI * currentRadius) / nodeSpacing,
+          );
+          nodesPlacedInRing = 0;
+          currentAngleOffset += Math.PI / 4;
+        }
+
+        const angle =
+          (nodesPlacedInRing / currentRingCapacity) * (Math.PI * 2) +
+          currentAngleOffset;
+        leaf.position({
+          x: parentPos.x + Math.cos(angle) * currentRadius,
+          y: parentPos.y + Math.sin(angle) * currentRadius,
+        });
+        nodesPlacedInRing++;
+      });
+    });
+  }
+
+  scaleNodesAroundCenter(targetNodes, scaleDir) {
+    const bb = targetNodes.boundingBox();
+    const center = {
+      x: (bb.x1 + bb.x2) / 2,
+      y: (bb.y1 + bb.y2) / 2,
+    };
+
+    const newPositions = {};
+    targetNodes.forEach((node) => {
+      const pos = node.position();
+      newPositions[node.id()] = {
+        x: center.x + (pos.x - center.x) * scaleDir,
+        y: center.y + (pos.y - center.y) * scaleDir,
+      };
+    });
+
+    targetNodes
+      .layout({
+        name: "preset",
+        positions: newPositions,
+        animate: true,
+        animationDuration: 400,
+        fit: false,
+      })
+      .run();
+  }
+
+  adjustCameraAfterScale(isGlobal, scaleDir) {
+    if (isGlobal || scaleDir > 1.2) {
+      this.cy.animate(
+        {
+          zoom: this.cy.zoom() * (1 / scaleDir),
+          center: { eles: this.cy.nodes() },
+        },
+        { duration: 400 },
+      );
+    }
+  }
+
+  applyReheatPostProcessing(targetNodes, isGlobal) {
+    this.fanOutLeafNodes(targetNodes);
+    // REMOVED HARDCODED 3x SCALING: Now respects user preferences faithfully.
+    const scaleDir = 1.0; 
+    this.scaleNodesAroundCenter(targetNodes, scaleDir);
+    this.adjustCameraAfterScale(isGlobal, scaleDir);
+  }
+
+  bindExportActions(onClickIf) {
+    onClickIf(document.getElementById("export-json-btn"), () =>
+      this.exportToJSON(),
+    );
+
+
+    onClickIf(document.getElementById("export-png-btn"), () => {
+      const bg = this.isLightMode ? "#f8f9fa" : "#0a0d13";
+      const dataUri = this.cy.png({
+        output: "base64uri",
+        full: true,
+        scale: 2,
+        bg,
+      });
+      this.downloadFile(dataUri, `tiktok-graph-${this.getTimestamp()}.png`);
+      this.showToast("Graph exported as PNG.");
+    });
+
+    onClickIf(document.getElementById("export-svg-btn"), () => {
+      const bg = this.isLightMode ? "#f8f9fa" : "#0a0d13";
+      const svgContent = this.cy.svg({
+        full: true,
+        scale: 1,
+        bg,
+      });
+      const blob = new Blob([svgContent], {
+        type: "image/svg+xml;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      this.downloadFile(url, `tiktok-graph-${this.getTimestamp()}.svg`);
+      this.showToast("Graph exported as High-Res SVG.");
+    });
+
+    onClickIf(document.getElementById("export-csv-btn"), () =>
+      this.exportToCSV(),
+    );
+  }
+
+  isEmbeddedAvatar(value) {
+    return typeof value === "string" && value.startsWith("data:image/");
+  }
+
+  getPreferredAvatarSource(nodeData) {
+    const embedded = nodeData && nodeData.avatarEmbedded;
+    if (this.isEmbeddedAvatar(embedded)) return embedded;
+    const raw = (nodeData && (nodeData.image || nodeData.avatar)) || "";
+    return this.toAvatarFetchUrl(raw);
+  }
+
+  toAvatarFetchUrl(url) {
+    if (!url || typeof url !== "string") return "";
+    if (
+      !url.startsWith("data:") &&
+      !url.includes("wsrv.nl") &&
+      !url.includes("dicebear.com") &&
+      (url.includes("tiktokcdn.com") || url.includes("tiktok.com"))
+    ) {
+      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=200&output=webp`;
+    }
+    return url;
+  }
+
+  buildJsonExportObject(graphData, extra = {}) {
+    return {
       elements: graphData,
       uiState: {
         ffpMode: this.ffpMode,
@@ -3380,22 +3385,22 @@ class GraphApp {
         globalGhostMode: this.globalGhostMode,
         showMutuals: this.showMutuals,
       },
+      ...extra,
     };
-    const dataStr = JSON.stringify(exportObj, null, 2);
+  }
 
-    // Find seed node to name the file
+  getJsonExportFilename(prefixOverride = null) {
     const seeds = this.cy.nodes('[type="seed"]');
-    let prefix = "export";
-    if (seeds.length > 0) {
+    let prefix = prefixOverride || "export";
+    if (!prefixOverride && seeds.length > 0) {
       prefix = seeds.first().id();
     }
+    const timeString = new Date().toISOString().replace(/[:.]/g, "-");
+    return `${prefix}_${timeString}.json`;
+  }
 
-    // Generate safe timestamp string
-    const date = new Date();
-    const timeString = date.toISOString().replace(/[:.]/g, "-");
-    const filename = `${prefix}_${timeString}.json`;
-
-    // Create virtual download anchor
+  downloadJsonObject(exportObj, filename) {
+    const dataStr = JSON.stringify(exportObj, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -3403,13 +3408,353 @@ class GraphApp {
     a.download = filename;
     document.body.appendChild(a);
     a.click();
-
-    // Cleanup
     setTimeout(() => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      this.showToast(`Exported to ${filename}`);
     }, 0);
+  }
+
+  getAvatarEmbedConfig() {
+    return {
+      maxDimension: 96,
+      format: "image/webp",
+      quality: 0.65,
+      concurrency: 6,
+      timeoutMs: 5000,
+      maxTotalBytes: 25 * 1024 * 1024,
+      version: 1,
+    };
+  }
+
+  measureStringBytes(str) {
+    if (!str) return 0;
+    if (typeof TextEncoder !== "undefined") {
+      return new TextEncoder().encode(str).length;
+    }
+    return unescape(encodeURIComponent(str)).length;
+  }
+
+  fetchWithTimeout(url, timeoutMs) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { signal: controller.signal, mode: "cors" }).finally(() =>
+      clearTimeout(timer),
+    );
+  }
+
+  blobToResizedDataUri(blob, maxDimension, format, quality) {
+    return new Promise((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(blob);
+      const img = new Image();
+      img.decoding = "async";
+      img.onload = () => {
+        try {
+          const srcW = img.naturalWidth || img.width;
+          const srcH = img.naturalHeight || img.height;
+          if (!srcW || !srcH) throw new Error("Invalid image dimensions");
+          const scale = Math.min(1, maxDimension / Math.max(srcW, srcH));
+          const width = Math.max(1, Math.round(srcW * scale));
+          const height = Math.max(1, Math.round(srcH * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) throw new Error("Canvas context unavailable");
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUri = canvas.toDataURL(format, quality);
+          URL.revokeObjectURL(objectUrl);
+          resolve(dataUri);
+        } catch (err) {
+          URL.revokeObjectURL(objectUrl);
+          reject(err);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Image load failed"));
+      };
+      img.src = objectUrl;
+    });
+  }
+
+  async runWithConcurrency(items, limit, workerFn, shouldStopFn = null) {
+    let index = 0;
+    const runner = async () => {
+      while (index < items.length) {
+        if (shouldStopFn && shouldStopFn()) return;
+        const curr = index++;
+        await workerFn(items[curr], curr);
+      }
+    };
+    const workers = Array.from({ length: Math.min(limit, items.length) }, () =>
+      runner(),
+    );
+    await Promise.all(workers);
+  }
+
+  async exportToJSON() {
+    if (this.cy.nodes().length === 0) {
+      this.showToast("No data to export!");
+      return;
+    }
+
+    this.showToast("Embedding avatars for export...");
+    const cfg = this.getAvatarEmbedConfig();
+    const graphData = this.cy.json().elements;
+    const nodes = Array.isArray(graphData.nodes) ? graphData.nodes : [];
+    const stats = {
+      embeddedCount: 0,
+      reusedCount: 0,
+      skippedCount: 0,
+      stoppedByCap: false,
+    };
+    let totalEmbeddedBytes = 0;
+
+    const shouldStop = () => stats.stoppedByCap;
+    await this.runWithConcurrency(
+      nodes,
+      cfg.concurrency,
+      async (node) => {
+        const data = node && node.data ? node.data : null;
+        if (!data) {
+          stats.skippedCount++;
+          return;
+        }
+
+        if (
+          this.isEmbeddedAvatar(data.avatarEmbedded) &&
+          data.avatarEmbedVersion === cfg.version
+        ) {
+          stats.reusedCount++;
+          totalEmbeddedBytes += this.measureStringBytes(data.avatarEmbedded);
+          if (totalEmbeddedBytes >= cfg.maxTotalBytes) {
+            stats.stoppedByCap = true;
+          }
+          return;
+        }
+
+        if (stats.stoppedByCap) {
+          stats.skippedCount++;
+          return;
+        }
+
+        const candidateUrl = this.toAvatarFetchUrl(data.image || data.avatar || "");
+        if (!candidateUrl || candidateUrl.startsWith("data:")) {
+          stats.skippedCount++;
+          return;
+        }
+
+        try {
+          const res = await this.fetchWithTimeout(candidateUrl, cfg.timeoutMs);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const blob = await res.blob();
+          const dataUri = await this.blobToResizedDataUri(
+            blob,
+            cfg.maxDimension,
+            cfg.format,
+            cfg.quality,
+          );
+          const byteLen = this.measureStringBytes(dataUri);
+          if (totalEmbeddedBytes + byteLen > cfg.maxTotalBytes) {
+            stats.stoppedByCap = true;
+            stats.skippedCount++;
+            return;
+          }
+
+          data.avatarEmbedded = dataUri;
+          data.avatarEmbedVersion = cfg.version;
+          totalEmbeddedBytes += byteLen;
+          stats.embeddedCount++;
+        } catch (_err) {
+          stats.skippedCount++;
+        }
+      },
+      shouldStop,
+    );
+
+    const exportObj = this.buildJsonExportObject(graphData, {
+      exportFeatures: {
+        embeddedAvatars: true,
+        avatarEmbedVersion: cfg.version,
+      },
+      avatarStats: {
+        embeddedCount: stats.embeddedCount,
+        reusedCount: stats.reusedCount,
+        skippedCount: stats.skippedCount,
+        stoppedByCap: stats.stoppedByCap,
+      },
+    });
+
+    const filename = this.getJsonExportFilename();
+    this.downloadJsonObject(exportObj, filename);
+    this.showToast(
+      `Embedded export complete: ${stats.embeddedCount} embedded, ${stats.reusedCount} reused, ${stats.skippedCount} skipped${stats.stoppedByCap ? ", capped" : ""}`,
+    );
+  }
+
+
+  normalizeImportedPayload(parsed) {
+    if (Array.isArray(parsed)) {
+      return { elements: parsed, uiState: null };
+    }
+
+    if (parsed && parsed.elements) {
+      const elements = Array.isArray(parsed.elements)
+        ? parsed.elements
+        : [...(parsed.elements.nodes || []), ...(parsed.elements.edges || [])];
+      return { elements, uiState: parsed.uiState || null };
+    }
+
+    return {
+      elements: [...((parsed && parsed.nodes) || []), ...((parsed && parsed.edges) || [])],
+      uiState: null,
+    };
+  }
+
+  mergeImportedElements(elements) {
+    const newElements = [];
+    for (const el of elements) {
+      const id = el.data && el.data.id;
+      if (id && !this.cy.getElementById(id).empty()) {
+        const existing = this.cy.getElementById(id);
+        if (el.data) {
+          Object.entries(el.data).forEach(([k, v]) => {
+            if (v !== undefined && v !== null && v !== "") {
+              existing.data(k, v);
+            }
+          });
+        }
+      } else {
+        newElements.push(el);
+      }
+    }
+    return newElements;
+  }
+
+  addElementsAndRebuildEdgeSet(newElements) {
+    let addedElements;
+    this.cy.batch(() => {
+      addedElements = this.cy.add(newElements);
+      addedElements.edges().forEach((edge) => {
+        const s = edge.data("source");
+        const t = edge.data("target");
+        if (s && t) this.edgeSet.add(`${s}->${t}`);
+      });
+    });
+    return addedElements;
+  }
+
+  positionImportedNodes(addedElements, existingNodeCount) {
+    let needsLayout = false;
+
+    if (existingNodeCount > 0) {
+      const cx = this.cy.width() / 2;
+      const cy = this.cy.height() / 2;
+      addedElements.nodes().forEach((n) => {
+        const pos = n.position();
+        if (!pos || (pos.x === 0 && pos.y === 0)) {
+          const rad = this.settings.scatterRadius;
+          n.position({
+            x: cx + (Math.random() * rad - rad / 2),
+            y: cy + (Math.random() * rad - rad / 2),
+          });
+        }
+      });
+    } else {
+      const nodesWithoutPos = addedElements.nodes().filter((n) => {
+        const pos = n.position();
+        return !pos || (pos.x === 0 && pos.y === 0);
+      });
+      if (nodesWithoutPos.length > 0) {
+        needsLayout = true;
+      }
+    }
+
+    return needsLayout;
+  }
+
+  runImportLayoutOrFit(needsLayout) {
+    if (needsLayout) {
+      this.cy
+        .layout({
+          name: "cose",
+          padding: 50,
+          idealEdgeLength: this.settings.idealEdgeLength,
+          nodeRepulsion: this.settings.nodeRepulsion,
+        })
+        .run();
+      return;
+    }
+    this.cy.fit(null, 50);
+  }
+
+  callIfFn(methodName, ...args) {
+    if (typeof this[methodName] === "function") {
+      this[methodName](...args);
+    }
+  }
+
+  applyImportedUiState(uiState) {
+    if (!uiState) return;
+
+    if (uiState.ffpMode !== undefined) this.ffpMode = uiState.ffpMode;
+    if (uiState.ffpDepth !== undefined) this.ffpDepth = uiState.ffpDepth;
+    if (uiState.ffpRankLabelMode !== undefined) {
+      this.ffpRankLabelMode = uiState.ffpRankLabelMode;
+    }
+
+    if (uiState.isDotMode !== undefined) {
+      this.isDotMode = uiState.isDotMode;
+      const avatarDotBtn = document.getElementById("avatar-dot-toggle-btn");
+      if (avatarDotBtn) {
+        avatarDotBtn.classList.toggle("active", this.isDotMode);
+      }
+      if (this.isDotMode) {
+        this.cy.nodes().addClass("dot-mode");
+      } else {
+        this.cy.nodes().removeClass("dot-mode");
+      }
+    }
+
+    if (uiState.isLightMode !== undefined) {
+      this.isLightMode = uiState.isLightMode;
+      const themeBtnIcon = document.querySelector("#theme-toggle-btn i");
+      if (this.isLightMode) {
+        document.documentElement.classList.add("light-mode");
+        document.body.classList.add("light-mode");
+        if (themeBtnIcon) themeBtnIcon.setAttribute("data-lucide", "moon");
+      } else {
+        document.documentElement.classList.remove("light-mode");
+        document.body.classList.remove("light-mode");
+        if (themeBtnIcon) themeBtnIcon.setAttribute("data-lucide", "sun");
+      }
+      if (typeof lucide !== "undefined") lucide.createIcons();
+      this.updateStylesheetForMode();
+    }
+
+    if (uiState.globalGhostMode !== undefined) {
+      this.globalGhostMode = uiState.globalGhostMode;
+      const ghostBtn = document.getElementById("global-ghost-btn");
+      if (ghostBtn) ghostBtn.classList.toggle("active", this.globalGhostMode);
+      this.updateGlobalGhost();
+    }
+
+    if (uiState.showMutuals !== undefined) {
+      this.showMutuals = uiState.showMutuals;
+      const mutualBtn = document.getElementById("highlight-mutuals-btn");
+      if (mutualBtn) mutualBtn.classList.toggle("active", this.showMutuals);
+      this.updateStylesheetForMode();
+    }
+
+    this.callIfFn("updateFFPUI");
+  }
+
+  refreshImportedOverlays() {
+    this.callIfFn("refreshNoteBadges");
+    this.callIfFn("refreshLockBadges");
+    this.callIfFn("refreshSeedBadges");
+    if (this.collapsedHubs) this.collapsedHubs.clear();
+    this.callIfFn("refreshSingletonBadges");
   }
 
   importFromJSON(file) {
@@ -3420,156 +3765,19 @@ class GraphApp {
       try {
         const parsed = JSON.parse(e.target.result);
         const existingNodeCount = this.cy.nodes().length;
+        const { elements, uiState } = this.normalizeImportedPayload(parsed);
+        const newElements = this.mergeImportedElements(elements);
+        const addedElements = this.addElementsAndRebuildEdgeSet(newElements);
+        const needsLayout = this.positionImportedNodes(
+          addedElements,
+          existingNodeCount,
+        );
 
-        // Normalise to flat array — export saves {nodes:[...], edges:[...]}
-        let elements;
-        let uiState = null;
-
-        if (Array.isArray(parsed)) {
-          elements = parsed; // Legacy flat array
-        } else if (parsed.elements) {
-          // New format with uiState
-          if (Array.isArray(parsed.elements)) {
-            elements = parsed.elements;
-          } else {
-            elements = [
-              ...(parsed.elements.nodes || []),
-              ...(parsed.elements.edges || []),
-            ];
-          }
-          uiState = parsed.uiState;
-        } else {
-          // Legacy object format
-          elements = [...(parsed.nodes || []), ...(parsed.edges || [])];
-        }
-
-        // Merge: only add elements whose IDs don't already exist
-        const newElements = [];
-        for (const el of elements) {
-          const id = el.data && el.data.id;
-          if (id && !this.cy.getElementById(id).empty()) {
-            // Element already exists — update its data in-place
-            const existing = this.cy.getElementById(id);
-            if (el.data) {
-              Object.entries(el.data).forEach(([k, v]) => {
-                if (v !== undefined && v !== null && v !== "") {
-                  existing.data(k, v);
-                }
-              });
-            }
-          } else {
-            newElements.push(el);
-          }
-        }
-
-        let addedElements;
-        this.cy.batch(() => {
-          addedElements = this.cy.add(newElements);
-          // Rebuild edgeSet from newly added edges
-          addedElements.edges().forEach((edge) => {
-            const s = edge.data("source");
-            const t = edge.data("target");
-            if (s && t) this.edgeSet.add(`${s}->${t}`);
-          });
-        });
-
-        // Scatter new nodes that land at 0,0 (no saved position)
-        let needsLayout = false;
-        if (existingNodeCount > 0) {
-          const cx = this.cy.width() / 2;
-          const cy = this.cy.height() / 2;
-          addedElements.nodes().forEach((n) => {
-            const pos = n.position();
-            if (!pos || (pos.x === 0 && pos.y === 0)) {
-              const rad = this.settings.scatterRadius;
-              n.position({
-                x: cx + (Math.random() * rad - rad / 2),
-                y: cy + (Math.random() * rad - rad / 2),
-              });
-            }
-          });
-        } else {
-          // It's a fresh graph. Check if ALL imported nodes lack positions (e.g. legacy/blank import)
-          const nodesWithoutPos = addedElements.nodes().filter((n) => {
-            const pos = n.position();
-            return !pos || (pos.x === 0 && pos.y === 0);
-          });
-
-          // If any node was missing a position, we must run the layout to organize them
-          if (nodesWithoutPos.length > 0) {
-            needsLayout = true;
-          }
-        }
-
-        if (needsLayout) {
-          this.cy
-            .layout({ name: "cose", padding: 50, idealEdgeLength: 60 })
-            .run();
-        } else {
-          // Nodes have saved positions, but the camera is at default 0,0
-          // We must center the camera on the newly loaded graph
-          this.cy.fit(null, 50);
-        }
-
+        this.runImportLayoutOrFit(needsLayout);
         this.updateStats();
-        this.updateDropown();
+        this.updateDropdown();
+        this.applyImportedUiState(uiState);
 
-        if (uiState) {
-          if (uiState.ffpMode !== undefined) this.ffpMode = uiState.ffpMode;
-          if (uiState.ffpDepth !== undefined) this.ffpDepth = uiState.ffpDepth;
-          if (uiState.ffpRankLabelMode !== undefined)
-            this.ffpRankLabelMode = uiState.ffpRankLabelMode;
-          if (uiState.isDotMode !== undefined) {
-            this.isDotMode = uiState.isDotMode;
-            const avatarDotBtn = document.getElementById(
-              "avatar-dot-toggle-btn",
-            );
-            if (avatarDotBtn) {
-              avatarDotBtn.classList.toggle("active", this.isDotMode);
-            }
-            if (this.isDotMode) {
-              this.cy.nodes().addClass("dot-mode");
-            } else {
-              this.cy.nodes().removeClass("dot-mode");
-            }
-          }
-          if (uiState.isLightMode !== undefined) {
-            this.isLightMode = uiState.isLightMode;
-            const themeBtnIcon = document.querySelector("#theme-toggle-btn i");
-            if (this.isLightMode) {
-              document.documentElement.classList.add("light-mode");
-              document.body.classList.add("light-mode");
-              if (themeBtnIcon)
-                themeBtnIcon.setAttribute("data-lucide", "moon");
-            } else {
-              document.documentElement.classList.remove("light-mode");
-              document.body.classList.remove("light-mode");
-              if (themeBtnIcon) themeBtnIcon.setAttribute("data-lucide", "sun");
-            }
-            if (typeof lucide !== "undefined") lucide.createIcons();
-            this.updateStylesheetForMode();
-          }
-          if (uiState.globalGhostMode !== undefined) {
-            this.globalGhostMode = uiState.globalGhostMode;
-            const ghostBtn = document.getElementById("global-ghost-btn");
-            if (ghostBtn)
-              ghostBtn.classList.toggle("active", this.globalGhostMode);
-            this.updateGlobalGhost();
-          }
-          if (uiState.showMutuals !== undefined) {
-            this.showMutuals = uiState.showMutuals;
-            const mutualBtn = document.getElementById("highlight-mutuals-btn");
-            if (mutualBtn)
-              mutualBtn.classList.toggle("active", this.showMutuals);
-            this.updateStylesheetForMode(); // ensure it applies here as well
-          }
-          if (typeof this.updateFFPUI === "function") {
-            this.updateFFPUI();
-          }
-        }
-
-        // Defer select so it fires AFTER any layout animation (cose is async)
-        // Select only the genuinely new nodes so user can drag them immediately
         setTimeout(() => {
           addedElements.nodes().select();
         }, 200);
@@ -3585,23 +3793,7 @@ class GraphApp {
           this.applyFFPStyles();
         }
 
-        // Refresh note badges for any imported nodes that have notes
-        if (typeof this.refreshNoteBadges === "function") {
-          this.refreshNoteBadges();
-        }
-        // Refresh lock badges for any imported locked nodes
-        if (typeof this.refreshLockBadges === "function") {
-          this.refreshLockBadges();
-        }
-        // Refresh seed badges for any imported seed nodes
-        if (typeof this.refreshSeedBadges === "function") {
-          this.refreshSeedBadges();
-        }
-        // Refresh singleton collapse badges (clear stale hub state first)
-        if (typeof this.refreshSingletonBadges === "function") {
-          if (this.collapsedHubs) this.collapsedHubs.clear();
-          this.refreshSingletonBadges();
-        }
+        this.refreshImportedOverlays();
       } catch (err) {
         console.error(err);
         this.showToast("Error parsing JSON file. Is it corrupt?");

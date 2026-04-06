@@ -605,6 +605,43 @@ body.light-mode {
   gap: 12px;
 }
 
+.form-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ui-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ui-hover);
+  outline: none;
+  margin: 10px 0;
+}
+
+.ui-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--ui-active);
+  cursor: pointer;
+  border: 4px solid var(--ui-bg);
+  box-shadow: 0 0 0 1px var(--ui-border);
+  transition: transform 100ms ease;
+}
+
+.ui-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
 /* Standard Buttons inside Modals */
 .btn {
   padding: 8px 16px;

@@ -21,6 +21,8 @@
 
     <!-- Cytoscape -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-svg@0.4.0/cytoscape-svg.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-canvas@3.0.1/dist/cytoscape-canvas.min.js"></script>
     <link rel="stylesheet" href="style.css?v=1023" />
 
     <!-- Shared JS -->
@@ -157,6 +159,20 @@
           >
             <i data-lucide="image"></i>
           </button>
+          <button
+            class="subtool-btn"
+            id="export-svg-btn"
+            title="Export graph as SVG (High Res)"
+          >
+            <i data-lucide="file-code"></i>
+          </button>
+          <button
+            class="subtool-btn"
+            id="export-csv-btn"
+            title="Export node metadata to CSV"
+          >
+            <i data-lucide="file-spreadsheet"></i>
+          </button>
           <!-- Hidden file input for uploading JSON -->
           <input
             type="file"
@@ -233,6 +249,13 @@
           >
             <i data-lucide="frame"></i>
           </button>
+          <button
+            class="subtool-btn"
+            id="hull-toggle-btn"
+            title="Show Cluster Hulls (Group boundaries)"
+          >
+            <i data-lucide="lasso"></i>
+          </button>
           <div
             style="
               width: 24px;
@@ -293,6 +316,13 @@
             title="Draw Manual Link"
           >
             <i data-lucide="git-commit"></i>
+          </button>
+          <button
+            class="subtool-btn mt-2"
+            id="bulk-note-btn"
+            title="Bulk Annotations (Bulk Notes)"
+          >
+            <i data-lucide="edit"></i>
           </button>
         </div>
 
@@ -696,6 +726,84 @@
           <button id="download-debug-btn" class="btn btn-primary">
             Download JSON
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preferences Modal -->
+    <div id="pref-modal-backdrop" class="modal-backdrop hidden">
+      <div id="pref-modal" class="modal">
+        <div class="modal-header">
+          <h2>Graph Preferences</h2>
+          <button id="close-pref-modal-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-section">
+            <h3>Layout & Ingest</h3>
+            <div class="form-group">
+              <label for="pref-scatter-radius">
+                New Node Scatter Radius (<span id="val-scatter-radius">300</span>px)
+              </label>
+              <input type="range" id="pref-scatter-radius" min="100" max="800" step="50" value="300" class="ui-slider" />
+            </div>
+            <div class="form-group">
+              <label for="pref-ideal-edge">
+                Ideal Edge Length (<span id="val-ideal-edge">120</span>px)
+              </label>
+              <input type="range" id="pref-ideal-edge" min="40" max="300" step="10" value="120" class="ui-slider" />
+            </div>
+            <div class="form-group">
+              <label for="pref-repulsion">
+                Node Repulsion (<span id="val-repulsion">12000</span>)
+              </label>
+              <input type="range" id="pref-repulsion" min="2000" max="30000" step="1000" value="12000" class="ui-slider" />
+            </div>
+          </div>
+          <div class="form-section" style="margin-top: 12px; border-top: 1px solid var(--ui-border); padding-top: 12px;">
+            <h3>Default Appearance</h3>
+            <div class="form-group">
+              <label>Default Avatar Style:</label>
+              <div class="radio-group">
+                <label><input type="radio" name="pref-avatar-style" value="avatar" checked /> Avatar</label>
+                <label><input type="radio" name="pref-avatar-style" value="dot" /> Dot</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-pref-btn" class="btn btn-secondary">Cancel</button>
+          <button id="save-pref-btn" class="btn btn-primary">Apply Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bulk Note Modal -->
+    <div id="bulk-note-backdrop" class="modal-backdrop hidden">
+      <div id="bulk-note-modal" class="modal">
+        <div class="modal-header">
+          <h2>Bulk Annotations (Bulk Notes)</h2>
+          <button id="close-bulk-note-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size: 13px; color: var(--ui-muted); margin-bottom: 8px;">
+            Paste text where each line contains a <strong>username</strong> and a <strong>note</strong> separated by a colon (e.g., <code>username: This is a note</code>). Matches are case-insensitive.
+          </p>
+          <div class="form-group">
+            <textarea
+              id="bulk-note-area"
+              class="paste-area"
+              style="height: 200px;"
+              placeholder="user1: Target's family member&#10;user2: Frequent collaborator"
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-bulk-note-btn" class="btn btn-secondary">Cancel</button>
+          <button id="submit-bulk-note-btn" class="btn btn-primary">Process Bulk Notes</button>
         </div>
       </div>
     </div>

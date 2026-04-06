@@ -12,11 +12,20 @@ class GraphApp {
 
     this.cy = null;
     this.cy = null;
-    this.isDarkMode = true; // Still used by some logic, but moving toward tracking light mode
+    this.isDarkMode = true;
     this.isLightMode = false;
+
+    // Default User Preferences
+    this.settings = {
+      scatterRadius: 300,
+      idealEdgeLength: 120,
+      nodeRepulsion: 12000,
+      avatarStyle: "avatar", // "avatar" or "dot"
+    };
 
     this.initCy();
     this.initEventListeners();
+    this.initCanvas();
   }
 
   initCy() {
@@ -966,6 +975,9 @@ class GraphApp {
         activeSubtoolBtn.classList.remove("active");
         activeSubtoolBtn = null;
       }
+      // Clear any pasted content
+      const pasteArea = document.getElementById("html-paste-area");
+      if (pasteArea) pasteArea.innerHTML = "";
       ingestModalBackdrop.classList.add("hidden");
     };
 
@@ -996,6 +1008,74 @@ class GraphApp {
       this.handleImport();
       closeIngestModal();
     });
+
+    // --- Auto-detect seed + ingest type from pasted TikTok follower/following panel ---
+    const ingestPasteArea = document.getElementById("html-paste-area");
+    if (ingestPasteArea) {
+      ingestPasteArea.addEventListener("paste", () => {
+        // Use setTimeout so the DOM updates with pasted content first
+        setTimeout(() => {
+          const rawText = ingestPasteArea.innerText || ingestPasteArea.textContent;
+          const lines = rawText.split("\n").map(l => l.trim()).filter(l => l);
+          if (lines.length < 2) return;
+
+          // The first non-empty line of a TikTok follower/following panel
+          // is the seed username (e.g. "fk1time")
+          const candidateSeed = lines[0].replace(/[@]/g, "");
+
+          // Try to match against known seeds in the dropdown
+          const seedSelect = document.getElementById("active-seed");
+          if (!seedSelect) return;
+
+          let matched = false;
+          for (let i = 0; i < seedSelect.options.length; i++) {
+            if (seedSelect.options[i].value === candidateSeed) {
+              seedSelect.value = candidateSeed;
+              matched = true;
+              break;
+            }
+          }
+
+          if (!matched) return; // First line doesn't match a known seed, bail
+
+          // Auto-detect ingest type from header lines like "Following 19" or "Followers 1446"
+          // Scan the first few lines for these keywords
+          let detectedType = null;
+          for (let i = 1; i < Math.min(lines.length, 5); i++) {
+            if (/^following\s+\d/i.test(lines[i])) {
+              detectedType = "following";
+              break;
+            }
+            if (/^followers\s+\d/i.test(lines[i])) {
+              detectedType = "followers";
+              break;
+            }
+          }
+
+          if (detectedType) {
+            // Switch the radio button to the detected type
+            const radio = document.querySelector(`input[name="ingest-type"][value="${detectedType}"]`);
+            if (radio) {
+              radio.checked = true;
+              radio.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+          } else {
+            // If we matched a seed but couldn't determine the type,
+            // at least switch away from "seed" mode since this is clearly a list
+            const currentType = document.querySelector('input[name="ingest-type"]:checked')?.value;
+            if (currentType === "seed") {
+              const followingRadio = document.querySelector('input[name="ingest-type"][value="following"]');
+              if (followingRadio) {
+                followingRadio.checked = true;
+                followingRadio.dispatchEvent(new Event("change", { bubbles: true }));
+              }
+            }
+          }
+
+          this.showToast(`Auto-detected seed: @${candidateSeed}${detectedType ? ` (${detectedType})` : ""}`);
+        }, 100);
+      });
+    }
 
     // Snap to Grid Logic
     const btnSnapGrid = document.getElementById("snap-grid-btn");
@@ -1151,6 +1231,163 @@ class GraphApp {
       }
     });
 
+    // Preferences Modal Logic
+    const btnPreferences = document.querySelector('[data-action="Preferences"]');
+    const prefModalBackdrop = document.getElementById("pref-modal-backdrop");
+    const btnClosePref = document.getElementById("close-pref-modal-btn");
+    const btnCancelPref = document.getElementById("cancel-pref-btn");
+    const btnSavePref = document.getElementById("save-pref-btn");
+
+    const openPrefModal = () => {
+      if (!btnPreferences) return;
+      btnPreferences.classList.add("active");
+      
+      // Populate fields from current settings
+      document.getElementById("pref-scatter-radius").value = this.settings.scatterRadius;
+      document.getElementById("val-scatter-radius").textContent = this.settings.scatterRadius;
+      
+      document.getElementById("pref-ideal-edge").value = this.settings.idealEdgeLength;
+      document.getElementById("val-ideal-edge").textContent = this.settings.idealEdgeLength;
+      
+      document.getElementById("pref-repulsion").value = this.settings.nodeRepulsion;
+      document.getElementById("val-repulsion").textContent = this.settings.nodeRepulsion;
+
+      const avatarRad = document.querySelector(`input[name="pref-avatar-style"][value="${this.settings.avatarStyle}"]`);
+      if (avatarRad) avatarRad.checked = true;
+
+      prefModalBackdrop.classList.remove("hidden");
+    };
+
+    const closePrefModal = () => {
+      if (btnPreferences) btnPreferences.classList.remove("active");
+      prefModalBackdrop.classList.add("hidden");
+    };
+
+    if (btnPreferences) {
+      btnPreferences.addEventListener("click", openPrefModal);
+    }
+    if (btnClosePref) btnClosePref.addEventListener("click", closePrefModal);
+    if (btnCancelPref) btnCancelPref.addEventListener("click", closePrefModal);
+
+    // Sync slider display values
+    ["scatter-radius", "ideal-edge", "repulsion"].forEach(id => {
+      const input = document.getElementById(`pref-${id}`);
+      const val = document.getElementById(`val-${id}`);
+      if (input && val) {
+        input.addEventListener("input", () => {
+          val.textContent = input.value;
+        });
+      }
+    });
+
+    if (btnSavePref) {
+      btnSavePref.addEventListener("click", () => {
+        this.settings.scatterRadius = parseInt(document.getElementById("pref-scatter-radius").value);
+        this.settings.idealEdgeLength = parseInt(document.getElementById("pref-ideal-edge").value);
+        this.settings.nodeRepulsion = parseInt(document.getElementById("pref-repulsion").value);
+        
+        const avatarStyle = document.querySelector('input[name="pref-avatar-style"]:checked').value;
+        const styleChanged = (this.settings.avatarStyle !== avatarStyle);
+        this.settings.avatarStyle = avatarStyle;
+
+        if (styleChanged) {
+          this.isDotMode = (this.settings.avatarStyle === "dot");
+          const avatarDotBtn = document.getElementById("avatar-dot-toggle-btn");
+          if (avatarDotBtn) avatarDotBtn.classList.toggle("active", this.isDotMode);
+          
+          if (this.isDotMode) this.cy.nodes().addClass("dot-mode");
+          else this.cy.nodes().removeClass("dot-mode");
+        }
+
+        this.showToast("Preferences updated.");
+        closePrefModal();
+      });
+    }
+
+    // Bulk Note Modal Logic
+    const btnBulkNote = document.getElementById("bulk-note-btn");
+    const bulkNoteBackdrop = document.getElementById("bulk-note-backdrop");
+    const btnCloseBulkNote = document.getElementById("close-bulk-note-btn");
+    const btnCancelBulkNote = document.getElementById("cancel-bulk-note-btn");
+    const btnSubmitBulkNote = document.getElementById("submit-bulk-note-btn");
+
+    const openBulkNoteModal = () => {
+      if (!btnBulkNote) return;
+      btnBulkNote.classList.add("active");
+
+      const area = document.getElementById("bulk-note-area");
+      const selectedNodes = this.cy.nodes(":selected");
+
+      if (selectedNodes.length > 0) {
+        // Build alphabetical list of @usernames
+        const userList = selectedNodes
+          .toArray()
+          .map((n) => `@${n.id()} : `)
+          .sort()
+          .join("\n");
+        area.value = userList;
+      } else {
+        area.value = "";
+      }
+
+      bulkNoteBackdrop.classList.remove("hidden");
+      area.focus();
+    };
+
+    const closeBulkNoteModal = () => {
+      if (btnBulkNote) btnBulkNote.classList.remove("active");
+      bulkNoteBackdrop.classList.add("hidden");
+    };
+
+    if (btnBulkNote) {
+      btnBulkNote.addEventListener("click", openBulkNoteModal);
+    }
+    if (btnCloseBulkNote) btnCloseBulkNote.addEventListener("click", closeBulkNoteModal);
+    if (btnCancelBulkNote) btnCancelBulkNote.addEventListener("click", closeBulkNoteModal);
+
+    if (btnSubmitBulkNote) {
+      btnSubmitBulkNote.addEventListener("click", () => {
+        const area = document.getElementById("bulk-note-area");
+        const raw = area.value.trim();
+        if (!raw) {
+          this.showToast("Please enter some notes first!");
+          return;
+        }
+
+        const lines = raw.split("\n");
+        let updateCount = 0;
+
+        this.saveState();
+        this.cy.batch(() => {
+          lines.forEach(line => {
+            const colonIdx = line.indexOf(":");
+            if (colonIdx === -1) return;
+
+            // Strip the '@' if the user included it
+            let user = line.substring(0, colonIdx).trim().replace(/^@/, "").toLowerCase();
+            const note = line.substring(colonIdx + 1).trim();
+            if (!user || !note) return;
+
+            // Find node by ID
+            const node = this.cy.getElementById(user);
+            if (!node.empty()) {
+              node.data("note", note);
+              updateCount++;
+            }
+          });
+        });
+
+        if (updateCount > 0) {
+          this.refreshNoteBadges();
+          this.showToast(`Updated ${updateCount} node${updateCount !== 1 ? "s" : ""} with notes.`);
+          area.value = "";
+          closeBulkNoteModal();
+        } else {
+          this.showToast("No matching usernames found. Check your spelling!");
+        }
+      });
+    }
+
     // JSON Export/Import Events
     const exportBtn = document.getElementById("export-json-btn");
     if (exportBtn) {
@@ -1170,12 +1407,34 @@ class GraphApp {
           scale: 2,         // 2× resolution for crisp export
           bg,
         });
-        const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-        const a = document.createElement("a");
-        a.href = dataUri;
-        a.download = `tiktok-graph-${ts}.png`;
-        a.click();
+        this.downloadFile(dataUri, `tiktok-graph-${this.getTimestamp()}.png`);
         this.showToast("Graph exported as PNG.");
+      });
+    }
+
+    // SVG Export
+    const exportSvgBtn = document.getElementById("export-svg-btn");
+    if (exportSvgBtn) {
+      exportSvgBtn.addEventListener("click", () => {
+        const bg = this.isLightMode ? "#f8f9fa" : "#0a0d13";
+        // cytoscape-svg extension provides this method
+        const svgContent = this.cy.svg({
+          full: true,
+          scale: 1,
+          bg: bg,
+        });
+        const blob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        this.downloadFile(url, `tiktok-graph-${this.getTimestamp()}.svg`);
+        this.showToast("Graph exported as High-Res SVG.");
+      });
+    }
+
+    // CSV Metadata Export
+    const exportCsvBtn = document.getElementById("export-csv-btn");
+    if (exportCsvBtn) {
+      exportCsvBtn.addEventListener("click", () => {
+        this.exportToCSV();
       });
     }
 
@@ -1320,6 +1579,19 @@ class GraphApp {
       clearDeletionHistory.addEventListener("click", () => {
         this.deletionLog = [];
         renderDeletionHistory();
+        this.showToast("Deletion history cleared.");
+      });
+    }
+
+    // Hull Toggle
+    const hullToggleBtn = document.getElementById("hull-toggle-btn");
+    if (hullToggleBtn) {
+      hullToggleBtn.addEventListener("click", () => {
+        this.showHulls = !this.showHulls;
+        hullToggleBtn.classList.toggle("active", this.showHulls);
+        // Standard way to notify extensions that a redraw/render is needed
+        this.cy.emit("render"); 
+        this.showToast(this.showHulls ? "Cluster hulls enabled" : "Cluster hulls disabled");
       });
     }
 
@@ -1328,15 +1600,16 @@ class GraphApp {
 
     if (reheatBtn) {
       reheatBtn.addEventListener("click", () => {
-        const selectedNodes = this.cy.nodes(":selected");
-        const targetNodes =
-          selectedNodes.length > 0 ? selectedNodes : this.cy.elements();
-        const isGlobal = selectedNodes.length === 0;
+        const isGlobal = this.cy.nodes(":selected").length === 0;
+        const targetNodes = isGlobal
+          ? this.cy.nodes().not(":locked")
+          : this.cy.nodes(":selected");
+
+        if (targetNodes.length === 0) return;
 
         this.saveState();
         this.showToast(isGlobal ? "Reheating graph…" : "Reheating cluster…");
 
-        let bb = targetNodes.boundingBox();
         // Give the bounding box plenty of space so the physics engine can push nodes apart
         if (bb.w < 1200) {
           bb.x1 -= 600;
@@ -1365,8 +1638,8 @@ class GraphApp {
               animate: true,
               animationDuration: 800,
               boundingBox: { x1: bb.x1, y1: bb.y1, w: bb.w, h: bb.h },
-              spacingFactor: 1.1,
-              minNodeSpacing: 30,
+              spacingFactor: 1.6,
+              minNodeSpacing: 60,
               avoidOverlap: true,
             };
 
@@ -1425,7 +1698,7 @@ class GraphApp {
 
             // --- Global Scale Pass ---
             // Scale everything afterwards to give clusters breathing room
-            const scaleDir = isGlobal ? 3.0 : 1.5; 
+            const scaleDir = isGlobal ? 3.0 : 2.5; 
             const bbAfterLeaves = targetNodes.boundingBox();
             const center = {
               x: (bbAfterLeaves.x1 + bbAfterLeaves.x2) / 2,
@@ -2015,8 +2288,24 @@ class GraphApp {
         hoverDisplayName.textContent = data.label || data.id;
         hoverUsername.textContent = `@${data.id}`;
         hoverBio.textContent = data.bio || "No bio available.";
-        hoverFollowing.textContent = data.following || "Unknown";
-        hoverFollowers.textContent = data.followers || "Unknown";
+        // Total counts from the profile
+        const totalFollowing = data.following || "Unknown";
+        const totalFollowers = data.followers || "Unknown";
+
+        // Compute actual ingested counts from graph edges
+        const nodeEle = this.cy.getElementById(data.id);
+        let ingestedFollowing = 0;
+        let ingestedFollowers = 0;
+        if (!nodeEle.empty()) {
+          nodeEle.connectedEdges().forEach(edge => {
+            if (edge.data("source") === data.id) ingestedFollowing++;
+            if (edge.data("target") === data.id) ingestedFollowers++;
+          });
+        }
+
+        // Display: "68 (10)" with the ingested count in green
+        hoverFollowing.innerHTML = `${totalFollowing}${ingestedFollowing > 0 ? ` <span style="color:#22c55e">(${ingestedFollowing})</span>` : ""}`;
+        hoverFollowers.innerHTML = `${totalFollowers}${ingestedFollowers > 0 ? ` <span style="color:#22c55e">(${ingestedFollowers})</span>` : ""}`;
 
         // Note snippet
         const hoverNoteRow = document.getElementById("hover-note-row");
@@ -2848,9 +3137,15 @@ class GraphApp {
       select.remove(1);
     }
 
-    // Populate with seed nodes, or maybe all nodes
+    // Populate with seed nodes sorted by ingest time (most recent first for default)
     const seeds = this.cy.nodes('[type="seed"]');
-    seeds.forEach((n) => {
+    const seedsArray = seeds.toArray().sort((a, b) => {
+      const tA = a.data("ingestTime") || "";
+      const tB = b.data("ingestTime") || "";
+      return tA.localeCompare(tB); // ascending so last = most recent
+    });
+
+    seedsArray.forEach((n) => {
       const data = n.data();
       const option = document.createElement("option");
       option.value = data.id;
@@ -2858,8 +3153,9 @@ class GraphApp {
       select.appendChild(option);
     });
 
-    if (seeds.length > 0) {
-      select.value = seeds.last().id();
+    // Default to the most recently ingested seed
+    if (seedsArray.length > 0) {
+      select.value = seedsArray[seedsArray.length - 1].id();
     }
   }
 
@@ -2916,8 +3212,11 @@ class GraphApp {
         // If it's a seed ingest, just add the seed node
         if (typeSelect === "seed") {
           profiles.forEach((p) => {
+            const alreadyExists = !this.cy.getElementById(p.id).empty();
             this.addNodeToGraph(p, true);
-            newlyAddedElements.merge(this.cy.getElementById(p.id));
+            const node = this.cy.getElementById(p.id);
+            if (alreadyExists) node.data("_wasExisting", true);
+            newlyAddedElements.merge(node);
           });
         } else {
           // It's a follower/following ingest mapped to an existing seed
@@ -2928,10 +3227,14 @@ class GraphApp {
           const totalNewProfiles = profiles.length;
 
           profiles.forEach((p, index) => {
+            const alreadyExists = !this.cy.getElementById(p.id).empty();
             this.addNodeToGraph(p, false);
 
             const newNode = this.cy.getElementById(p.id);
-            newlyAddedElements.merge(newNode);
+            // Only reposition truly new nodes — existing nodes stay where they are
+            if (!alreadyExists) {
+              newlyAddedElements.merge(newNode);
+            }
 
             // FFP Chronological Rank: index 0 is newest, index L-1 is oldest (Rank 1)
             const rank = totalNewProfiles - index;
@@ -2953,32 +3256,89 @@ class GraphApp {
       overlay.classList.add("hidden");
       this.updateStats();
 
-      // Only layout if this is the first ingest, otherwise leave user's manual dragging intact
+      // Only layout if this is the first ingest, otherwise use smarter positioning
       if (existingNodeCount === 0) {
         this.cy
           .layout({ name: "cose", padding: 50, idealEdgeLength: 60 })
           .run();
-      } else {
-        let center = { x: 0, y: 0 };
-        // If appending to a target seed, scatter around that seed
-        if (typeSelect !== "seed" && targetId) {
-          const targetSeed = this.cy.getElementById(targetId);
-          if (targetSeed && !targetSeed.empty()) {
-            center = targetSeed.position();
-          }
-        } else {
-          // If adding independent seeds to an existing graph, scatter them around the center of the viewport
-          center = { x: this.cy.width() / 2, y: this.cy.height() / 2 };
-        }
-
+      } else if (typeSelect === "seed") {
+        // Seed ingest: only position truly NEW nodes (not existing ones promoted to seed)
+        const viewCenter = {
+          x: this.cy.width() / 2 + (Math.random() * 200 - 100),
+          y: this.cy.height() / 2 + (Math.random() * 200 - 100),
+        };
         newlyAddedElements.nodes().forEach((n) => {
+          // If the node was already in the graph before this ingest, don't move it
+          if (n.data("_wasExisting")) return;
+          const rad = this.settings.scatterRadius;
           n.position({
-            x: center.x + (Math.random() * 300 - 150),
-            y: center.y + (Math.random() * 300 - 150),
+            x: viewCenter.x + (Math.random() * rad * 2 - rad),
+            y: viewCenter.y + (Math.random() * rad * 2 - rad),
           });
         });
+      } else {
+        // Follower/following ingest: fan ALL seed-only-connected nodes around the seed,
+        // then offset the cluster away from existing graph nodes if overlapping.
+        const seedNode = this.cy.getElementById(targetId);
+        const seedPos = seedNode.position();
+
+        // Collect existing singleton neighbors: nodes whose ONLY connections go to this seed
+        const existingSingletons = seedNode.neighborhood("node").filter(n => {
+          if (newlyAddedElements.nodes().contains(n)) return false; // skip newly added
+          // Check all edges: every edge must connect to this seed
+          return n.connectedEdges().every(e =>
+            e.data("source") === targetId || e.data("target") === targetId
+          );
+        });
+
+        // All nodes to fan: new nodes + existing singletons
+        const nodesToFan = newlyAddedElements.nodes().union(existingSingletons);
+        const count = nodesToFan.length;
+        const radius = Math.max(160, count * 16); // Scale radius with node count
+
+        nodesToFan.forEach((n, i) => {
+          const angle = (i / count) * Math.PI * 2;
+          n.position({
+            x: seedPos.x + Math.cos(angle) * radius,
+            y: seedPos.y + Math.sin(angle) * radius,
+          });
+        });
+
+        // The full cluster that moves together: seed + new nodes + existing singletons
+        const clusterNodes = nodesToFan.union(seedNode);
+        const clusterBB = clusterNodes.boundingBox();
+        const existingNodes = this.cy.nodes().difference(clusterNodes);
+
+        if (existingNodes.length > 0) {
+          const existingBB = existingNodes.boundingBox();
+          // Check for bounding-box overlap (with padding)
+          const pad = 80;
+          const overlapsX = clusterBB.x1 - pad < existingBB.x2 && clusterBB.x2 + pad > existingBB.x1;
+          const overlapsY = clusterBB.y1 - pad < existingBB.y2 && clusterBB.y2 + pad > existingBB.y1;
+
+          if (overlapsX && overlapsY) {
+            // Move cluster to the right of the existing graph with padding
+            const offsetX = existingBB.x2 + pad + (clusterBB.w / 2) - (clusterBB.x1 + clusterBB.x2) / 2;
+            const offsetY = (existingBB.y1 + existingBB.y2) / 2 - (clusterBB.y1 + clusterBB.y2) / 2;
+
+            clusterNodes.forEach(n => {
+              const pos = n.position();
+              n.position({ x: pos.x + offsetX, y: pos.y + offsetY });
+            });
+          }
+        }
+
+        // Select seed + newly added nodes (not existing singletons)
+        seedNode.select();
       }
+
+      // Clean up temporary flag
+      newlyAddedElements.nodes().forEach(n => n.removeData("_wasExisting"));
+
       this.showToast("Ingest complete!");
+
+      // Refresh all DOM badges so newly-added seeds get their seedling icon
+      this.refreshSeedBadges();
 
       // Close the primary ingest modal backdrop as well
       const ingestModalBackdrop = document.getElementById(
@@ -3121,9 +3481,10 @@ class GraphApp {
           addedElements.nodes().forEach((n) => {
             const pos = n.position();
             if (!pos || (pos.x === 0 && pos.y === 0)) {
+              const rad = this.settings.scatterRadius;
               n.position({
-                x: cx + (Math.random() * 300 - 150),
-                y: cy + (Math.random() * 300 - 150),
+                x: cx + (Math.random() * rad - rad / 2),
+                y: cy + (Math.random() * rad - rad / 2),
               });
             }
           });
@@ -3279,19 +3640,67 @@ class GraphApp {
         .map((l) => l.trim())
         .filter((l) => l);
       if (lines.length > 0) {
-        // Usually the first line is the ID and second is the display name
-        id = lines[0].replace(/[@]/g, "");
+        // --- Multi-signal username detection ---
+        // TikTok format: display name is ALWAYS line 0, user ID is ALWAYS line 1.
+        // User IDs are ALWAYS lowercase [a-z0-9._]. Display names can have any casing/chars.
 
-        let possibleDisplayName = id;
+        // Signal 1: HTML anchor href containing /@username (strongest)
+        let htmlUsername = null;
+        const profileAnchor = doc.querySelector('a[href*="/@"]');
+        if (profileAnchor) {
+          const hrefMatch = profileAnchor.getAttribute("href").match(/\/@([^?/#]+)/);
+          if (hrefMatch) htmlUsername = hrefMatch[1];
+        }
+
+        // Signal 2: A line starting with @ in the raw text
+        let atPrefixLine = null;
+        for (let i = 0; i < Math.min(lines.length, 3); i++) {
+          if (lines[i].startsWith("@")) {
+            atPrefixLine = lines[i].replace(/^@/, "");
+            break;
+          }
+        }
+
+        // Signal 3: TikTok user IDs are always lowercase alphanumeric + dots + underscores
+        const isValidUserId = (s) => /^[a-z0-9._]+$/.test(s) && s.length > 0;
+
+        let rawFirst  = lines[0].replace(/[@]/g, "");
+        let rawSecond = lines.length > 1 ? lines[1].replace(/[@]/g, "") : "";
+
+        if (htmlUsername) {
+          id = htmlUsername;
+        } else if (atPrefixLine) {
+          id = atPrefixLine;
+        } else if (rawSecond && isValidUserId(rawSecond)) {
+          // TikTok layout: line 0 = display name, line 1 = user ID (preferred)
+          id = rawSecond;
+        } else if (isValidUserId(rawFirst)) {
+          id = rawFirst;
+        } else {
+          // Fallback: treat line 0 as ID
+          id = rawFirst;
+        }
+
+        // Display name: whichever line is NOT the user ID
+        let possibleDisplayName = id; // fallback if only one line
         if (lines.length > 1) {
-          const line2 = lines[1];
-          // If the second line is a known stats keyword or a number, the display name was omitted
-          if (
-            !/^(?:\d+[KMBkmb]?|\d{1,3}(?:,\d{3})*|Following|Followers|Likes)$/i.test(
-              line2,
-            )
-          ) {
-            possibleDisplayName = line2;
+          const cleanFirst = lines[0].replace(/[@]/g, "");
+          const cleanSecond = lines[1].replace(/[@]/g, "");
+          if (cleanSecond === id && cleanFirst !== id) {
+            possibleDisplayName = cleanFirst;
+          } else if (cleanFirst === id && cleanSecond !== id) {
+            // Check line 1 isn't a stats keyword
+            if (
+              !/^(?:\d+[KMBkmb]?|\d{1,3}(?:,\d{3})*|Following|Followers|Likes)$/i.test(
+                cleanSecond,
+              )
+            ) {
+              possibleDisplayName = cleanSecond;
+            }
+          } else {
+            // ID didn't match either line directly (e.g. from HTML anchor)
+            // Use line 0 as display name since TikTok puts it first
+            possibleDisplayName = cleanFirst;
           }
         }
         displayName = possibleDisplayName;
@@ -3409,6 +3818,8 @@ class GraphApp {
       // Node already exists, potentially update it if it's now a seed
       if (isSeed) {
         node.data("type", "seed");
+        // Refresh ingestTime so this seed is recognized as the most recent
+        node.data("ingestTime", new Date().toISOString());
       }
       // Update node fields if the new scrape had more data
       if (profile.bio) node.data("bio", profile.bio);
@@ -3718,6 +4129,149 @@ class GraphApp {
       });
     }
     return dists;
+  }
+
+  // --- Export Utilities ---
+  getTimestamp() {
+    return new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  }
+
+  downloadFile(url, filename) {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+    }, 0);
+  }
+
+  exportToCSV() {
+    const nodes = this.cy.nodes();
+    if (nodes.length === 0) {
+      this.showToast("No data to export!");
+      return;
+    }
+
+    // Define CSV Headers
+    const headers = ["Username (ID)", "Display Name", "Type", "Bio", "Following", "Followers", "Likes", "Notes", "Ingested At"];
+    const rows = [headers];
+
+    nodes.forEach(node => {
+      const d = node.data();
+      const row = [
+        d.id || "",
+        d.label || "",
+        d.type || "normal",
+        (d.bio || "").replace(/\n/g, " "),
+        d.following || "Unknown",
+        d.followers || "Unknown",
+        d.likes || "Unknown",
+        (d.note || "").replace(/<[^>]*>/g, "").replace(/\n/g, " "), // strip HTML from notes
+        d.ingestTime || ""
+      ].map(field => `"${String(field).replace(/"/g, '""')}"`); // CSV escaping
+      rows.push(row);
+    });
+
+    const csvContent = rows.map(r => r.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    this.downloadFile(url, `tiktok-node-data-${this.getTimestamp()}.csv`);
+    this.showToast(`Exported ${nodes.length} nodes to CSV.`);
+  }
+
+  // --- Hull Utilities ---
+  initCanvas() {
+    this.showHulls = false;
+    this.cyCanvas = this.cy.cyCanvas({
+      zIndex: -1, // Behind nodes
+      pixelRatio: window.devicePixelRatio || 1,
+    });
+
+    const ctx = this.cyCanvas.getCanvas().getContext("2d");
+
+    this.cy.on("render", () => {
+      if (!this.showHulls) {
+        this.cyCanvas.clear(ctx);
+        return;
+      }
+      this.updateHulls(ctx);
+    });
+  }
+
+  updateHulls(ctx) {
+    this.cyCanvas.clear(ctx);
+    this.cyCanvas.setTransform(ctx);
+
+    const seeds = this.cy.nodes('[type="seed"]');
+    seeds.forEach(seed => {
+      const cluster = seed.neighborhood().union(seed).nodes().filter(n => n.visible());
+      if (cluster.length < 3) return; // Need at least 3 points for a hull
+
+      const points = cluster.map(node => {
+        const p = node.position();
+        return { x: p.x, y: p.y };
+      });
+
+      const hull = this.getConvexHull(points);
+      if (!hull || hull.length < 3) return;
+      
+      // Get color based on seed ID
+      const id = seed.id();
+      const hue = [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) & 0xffff, 0) % 360;
+      
+      // Much more prominent colors for verification
+      const color = `hsla(${hue}, 80%, 40%, 0.25)`;
+      const strokeColor = `hsla(${hue}, 80%, 40%, 0.6)`;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(hull[0].x, hull[0].y);
+      for (let i = 1; i < hull.length; i++) {
+        ctx.lineTo(hull[i].x, hull[i].y);
+      }
+      ctx.closePath();
+
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 12 / this.cy.zoom(); // Slightly thinner but more opaque
+      ctx.lineJoin = "round";
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+
+  getConvexHull(points) {
+    if (points.length <= 2) return points;
+    
+    // Sort by X, then Y
+    points.sort((a, b) => a.x !== b.x ? a.x - b.x : a.y - b.y);
+
+    const crossProduct = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+
+    const upper = [];
+    for (let p of points) {
+      while (upper.length >= 2 && crossProduct(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) {
+        upper.pop();
+      }
+      upper.push(p);
+    }
+
+    const lower = [];
+    for (let i = points.length - 1; i >= 0; i--) {
+      let p = points[i];
+      while (lower.length >= 2 && crossProduct(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) {
+        lower.pop();
+      }
+      lower.push(p);
+    }
+
+    upper.pop();
+    lower.pop();
+    return upper.concat(lower);
   }
 
   calculateShortestRoute() {

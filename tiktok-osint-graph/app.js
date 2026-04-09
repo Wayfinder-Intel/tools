@@ -16,12 +16,15 @@ class GraphApp {
 
     // Default User Preferences
     this.settings = {
+      layoutStyle: "organic",
       scatterRadius: 300,
       idealEdgeLength: 120,
       nodeRepulsion: 12000,
       snapGrid: 100,
       avatarStyle: "avatar", // "avatar" or "dot"
     };
+
+    this.influenceMode = false;
 
     this.initCy();
     this.initEventListeners();
@@ -62,8 +65,8 @@ class GraphApp {
               `</svg>`
             )}`;
             if (!img) return svgSrc;
-            // Return photo on top, initials below — semicolon-separated list
-            return `${img};${svgSrc}`;
+            // First in list = bottom layer (initials), Last in list = top layer (photo)
+            return [svgSrc, img];
           },
           "background-fit": "cover cover",
           "background-clip": "node node",
@@ -93,6 +96,13 @@ class GraphApp {
           "text-background-opacity": 0.8,
           "text-background-padding": 2,
           "text-background-shape": "roundrectangle",
+        },
+      },
+       {
+        selector: "node.influence-scaling",
+        style: {
+          width: "mapData(influenceScore, 0, 1, 50, 180)",
+          height: "mapData(influenceScore, 0, 1, 50, 180)",
         },
       },
       {
@@ -184,6 +194,9 @@ class GraphApp {
       {
         selector: "node.ktruss-highlight",
         style: {
+          "border-width": 4,
+          "border-color": "#a855f7",
+          "border-opacity": 1,
           "z-index": 20,
         },
       },
@@ -276,38 +289,43 @@ class GraphApp {
       layout: {
         name: "cose",
         padding: 50,
-        nodeRepulsion: 400000,
-        idealEdgeLength: 100,
+        nodeRepulsion: () => 400000,
+        idealEdgeLength: () => 100,
       },
       wheelSensitivity: 0.2,
       selectionType: "additive", // Cytoscape handles shift-click naturally if we let it, or we handle it manually. 'additive' means standard click behavior.
     });
 
-    let isDragging = false;
+    this.isDragging = false;
     this.cy.on("grab", "node", (e) => {
       // If user grabs a selection containing locked nodes, Cytoscape blocks the entire drag.
-      // We fix this by immediately unselecting any locked nodes when a grab starts.
-      const selectedLocked = this.cy
-        .nodes(":selected")
-        .filter((n) => n.data("locked"));
+      const selectedLocked = this.cy.nodes(":selected").filter((n) => n.data("locked"));
       if (selectedLocked.length > 0) {
         selectedLocked.unselect();
       }
 
-      if (!isDragging) {
-        isDragging = true;
+      if (!this.isDragging) {
+        this.isDragging = true;
         this.saveState();
       }
     });
+
     this.cy.on("free", "node", (e) => {
+      // Small timeout to prevent rapid-fire state saves if grabbing multiple nodes in a group
       setTimeout(() => {
-        isDragging = false;
-      }, 50);
+        this.isDragging = false;
+      }, 100);
+    });
+
+    // Safety: If the window loses focus while dragging, reset state so we don't get 'stuck'
+    window.addEventListener("blur", () => {
+      this.isDragging = false;
     });
 
     // FFP State
     this.ffpMode = "off"; // 'off', 'both', 'followers', 'following'
     this.ffpDepth = 10;
+    this.ffpGhostMode = false;
 
     this.ffpRankLabelMode = false;
     this.globalGhostMode = false;
@@ -347,6 +365,7 @@ class GraphApp {
         isDotMode: this.isDotMode,
         isLightMode: this.isLightMode,
         globalGhostMode: this.globalGhostMode,
+        ffpGhostMode: this.ffpGhostMode,
         showMutuals: this.showMutuals,
         // Note: drawLinkMode intentionally excluded — undo should not restore UI draw mode
       },
@@ -415,6 +434,8 @@ class GraphApp {
         state.uiState.ffpMode !== undefined ? state.uiState.ffpMode : "off";
       this.ffpDepth =
         state.uiState.ffpDepth !== undefined ? state.uiState.ffpDepth : 10;
+      this.ffpGhostMode =
+        state.uiState.ffpGhostMode !== undefined ? state.uiState.ffpGhostMode : false;
       this.ffpRankLabelMode =
         state.uiState.ffpRankLabelMode !== undefined
           ? state.uiState.ffpRankLabelMode
@@ -477,6 +498,8 @@ class GraphApp {
 
     this.updateStats();
     this.updateDropdown();
+    this.updateInfluenceScaling();
+    this.refreshSingletonBadges();
     this.showToast("Undo successful");
   }
 
@@ -491,7 +514,10 @@ class GraphApp {
       if (activeCategory === category) {
         // Clicked same category, close it
         activeCategory = null;
-        topNavBtns.forEach((b) => b.classList.remove("active"));
+        topNavBtns.forEach((b) => {
+          if (b.id === "search-toggle-btn") return;
+          b.classList.remove("active");
+        });
         panelSections.forEach((sec) => sec.classList.add("hidden"));
       } else {
         // Open new category
@@ -499,6 +525,7 @@ class GraphApp {
 
         // Update nav buttons
         topNavBtns.forEach((b) => {
+          if (b.id === "search-toggle-btn") return;
           b.classList.toggle("active", b.dataset.category === category);
         });
 
@@ -524,7 +551,9 @@ class GraphApp {
     // Close panel with ESC
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
-        if (activeCategory !== null) {
+        if (this.drawLinkMode) {
+          this.exitDrawLinkMode();
+        } else if (activeCategory !== null) {
           activeCategory = null;
           topNavBtns.forEach((b) => b.classList.remove("active"));
           panelSections.forEach((sec) => sec.classList.add("hidden"));
@@ -536,29 +565,7 @@ class GraphApp {
       }
     });
 
-    // Delete currently selected nodes on backspace/delete
-    document.addEventListener("keydown", (e) => {
-      if (
-        (e.key === "Backspace" || e.key === "Delete") &&
-        e.target === document.body
-      ) {
-        const selected = this.cy.$(":selected");
-        if (selected.length > 0) {
-          this.saveState();
-          this.cy.remove(selected);
 
-          // Cleanup edgeSet
-          this.edgeSet.clear();
-          this.cy.edges().forEach((edge) => {
-            const s = edge.data("source");
-            const t = edge.data("target");
-            if (s && t) this.edgeSet.add(`${s}->${t}`);
-          });
-
-          this.updateStats();
-        }
-      }
-    });
 
     // Placeholder subtools
     const placeholderBtns = document.querySelectorAll(
@@ -640,6 +647,7 @@ class GraphApp {
         this.globalGhostMode = !this.globalGhostMode;
         globalGhostBtn.classList.toggle("active", this.globalGhostMode);
         this.updateGlobalGhost();
+        this.updateSelectedEdges();
       });
     }
 
@@ -686,6 +694,63 @@ class GraphApp {
       });
     }
 
+    // ---- Overlap Detection (Common Denominators) ----
+    const findOverlapsBtn = document.getElementById("find-overlaps-btn");
+    if (findOverlapsBtn) {
+      findOverlapsBtn.addEventListener("click", () => {
+        this.cy.batch(() => {
+          this.cy.elements().unselect();
+          this.cy.nodes().removeClass("search-hit");
+
+          const seeds = this.cy.nodes('[type="seed"]');
+          if (seeds.length < 2) {
+            this.showToast("Need at least 2 seeds to find overlaps!");
+            return;
+          }
+
+          const overlaps = this.cy.nodes('[type!="seed"]').filter(node => {
+            // Count unique seed neighbors
+            const seedNeighbors = node.neighborhood('[type="seed"]');
+            return seedNeighbors.length >= 2;
+          });
+
+          if (overlaps.length === 0) {
+            this.showToast("No common denominators found between current seeds.");
+            return;
+          }
+
+          // Highlight them by adding search-hit (unghosts them) and selecting
+          overlaps.addClass("search-hit");
+          overlaps.removeClass("faded ktruss-faded");
+          overlaps.forEach(node => node.select());
+
+          this.showToast(`Found ${overlaps.length} node(s) connected to multiple seeds.`);
+
+          // Zoom to fit all hits
+          this.cy.animate({
+            fit: { eles: overlaps.union(overlaps.neighborhood('[type="seed"]')), padding: 50 },
+            duration: 500
+          });
+        });
+      });
+    }
+
+    const influenceToggleBtn = document.getElementById("influence-toggle-btn");
+    if (influenceToggleBtn) {
+      influenceToggleBtn.addEventListener("click", () => {
+        this.influenceMode = !this.influenceMode;
+        influenceToggleBtn.classList.toggle("active", this.influenceMode);
+        
+        if (this.influenceMode) {
+          this.updateInfluenceScaling();
+          this.showToast("Influence ranking enabled (Nodes scaled by connections).");
+        } else {
+          this.cy.nodes().removeClass("influence-scaling");
+          this.showToast("Influence ranking disabled.");
+        }
+      });
+    }
+
     const inverseSelectBtn = document.getElementById("inverse-select-btn");
     if (inverseSelectBtn) {
       inverseSelectBtn.addEventListener("click", () => {
@@ -712,11 +777,14 @@ class GraphApp {
     const getSingletonMap = () => {
       const map = new Map();
       this.cy.nodes().forEach(node => {
-        if (node.connectedEdges().length === 1) {
-          const hub = node.connectedEdges()[0].connectedNodes().difference(node).first();
-          if (!hub.empty()) {
-            if (!map.has(hub.id())) map.set(hub.id(), []);
-            map.get(hub.id()).push(node);
+        if (node && typeof node.connectedEdges === 'function') {
+          const edges = node.connectedEdges();
+          if (edges.length === 1) {
+            const hub = edges[0].connectedNodes().difference(node).first();
+            if (!hub.empty()) {
+              if (!map.has(hub.id())) map.set(hub.id(), []);
+              map.get(hub.id()).push(node);
+            }
           }
         }
       });
@@ -733,10 +801,15 @@ class GraphApp {
       const container = this.cy.container();
       container.querySelectorAll(".singleton-count-badge").forEach(badge => {
         const node = this.cy.getElementById(badge.dataset.nodeId);
-        if (node.empty()) { badge.remove(); return; }
+        if (!node || node.empty()) { badge.remove(); return; }
         const hidden = !node.visible();
         badge.style.display = hidden ? "none" : "";
         if (hidden) return;
+
+        // Sync opacity with node fading (Ghost mode / K-Truss)
+        const isFaded = node.hasClass("faded") || node.hasClass("ktruss-faded");
+        badge.style.opacity = isFaded ? "0.2" : "1";
+
         const pos   = node.renderedPosition();
         const halfW = parseFloat(node.renderedStyle("width")) / 2;
         const angle = Math.PI / 4; // bottom-right rim
@@ -866,7 +939,11 @@ class GraphApp {
     };
 
     // Run once on init
-    this.refreshSingletonBadges();
+    try {
+      this.refreshSingletonBadges();
+    } catch (e) {
+      console.warn("Singleton badges skipped on init:", e);
+    }
 
     // Tracking for simulated double-click
     let lastTapTime = 0;
@@ -1123,6 +1200,7 @@ class GraphApp {
         this.updateFFPUI();
         this.updateStats();
         this.updateDropdown();
+        this.refreshSingletonBadges();
 
         this.showToast("Graph wiped completely.");
         closeWipeModal();
@@ -1182,6 +1260,9 @@ class GraphApp {
     const prefModal = createModalController(prefModalBackdrop, {
       onOpen: () => {
       // Populate fields from current settings
+      const layoutStyleEl = document.getElementById("pref-layout-style");
+      if (layoutStyleEl) layoutStyleEl.value = this.settings.layoutStyle || "organic";
+
       document.getElementById("pref-scatter-radius").value = this.settings.scatterRadius;
       document.getElementById("val-scatter-radius").textContent = this.settings.scatterRadius;
       
@@ -1218,6 +1299,9 @@ class GraphApp {
 
     if (btnSavePref) {
       btnSavePref.addEventListener("click", () => {
+        const layoutStyleEl = document.getElementById("pref-layout-style");
+        if (layoutStyleEl) this.settings.layoutStyle = layoutStyleEl.value;
+
         this.settings.scatterRadius = parseInt(document.getElementById("pref-scatter-radius").value);
         this.settings.idealEdgeLength = parseInt(document.getElementById("pref-ideal-edge").value);
         this.settings.nodeRepulsion = parseInt(document.getElementById("pref-repulsion").value);
@@ -1317,6 +1401,85 @@ class GraphApp {
       });
     }
 
+    // About Modal Logic
+    const aboutModalBackdrop = document.getElementById("about-modal-backdrop");
+    const btnCloseAbout = document.getElementById("close-about-modal-btn");
+    const btnAbout = document.getElementById("about-btn");
+
+    const aboutModal = createModalController(aboutModalBackdrop);
+    const openAboutModal = (triggerBtn) => aboutModal.open(triggerBtn);
+    const closeAboutModal = () => aboutModal.close();
+
+    onClickIf(btnAbout, () => openAboutModal(btnAbout));
+    onClickIf(btnCloseAbout, closeAboutModal);
+
+    // ---- Search Logic ----
+    const searchToggleBtn = document.getElementById("search-toggle-btn");
+    const searchInput = document.getElementById("search-input");
+
+    if (searchToggleBtn && searchInput) {
+      searchToggleBtn.addEventListener("click", () => {
+        const isExpanding = searchInput.classList.toggle("expanded");
+        searchToggleBtn.classList.toggle("active", isExpanding);
+        if (isExpanding) {
+          searchInput.focus();
+        } else {
+          searchInput.value = "";
+          this.cy.elements().unselect();
+        }
+      });
+
+      searchInput.addEventListener("input", (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        
+        // Clear selection if query is too short
+        if (query.length < 3) {
+          this.cy.elements().unselect();
+          return;
+        }
+
+        this.cy.batch(() => {
+          this.cy.elements().unselect();
+          this.cy.nodes().removeClass("search-hit");
+          
+          const matches = this.cy.nodes().filter(node => {
+            const d = node.data();
+            const username = (d.id || "").toLowerCase();
+            const displayName = (d.label || "").toLowerCase();
+            const bio = (d.bio || "").toLowerCase();
+            
+            return username.includes(query) || 
+                   displayName.includes(query) || 
+                   bio.includes(query);
+          });
+
+          if (matches.length > 0) {
+            // Tag matches so Ghost Mode knows they are protected from fading
+            matches.addClass("search-hit");
+            matches.removeClass("faded ktruss-faded");
+            
+            // Use a per-node selection to be absolutely sure all matches are triggered
+            matches.forEach(node => node.select());
+            
+            // If exactly one match, jump to it with a specific zoom level
+            if (matches.length === 1) {
+              this.cy.animate({
+                center: { eles: matches },
+                zoom: Math.max(this.cy.zoom(), 1.2),
+                duration: 500
+              });
+            } else {
+              // If multiple matches, fit them all comfortably in the viewport
+              this.cy.animate({
+                fit: { eles: matches, padding: 60 },
+                duration: 500
+              });
+            }
+          }
+        });
+      });
+    }
+
     // Export/Import Events
     this.bindExportActions(onClickIf);
 
@@ -1368,6 +1531,7 @@ class GraphApp {
           this.refreshNoteBadges();
           this.refreshLockBadges();
           this.refreshSeedBadges();
+          this.refreshSingletonBadges();
           this.showToast(`Restored: ${entry.label}`);
         });
 
@@ -1420,6 +1584,7 @@ class GraphApp {
       this.refreshNoteBadges();
       this.refreshLockBadges();
       this.refreshSeedBadges();
+      this.refreshSingletonBadges();
       renderDeletionHistory();
       this.showToast(`Deleted ${parts.join(", ")}`);
     };
@@ -1495,12 +1660,16 @@ class GraphApp {
         );
 
         const bb = this.getExpandedBoundingBox(targetNodes);
-        const layout = targetNodes.layout(this.buildReheatLayoutOptions(isGlobal, bb));
-        layout.run();
-
-        layout.promiseOn("layoutstop").then(() => {
-          this.applyReheatPostProcessing(targetNodes, isGlobal);
-        });
+        
+        if (this.settings.layoutStyle === "organic" && typeof d3 !== "undefined") {
+          this.runD3OrganicLayout(targetNodes, isGlobal, bb);
+        } else {
+          const layout = targetNodes.layout(this.buildReheatLayoutOptions(isGlobal, bb));
+          layout.run();
+          layout.promiseOn("layoutstop").then(() => {
+            this.applyReheatPostProcessing(targetNodes, isGlobal);
+          });
+        }
       });
     }
 
@@ -1666,6 +1835,18 @@ class GraphApp {
         }
       } else {
         ffpRankLabelBtn.disabled = false;
+      }
+
+      // Handle FFP Ghost button state and availability
+      const ffpGhostBtn = document.getElementById("ffp-ghost-btn");
+      if (ffpGhostBtn) {
+        if (this.ffpMode === "off") {
+          ffpGhostBtn.disabled = true;
+          this.ffpGhostMode = false;
+        } else {
+          ffpGhostBtn.disabled = false;
+        }
+        ffpGhostBtn.classList.toggle("active", this.ffpGhostMode);
       }
 
       // Sub-toggle visibility is managed solely by hover — never force show/hide here
@@ -1847,6 +2028,16 @@ class GraphApp {
       this.updateFFPUI();
     });
 
+    const ffpGhostBtn = document.getElementById("ffp-ghost-btn");
+    if (ffpGhostBtn) {
+      ffpGhostBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.ffpGhostMode = !this.ffpGhostMode;
+        ffpGhostBtn.classList.toggle("active", this.ffpGhostMode);
+        this.applyFFPStyles();
+      });
+    }
+
     const ffpDistanceReheatBtn = document.getElementById(
       "ffp-distance-reheat-btn",
     );
@@ -1882,33 +2073,8 @@ class GraphApp {
           bb.h = 1200;
         }
 
-        targetNodes
-          .layout({
-            name: "cose",
-            animate: true,
-            animationDuration: 1000,
-            fit: false,
-            randomize: true, // MUST be true or cose defaults to a rigid starting grid
-            componentSpacing: 100,
-            boundingBox: { x1: bb.x1, y1: bb.y1, w: bb.w, h: bb.h },
-            padding: 80,
-            nodeRepulsion: function (node) {
-              return 10000;
-            },
-            idealEdgeLength: function (edge) {
-              // Not strictly read by all physics engines but good practice
-              const rank = edge.data("ffpRank");
-              if (edge.data("mutual") === "true" || !rank) return 32; // Tightly packed
-              return 32 + rank * 20; // Longer resting spring length
-            },
-            edgeElasticity: function (edge) {
-              const rank = edge.data("ffpRank");
-              // Highly elastic (pulls hard) for mutuals/rank 1. Very weak for Rank N.
-              if (edge.data("mutual") === "true" || !rank) return 100;
-              return Math.max(1, 100 - rank * 8);
-            },
-          })
-          .run();
+        this.runD3OrganicLayout(targetNodes, true, bb, "ffp");
+        this.updateInfluenceScaling();
       });
     }
 
@@ -2039,23 +2205,24 @@ class GraphApp {
 
     this.cy.on("mouseover", "node", (e) => {
       const node = e.target;
-      if (node.data("type") !== "seed") return; // Only show for seeds
 
       if (hoverTimeout) clearTimeout(hoverTimeout);
       if (hoverShowTimeout) clearTimeout(hoverShowTimeout);
 
-      // Wait 400ms of continuous hover before showing
+      // Wait 250ms of continuous hover before showing (snappier feel)
       hoverShowTimeout = setTimeout(() => {
         const data = node.data();
         activeHoverNodeData = data;
+        const isSeed = data.type === "seed";
 
         // Populate Info
         hoverDisplayName.textContent = data.label || data.id;
         hoverUsername.textContent = `@${data.id}`;
         hoverBio.textContent = data.bio || "No bio available.";
-        // Total counts from the profile
-        const totalFollowing = data.following || "Unknown";
-        const totalFollowers = data.followers || "Unknown";
+
+        // Total counts from the profile - conditionally 'unkn' for non-seeds
+        const totalFollowing = isSeed ? (data.following || "Unknown") : "unkn";
+        const totalFollowers = isSeed ? (data.followers || "Unknown") : "unkn";
 
         // Compute actual ingested counts from graph edges
         const nodeEle = this.cy.getElementById(data.id);
@@ -2091,12 +2258,12 @@ class GraphApp {
           hoverNoteRow.classList.add("hidden");
         }
 
-        if (data.ingestTime) {
+        if (data.ingestTime || data.captureTime) {
           try {
-            const date = new Date(data.ingestTime);
+            const date = new Date(data.captureTime || data.ingestTime);
             hoverIngestTime.textContent = date.toLocaleString();
           } catch (e) {
-            hoverIngestTime.textContent = data.ingestTime;
+            hoverIngestTime.textContent = data.captureTime || data.ingestTime;
           }
         } else {
           hoverIngestTime.textContent = "N/A";
@@ -2137,7 +2304,7 @@ class GraphApp {
         hoverPanel.style.top = `${top}px`;
 
         hoverPanel.classList.remove("hidden");
-      }, 400);
+      }, 250);
     });
 
     this.cy.on("mouseout", "node", (e) => {
@@ -2294,21 +2461,27 @@ class GraphApp {
 
     if (drawLinkBtn) {
       drawLinkBtn.addEventListener("click", () => {
-        this.saveState();
-        this.drawLinkMode = !this.drawLinkMode;
-        this.drawLinkSourceNode = null; // Reset on toggle
-
-        drawLinkBtn.classList.toggle("active", this.drawLinkMode);
         if (this.drawLinkMode) {
-          document.getElementById("cy").classList.add("cursor-crosshair");
-          this.showToast(
-            "Draw Link mode activated. Click two nodes to connect them.",
-          );
+          this.exitDrawLinkMode();
         } else {
-          document.getElementById("cy").classList.remove("cursor-crosshair");
+          this.saveState();
+          this.drawLinkMode = true;
+          this.drawLinkSourceNode = null;
+          drawLinkBtn.classList.add("active");
+          document.getElementById("cy").classList.add("cursor-crosshair");
+          this.showToast("Draw Link mode activated. Click two nodes to connect them.");
         }
       });
     }
+
+    this.exitDrawLinkMode = () => {
+      this.drawLinkMode = false;
+      this.drawLinkSourceNode = null;
+      const btn = document.getElementById("draw-link-btn");
+      if (btn) btn.classList.remove("active");
+      const cyEl = document.getElementById("cy");
+      if (cyEl) cyEl.classList.remove("cursor-crosshair");
+    };
 
     const hideEdgeRadialMenu = () => {
       edgeRadialMenu.classList.add("hidden");
@@ -2347,10 +2520,13 @@ class GraphApp {
             id: edgeId,
             source: sourceId,
             target: targetId,
+            mutual: "false",
           },
           // Ensure base styles are applied
           classes: "manual-link line-solid arrow-right",
         });
+
+        this.updateInfluenceScaling();
 
         this.showToast(`Linked @${sourceId} to @${targetId}`);
 
@@ -2604,6 +2780,11 @@ class GraphApp {
           const hidden = !node.visible();
           badge.style.display = hidden ? "none" : "";
           if (hidden) return;
+
+          // Sync opacity with node fading
+          const isFaded = node.hasClass("faded") || node.hasClass("ktruss-faded");
+          badge.style.opacity = isFaded ? "0.2" : "1";
+
           const pos = node.renderedPosition();
           // Use actual node circle size, not bounding box (which includes label text)
           const halfW = parseFloat(node.renderedStyle('width')) / 2;
@@ -2671,6 +2852,11 @@ class GraphApp {
           const hidden = !node.visible();
           badge.style.display = hidden ? "none" : "";
           if (hidden) return;
+
+          // Sync opacity with node fading
+          const isFaded = node.hasClass("faded") || node.hasClass("ktruss-faded");
+          badge.style.opacity = isFaded ? "0.2" : "1";
+
           const pos = node.renderedPosition();
           const halfW = parseFloat(node.renderedStyle('width')) / 2;
           const inset = 1.0;
@@ -2745,6 +2931,11 @@ class GraphApp {
           const hidden = !node.visible();
           badge.style.display = hidden ? "none" : "";
           if (hidden) return;
+
+          // Sync opacity with node fading
+          const isFaded = node.hasClass("faded") || node.hasClass("ktruss-faded");
+          badge.style.opacity = isFaded ? "0.2" : "1";
+
           const pos = node.renderedPosition();
           const halfW = parseFloat(node.renderedStyle("width")) / 2;
           const inset = 1.0; // on the rim
@@ -3020,6 +3211,7 @@ class GraphApp {
       );
       newlyAddedElements.nodes().forEach((n) => n.removeData("_wasExisting"));
       this.finalizeIngestUi();
+      this.updateInfluenceScaling();
     }, 100);
   }
 
@@ -3066,14 +3258,11 @@ class GraphApp {
 
   positionAfterIngest(existingNodeCount, typeSelect, targetId, newlyAddedElements) {
     if (existingNodeCount === 0) {
-      this.cy
-        .layout({
-          name: "cose",
-          padding: 50,
-          idealEdgeLength: this.settings.idealEdgeLength,
-          nodeRepulsion: this.settings.nodeRepulsion,
-        })
-        .run();
+      if (this.settings.layoutStyle === "organic" && typeof d3 !== "undefined") {
+        this.runD3OrganicLayout(this.cy.nodes(), true);
+      } else {
+        this.cy.layout(this.buildReheatLayoutOptions(true, null)).run();
+      }
       return;
     }
 
@@ -3159,6 +3348,7 @@ class GraphApp {
   finalizeIngestUi() {
     this.showToast("Ingest complete!");
     this.refreshSeedBadges();
+    this.refreshSingletonBadges();
 
     const ingestModalBackdrop = document.getElementById("ingest-modal-backdrop");
     if (ingestModalBackdrop) {
@@ -3188,126 +3378,179 @@ class GraphApp {
     return bb;
   }
 
-  buildReheatLayoutOptions(isGlobal, bb) {
-    const baseOptions = {
-      name: "cose",
-      padding: 80,
-      idealEdgeLength: this.settings.idealEdgeLength,
-      nodeRepulsion: this.settings.nodeRepulsion,
+  runD3OrganicLayout(targetNodes, isGlobal, bb, mode = "standard") {
+    if (!targetNodes || targetNodes.length === 0) return;
+
+    // 1. Array-ify nodes and links for D3
+    const nodes = [];
+    const nodeMap = new Map();
+    targetNodes.forEach((n) => {
+      if (n.isParent()) return; // skip compound parents if they exist
+      const pos = n.position();
+      const d3Node = {
+        id: n.id(),
+        x: pos.x || 0,
+        y: pos.y || 0,
+        cyNode: n,
+      };
+      
+      // Inject random noise to break grid symmetries instantly
+      if (isGlobal || d3Node.x === 0) {
+         d3Node.x += (Math.random() - 0.5) * 400;
+         d3Node.y += (Math.random() - 0.5) * 400;
+      }
+      
+      nodes.push(d3Node);
+      nodeMap.set(n.id(), d3Node);
+    });
+
+    const links = [];
+    targetNodes.edgesWith(targetNodes).forEach((e) => {
+      const s = e.source().id();
+      const t = e.target().id();
+      if (nodeMap.has(s) && nodeMap.has(t)) {
+        links.push({
+          source: s,
+          target: t,
+          ffpRank: e.data("ffpRank"),
+          isMutual: e.data("mutual") === "true",
+        });
+      }
+    });
+
+    // 2. Setup simulation parameters based on preferences
+    const linkDistance = this.settings.idealEdgeLength || 120;
+    // Map cytoscape repulsion scale back to D3 negative charge magnitudes
+    const rawRepulsion = this.settings.nodeRepulsion || 12000;
+    // Ensure we send a negative number to D3 for repulsion
+    const chargeStrength = rawRepulsion > 0 ? -rawRepulsion : rawRepulsion;
+
+    let centerX = 0, centerY = 0;
+    if (isGlobal || !bb) {
+      centerX = 0;
+      centerY = 0;
+    } else {
+      centerX = (bb.x1 + bb.x2) / 2;
+      centerY = (bb.y1 + bb.y2) / 2;
+    }
+
+    // 3. Initialize D3 physics engine
+    const simulation = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links).id((d) => d.id).distance((l) => {
+        if (mode === "ffp") {
+          // In FFP mode, distance scales with rank. 
+          // Mutuals and Rank 1 are tight clusters.
+          if (l.isMutual || !l.ffpRank) return 40;
+          return 40 + (l.ffpRank * 25);
+        }
+        return linkDistance;
+      }))
+      .force("charge", d3.forceManyBody().strength(chargeStrength))
+      .force("center", d3.forceCenter(centerX, centerY))
+      .force("collision", d3.forceCollide().radius(this.settings.idealEdgeLength * 0.4))
+      .stop();
+
+    // 4. Calculate forces statically for exactly 300 ticks to avoid frame stutter
+    const ticks = 300;
+    for (let i = 0; i < ticks; ++i) {
+      simulation.tick();
+    }
+
+    // 5. Package final coordinates back to Cytoscape natively
+    const newPositions = {};
+    nodes.forEach((n) => {
+      newPositions[n.id] = { x: n.x, y: n.y };
+    });
+
+    const layout = targetNodes.layout({
+      name: "preset",
+      positions: newPositions,
       animate: true,
       animationDuration: 800,
       fit: isGlobal,
-      randomize: false,
+      padding: 50,
+    });
+    
+    layout.run();
+    
+    // Fire the same post processing logic when visual animation completes
+    setTimeout(() => {
+      this.applyReheatPostProcessing(targetNodes, isGlobal);
+    }, 850);
+  }
+
+  buildReheatLayoutOptions(isGlobal, bb) {
+    const style = this.settings.layoutStyle || "organic";
+    
+    // Default COSE options (Organic, Force-Directed)
+    let options = {
+      name: "cose",
+      padding: 80,
+      idealEdgeLength: (edge) => this.settings.idealEdgeLength,
+      nodeRepulsion: (node) => this.settings.nodeRepulsion,
+      animate: true,
+      animationDuration: 800,
+      fit: isGlobal,
+      randomize: true, // MUST be true. If false and nodes are in a grid/symmetry, the forces cancel out and nodes won't budge.
       componentSpacing: 100,
       nodeOverlap: 20,
       nestingCoefficient: 1.2,
       gravity: 0.25,
-      edgeElasticity: 100,
+      edgeElasticity: (edge) => 100,
     };
 
-    if (isGlobal) {
-      return {
-        ...baseOptions,
-        randomize: true,
+    if (style === "concentric") {
+      options = {
+        name: "concentric",
+        padding: 80,
+        animate: true,
+        animationDuration: 800,
+        fit: isGlobal,
+        minNodeSpacing: this.settings.idealEdgeLength / 2,
+        concentric: (node) => node.degree(),
+        levelWidth: (nodes) => 1
+      };
+    } else if (style === "hierarchical") {
+      options = {
+        name: "breadthfirst",
+        padding: 80,
+        animate: true,
+        animationDuration: 800,
+        fit: isGlobal,
+        directed: true,
+        spacingFactor: Math.max(1.0, this.settings.idealEdgeLength / 50),
+      };
+    } else if (style === "circular") {
+      options = {
+        name: "circle",
+        padding: 80,
+        animate: true,
+        animationDuration: 800,
+        fit: isGlobal,
+        spacingFactor: Math.max(1.0, this.settings.idealEdgeLength / 50),
       };
     }
 
-    return {
-      ...baseOptions,
-      boundingBox: { x1: bb.x1, y1: bb.y1, w: bb.w, h: bb.h },
-    };
+    if (!isGlobal) {
+      // Local cluster reheats shouldn't fly across the canvas
+      options.boundingBox = { x1: bb.x1, y1: bb.y1, w: bb.w, h: bb.h };
+    }
+
+    return options;
   }
 
-  fanOutLeafNodes(targetNodes) {
-    const minRadius = this.settings.idealEdgeLength * 0.8;
-    const nodeSpacing = this.settings.idealEdgeLength * 0.35;
-
-    targetNodes.forEach((node) => {
-      const connectedEdges = node.connectedEdges();
-      if (connectedEdges.length < 2) return;
-
-      const leaves = connectedEdges
-        .connectedNodes()
-        .filter(
-          (n) => n.id() !== node.id() && n.connectedEdges().length === 1,
-        );
-      if (leaves.length === 0) return;
-
-      const parentPos = node.position();
-      let currentRadius = minRadius;
-      let currentRingCapacity = Math.floor(
-        (2 * Math.PI * currentRadius) / nodeSpacing,
-      );
-      let nodesPlacedInRing = 0;
-      let currentAngleOffset = 0;
-
-      leaves.forEach((leaf) => {
-        if (nodesPlacedInRing >= currentRingCapacity) {
-          currentRadius += nodeSpacing;
-          currentRingCapacity = Math.floor(
-            (2 * Math.PI * currentRadius) / nodeSpacing,
-          );
-          nodesPlacedInRing = 0;
-          currentAngleOffset += Math.PI / 4;
-        }
-
-        const angle =
-          (nodesPlacedInRing / currentRingCapacity) * (Math.PI * 2) +
-          currentAngleOffset;
-        leaf.position({
-          x: parentPos.x + Math.cos(angle) * currentRadius,
-          y: parentPos.y + Math.sin(angle) * currentRadius,
-        });
-        nodesPlacedInRing++;
-      });
-    });
-  }
-
-  scaleNodesAroundCenter(targetNodes, scaleDir) {
-    const bb = targetNodes.boundingBox();
-    const center = {
-      x: (bb.x1 + bb.x2) / 2,
-      y: (bb.y1 + bb.y2) / 2,
-    };
-
-    const newPositions = {};
-    targetNodes.forEach((node) => {
-      const pos = node.position();
-      newPositions[node.id()] = {
-        x: center.x + (pos.x - center.x) * scaleDir,
-        y: center.y + (pos.y - center.y) * scaleDir,
-      };
-    });
-
-    targetNodes
-      .layout({
-        name: "preset",
-        positions: newPositions,
-        animate: true,
-        animationDuration: 400,
-        fit: false,
-      })
-      .run();
-  }
-
-  adjustCameraAfterScale(isGlobal, scaleDir) {
-    if (isGlobal || scaleDir > 1.2) {
+  applyReheatPostProcessing(targetNodes, isGlobal) {
+    // Pure physics mode: Post-processing overrides are removed.
+    // The underlying Cytoscape layout algorithms now fully strictly dictate spacing.
+    // We only politely adjust the camera if it's a global reheat to ensure it all fits.
+    if (isGlobal || targetNodes.length === this.cy.nodes().length) {
       this.cy.animate(
         {
-          zoom: this.cy.zoom() * (1 / scaleDir),
-          center: { eles: this.cy.nodes() },
+          fit: { eles: this.cy.nodes(), padding: 50 },
         },
         { duration: 400 },
       );
     }
-  }
-
-  applyReheatPostProcessing(targetNodes, isGlobal) {
-    this.fanOutLeafNodes(targetNodes);
-    // REMOVED HARDCODED 3x SCALING: Now respects user preferences faithfully.
-    const scaleDir = 1.0; 
-    this.scaleNodesAroundCenter(targetNodes, scaleDir);
-    this.adjustCameraAfterScale(isGlobal, scaleDir);
   }
 
   bindExportActions(onClickIf) {
@@ -3345,6 +3588,10 @@ class GraphApp {
 
     onClickIf(document.getElementById("export-csv-btn"), () =>
       this.exportToCSV(),
+    );
+    
+    onClickIf(document.getElementById("export-report-btn"), () =>
+      this.exportIntelligenceReport(),
     );
   }
 
@@ -3641,6 +3888,7 @@ class GraphApp {
         if (s && t) this.edgeSet.add(`${s}->${t}`);
       });
     });
+    this.updateInfluenceScaling();
     return addedElements;
   }
 
@@ -3675,14 +3923,11 @@ class GraphApp {
 
   runImportLayoutOrFit(needsLayout) {
     if (needsLayout) {
-      this.cy
-        .layout({
-          name: "cose",
-          padding: 50,
-          idealEdgeLength: this.settings.idealEdgeLength,
-          nodeRepulsion: this.settings.nodeRepulsion,
-        })
-        .run();
+      if (this.settings.layoutStyle === "organic" && typeof d3 !== "undefined") {
+        this.runD3OrganicLayout(this.cy.nodes(), true);
+      } else {
+        this.cy.layout(this.buildReheatLayoutOptions(true, null)).run();
+      }
       return;
     }
     this.cy.fit(null, 50);
@@ -4004,6 +4249,7 @@ class GraphApp {
     let node;
     this.nodes.set(profile.id, profile);
 
+    const now = new Date().toISOString();
     const existingNode = this.cy.getElementById(profile.id);
     if (!existingNode.empty()) {
       node = existingNode;
@@ -4011,7 +4257,7 @@ class GraphApp {
       if (isSeed) {
         node.data("type", "seed");
         // Refresh ingestTime so this seed is recognized as the most recent
-        node.data("ingestTime", new Date().toISOString());
+        node.data("ingestTime", now);
       }
       // Update node fields if the new scrape had more data
       if (profile.bio) node.data("bio", profile.bio);
@@ -4019,6 +4265,8 @@ class GraphApp {
         node.data("following", profile.following);
       if (profile.followers !== "Unknown")
         node.data("followers", profile.followers);
+      
+      node.data("captureTime", now);
 
       // Override avatar if the new profile has a real image, unconditionally overwriting whatever was there
       const newImg = profile.image || "";
@@ -4037,13 +4285,30 @@ class GraphApp {
           following: profile.following || "Unknown",
           followers: profile.followers || "Unknown",
           likes: profile.likes || "Unknown",
-          ingestTime: profile.ingestTime || new Date().toISOString(),
+          ingestTime: profile.ingestTime || now,
+          captureTime: now,
         },
       });
     }
 
     if (this.isDotMode) {
       node.addClass("dot-mode");
+    }
+  }
+
+  async fetchImageAsArrayBuffer(url) {
+    if (!url) return null;
+    try {
+      if (url.startsWith("data:image/")) {
+        return this.base64ToArrayBuffer(url);
+      }
+      // Simple fetch. Note: external URLs may fail due to CORS.
+      const response = await fetch(url);
+      if (!response.ok) return null;
+      return await response.arrayBuffer();
+    } catch (err) {
+      console.warn("Failed to fetch image for report:", url);
+      return null;
     }
   }
 
@@ -4084,6 +4349,8 @@ class GraphApp {
         ingestedAt: new Date().toISOString(),
       },
     });
+
+    this.updateInfluenceScaling();
   }
 
   applyFFPStyles(skipGhostUpdate = false) {
@@ -4117,12 +4384,20 @@ class GraphApp {
     };
 
     this.cy.batch(() => {
-      const allEdges = this.cy.edges();
-      allEdges.addClass("faded"); // Fade everything first
+      const allElements = this.cy.elements();
+      
+      // If FFP Ghost is on, fade EVERYTHING first, then protect the FFP network
+      if (this.ffpGhostMode) {
+        allElements.addClass("faded");
+      } else {
+        // Just fade edges if ghost mode is off (standard FFP behavior)
+        this.cy.edges().addClass("faded");
+      }
 
-      // Collection to track which nodes are part of currently active FFP edges
+      // Collection to track nodes that are part of the active FFP topology
       const activeNodes = this.cy.collection();
-
+      const allEdges = this.cy.edges();
+      
       allEdges.forEach((edge) => {
         const rank = edge.data("ffpRank");
         const dir = edge.data("ffpDirection");
@@ -4155,14 +4430,28 @@ class GraphApp {
           // Track nodes attached to visible FFP edges
           activeNodes.merge(edge.source());
           activeNodes.merge(edge.target());
+          
+          // If FFP Ghost is on, nodes must be actively unfaded as we go
+          if (this.ffpGhostMode) {
+            edge.source().removeClass("faded");
+            edge.target().removeClass("faded");
+          }
         }
       });
 
       // Re-apply global ghost logic now that FFP has updated active edges
       if (this.globalGhostMode && !skipGhostUpdate) {
         this.updateGlobalGhost();
-      } else if (!this.globalGhostMode) {
-        this.cy.nodes().removeClass("faded"); // Unfade all
+      } else if (!this.globalGhostMode && !this.ffpGhostMode) {
+        this.cy.nodes().removeClass("faded"); // Unfade all if no ghosting at all
+      }
+      
+      // Special check: If Global Ghost is active but FFP Ghost is NOT, 
+      // Global Ghost handles the selection. 
+      // If BOTH are active, selection stays bright (protected elements).
+      if (this.globalGhostMode) {
+          this.cy.elements(":selected").removeClass("faded");
+          this.cy.elements(".ktruss-highlight, .manual-link, .connected-selected").removeClass("faded");
       }
     });
   }
@@ -4176,7 +4465,6 @@ class GraphApp {
       if (this.globalGhostMode) this.updateGlobalGhost();
       return;
     }
-
     const k = this.ktrussK;
     const minTriangles = k - 2;
 
@@ -4242,12 +4530,41 @@ class GraphApp {
       trussEdges.addClass("ktruss-highlight");
       trussNodes.addClass("ktruss-highlight");
 
+      // Formally select the truss elements so they reflect in the UI selection counter
+      trussEdges.select();
+      trussNodes.select();
+
       const nonTruss = this.cy
         .elements()
         .difference(trussEdges)
         .difference(trussNodes);
       nonTruss.addClass("ktruss-faded");
     }
+  }
+
+  updateInfluenceScaling() {
+    if (!this.influenceMode) return;
+
+    const nodes = this.cy.nodes();
+    if (nodes.length === 0) return;
+
+    // Calculate In-Degree (Who is followed by most seeds/nodes in our view)
+    // This is the most accurate OSINT metric for 'Influence'
+    let maxInDeg = 0;
+    nodes.forEach(node => {
+      const inDeg = node.indegree();
+      if (inDeg > maxInDeg) maxInDeg = inDeg;
+    });
+
+    this.cy.batch(() => {
+      nodes.forEach(node => {
+        const inDeg = node.indegree();
+        // Normalize 0-1
+        const score = maxInDeg > 0 ? inDeg / maxInDeg : 0;
+        node.data("influenceScore", score);
+        node.addClass("influence-scaling");
+      });
+    });
   }
 
   updateGlobalGhost() {
@@ -4264,12 +4581,13 @@ class GraphApp {
     const selectedElements = this.cy.elements(":selected");
 
     if (selectedElements.length > 0) {
-      // Fade everything, then unfade selection
+      // Fade everything, then unfade selection and ANY highlighted elements
       this.cy.elements().addClass("faded");
+      
+      // Selectively remove 'faded' from "protected" elements.
+      // Now including .search-hit so found nodes don't get ghosted immediately.
       selectedElements.removeClass("faded");
-      // If they selected a node, we should also unfade the edges immediately attached to the selected nodes?
-      // The requirement says "fade any node and link not selected". Cytoscape allows edge selection.
-      // So strictly fading unselected elements is correct.
+      this.cy.elements(".ktruss-highlight, .manual-link, .connected-selected, .search-hit").removeClass("faded");
     } else {
       // Nothing selected: show all (or defer to FFP if active)
       if (this.ffpMode !== "off") {
@@ -4328,6 +4646,16 @@ class GraphApp {
     return new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   }
 
+  base64ToArrayBuffer(base64) {
+    const binaryString = window.atob(base64.split(",")[1]);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+
   downloadFile(url, filename) {
     const a = document.createElement("a");
     a.href = url;
@@ -4366,7 +4694,6 @@ class GraphApp {
       ].map(field => `"${String(field).replace(/"/g, '""')}"`); // CSV escaping
       rows.push(row);
     });
-
     const csvContent = rows.map(r => r.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -4374,9 +4701,293 @@ class GraphApp {
     this.showToast(`Exported ${nodes.length} nodes to CSV.`);
   }
 
+  async fetchImageAsArrayBuffer(url) {
+    if (!url) return null;
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      return await blob.arrayBuffer();
+    } catch (e) {
+      console.warn("Failed to fetch image:", e);
+      return null;
+    }
+  }
+
+  async exportIntelligenceReport() {
+    try {
+      const nodes = this.cy.nodes();
+      const edges = this.cy.edges();
+      if (nodes.length === 0) {
+        this.showToast("No data to export!");
+        return;
+      }
+
+      if (typeof docx === "undefined" || typeof saveAs === "undefined") {
+        this.showToast("Document generation libraries not yet loaded. Please wait a moment.");
+        return;
+      }
+
+      const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, ImageRun, WidthType, AlignmentType, BorderStyle, HeadingLevel, VerticalAlign, BorderStyle: BS } = docx;
+
+      this.showToast("Generating OSINT Collections Report...");
+
+      // 1. Capture Graph Image (FORCE WHITE MODE)
+      const pngData = this.cy.png({
+        full: true,
+        maxWidth: 1600,
+        maxHeight: 1200,
+        bg: "#ffffff" // Always force white mode for document clarity
+      });
+      const imageBuffer = this.base64ToArrayBuffer(pngData);
+
+      // 2. Prepare Data
+      const timestamp = new Date().toLocaleString();
+      const seeds = nodes.filter('[type="seed"]');
+      const influencers = nodes.toArray()
+        .sort((a, b) => (b.degree ? b.degree() : 0) - (a.degree ? a.degree() : 0))
+        .slice(0, 10);
+      const nodesWithNotes = nodes.filter(
+        (n) => n.data && n.data("note") && String(n.data("note")).trim() !== "",
+      );
+
+      // 3. Build Document
+      const summaryItems = [
+        new Paragraph({
+          text: "OSINT Collections Report",
+          heading: HeadingLevel.HEADING_1,
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 200 },
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Generated: ${timestamp}`, italics: true }),
+            new TextRun({ text: "\nSoftware: Wayfinder TikTok Graph Builder (v1.0)" }),
+          ],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 400 },
+        }),
+        new Paragraph({
+          text: "1. Collections Summary",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 400, after: 200 },
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `• Network Scope: `, bold: true }),
+            new TextRun(`${nodes.length} accounts mapped.`),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `• Connection Density: `, bold: true }),
+            new TextRun(`${edges.length} total links identified.`),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `• Collected Seeds: `, bold: true }),
+            new TextRun(`${seeds.length} targets analyzed.`),
+          ],
+          spacing: { after: 400 },
+        }),
+      ];
+
+      // --- Graph Image ---
+      summaryItems.push(
+        new Paragraph({
+          children: [
+            new ImageRun({
+              data: imageBuffer,
+              transformation: { width: 600, height: 400 },
+            }),
+          ],
+          alignment: AlignmentType.CENTER,
+          spacing: { top: 400, bottom: 400 },
+        })
+      );
+
+      // --- Section 2: Collected Seed Card Tables ---
+      summaryItems.push(
+        new Paragraph({
+          text: "2. Target Profiles (Seed Data)",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 400, after: 200 },
+        })
+      );
+
+      if (seeds.length === 0) {
+        summaryItems.push(new Paragraph({ text: "No primary seeds identified in this collection.", italics: true }));
+      } else {
+        for (const s of seeds) {
+          const d = s.data();
+          const avatarUrl = this.getPreferredAvatarSource(d);
+          const avatarBuffer = await this.fetchImageAsArrayBuffer(avatarUrl);
+          const captureTime = d.captureTime || d.ingestTime || "Unknown";
+          const formattedCapture = captureTime.includes("T") ? new Date(captureTime).toLocaleString() : captureTime;
+          
+          const cardCells = [
+            // Left Column: Avatar
+            new TableCell({
+              width: { size: 25, type: WidthType.PERCENTAGE },
+              verticalAlign: VerticalAlign.CENTER,
+              children: avatarBuffer ? [
+                new Paragraph({
+                  children: [
+                    new ImageRun({
+                      data: avatarBuffer,
+                      transformation: { width: 100, height: 100 },
+                    }),
+                  ],
+                  alignment: AlignmentType.CENTER,
+                })
+              ] : [new Paragraph({ text: "[No Avatar]", alignment: AlignmentType.CENTER })],
+              borders: {
+                right: { style: BS.SINGLE, size: 2, color: "eeeeee" }
+              }
+            }),
+            // Right Column: Details
+            new TableCell({
+              width: { size: 75, type: WidthType.PERCENTAGE },
+              children: [
+                new Paragraph({ 
+                  children: [
+                    new TextRun({ text: `${d.label || "N/A"} `, bold: true, size: 28 }),
+                    new TextRun({ text: `(@${d.id || "unknown"})`, color: "666666", size: 24 })
+                  ],
+                  spacing: { after: 120 }
+                }),
+                new Paragraph({ 
+                  children: [
+                    new TextRun({ text: "Followers: ", bold: true }), 
+                    new TextRun(String(d.followers || 0)),
+                    new TextRun({ text: " | Following: ", bold: true }),
+                    new TextRun(String(d.following || 0))
+                  ] 
+                }),
+                new Paragraph({ children: [new TextRun({ text: "Capture Time: ", bold: true }), new TextRun(formattedCapture)] }),
+                new Paragraph({ 
+                  children: [new TextRun({ text: "Bio: ", bold: true }), new TextRun(d.bio || "N/A")],
+                  spacing: { before: 80 }
+                }),
+                new Paragraph({ 
+                  children: [
+                    new TextRun({ text: "Notes: ", bold: true, color: "2ea8ff" }), 
+                    new TextRun({ text: d.note || "No custom notes.", italics: true })
+                  ],
+                  spacing: { before: 100 }
+                }),
+              ],
+              margins: { left: 200, top: 100, bottom: 100 }
+            }),
+          ];
+
+          summaryItems.push(new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [new TableRow({ children: cardCells })],
+            borders: {
+              top: { style: BS.SINGLE, size: 10, color: "dddddd" },
+              bottom: { style: BS.SINGLE, size: 10, color: "dddddd" },
+              left: { style: BS.SINGLE, size: 10, color: "dddddd" },
+              right: { style: BS.SINGLE, size: 10, color: "dddddd" },
+            },
+            spacing: { after: 300 },
+          }));
+        }
+      }
+
+      // --- Section 3: Network Influencers ---
+      summaryItems.push(
+        new Paragraph({
+          text: "3. Top Influence Map (Engagement Hubs)",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 400, after: 200 },
+        })
+      );
+
+      const influencerRows = [
+        new TableRow({
+          children: [
+            new TableCell({ children: [new Paragraph({ text: "Rank", bold: true })], shading: { fill: "f2f2f2" } }),
+            new TableCell({ children: [new Paragraph({ text: "Profile", bold: true })], shading: { fill: "f2f2f2" } }),
+            new TableCell({ children: [new Paragraph({ text: "Connections", bold: true })], shading: { fill: "f2f2f2" } }),
+            new TableCell({ children: [new Paragraph({ text: "Display Name", bold: true })], shading: { fill: "f2f2f2" } }),
+          ],
+        }),
+      ];
+
+      influencers.forEach((node, i) => {
+        const deg = node.degree ? node.degree() : 0;
+        const d = node.data();
+        influencerRows.push(new TableRow({
+          children: [
+            new TableCell({ children: [new Paragraph(`${i + 1}`)] }),
+            new TableCell({ children: [new Paragraph(`@${d.id || "unknown"}`)] }),
+            new TableCell({ children: [new Paragraph(`${deg}`)] }),
+            new TableCell({ children: [new Paragraph(d.label || "N/A")] }),
+          ],
+        }));
+      });
+
+      summaryItems.push(new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: influencerRows,
+        spacing: { after: 400 },
+      }));
+
+      // --- Section 4: Collection Findings ---
+      summaryItems.push(
+        new Paragraph({
+          text: "4. Collection Findings (Consolidated Notes)",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 400, after: 200 },
+        })
+      );
+
+      if (nodesWithNotes.length === 0) {
+        summaryItems.push(new Paragraph({ text: "No findings recorded in this session.", italics: true }));
+      } else {
+        nodesWithNotes.forEach(node => {
+          const d = node.data();
+          const noteText = String(d.note || "")
+            .replace(/<br\s*\/?>/gi, "\n")
+            .replace(/<[^>]*>/g, "");
+
+          summaryItems.push(new Paragraph({
+            children: [new TextRun({ text: `@${d.id || "unknown"}`, bold: true, color: "2ea8ff" })],
+            spacing: { before: 200 },
+          }));
+
+          summaryItems.push(new Paragraph({
+            text: noteText,
+            spacing: { before: 100, after: 200, left: 400 },
+          }));
+        });
+      }
+
+      summaryItems.push(new Paragraph({
+        text: "\n---\nEnd of Report — Wayfinder TikTok OSINT Collections Tool",
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 600 },
+      }));
+
+      // 4. Create and Save Document
+      const doc = new Document({
+        sections: [{ children: summaryItems }],
+      });
+
+      const blob = await Packer.toBlob(doc);
+      saveAs(blob, `tiktok-collections-report-${this.getTimestamp()}.docx`);
+      this.showToast("Collections Report (.docx) generated successfully.");
+
+    } catch (err) {
+      console.error("Failed to generate Collections report:", err);
+      this.showToast("Report generation failed. See console for details.");
+    }
+  }
+
   // --- Hull Utilities ---
   initCanvas() {
-    this.showHulls = false;
     this.cyCanvas = this.cy.cyCanvas({
       zIndex: -1, // Behind nodes
       pixelRatio: window.devicePixelRatio || 1,

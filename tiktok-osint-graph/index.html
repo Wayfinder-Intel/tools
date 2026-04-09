@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="no-referrer" />
     <title>TikTok Graph Builder</title>
+    <!-- Word Document Generation -->
+    <script type="module">
+      import * as docx from 'https://cdn.jsdelivr.net/npm/docx@8.5.0/+esm';
+      window.docx = docx;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -19,10 +26,11 @@
     <!-- Shared CSS -->
     <link rel="stylesheet" href="../css/style.css" />
 
-    <!-- Cytoscape -->
+    <!-- Cytoscape & D3 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape-svg@0.4.0/cytoscape-svg.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape-canvas@3.0.1/dist/cytoscape-canvas.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
     <link rel="stylesheet" href="style.css?v=1023" />
 
     <!-- Shared JS -->
@@ -79,6 +87,13 @@
         <button class="nav-btn" data-category="SETTINGS" title="SETTINGS">
           <i data-lucide="settings"></i>
         </button>
+        <div class="divider vertical"></div>
+        <div class="search-container" id="search-container">
+          <button class="nav-btn" id="search-toggle-btn" title="Search Graph">
+            <i data-lucide="search"></i>
+          </button>
+          <input type="text" id="search-input" placeholder="Search users..." class="search-input" />
+        </div>
       </div>
 
       <!-- Vertical floating subtool pill wrapper -->
@@ -116,20 +131,6 @@
               margin: 4px 0;
             "
           ></div>
-          <button class="subtool-btn" id="delete-selected-btn" title="Delete selected nodes/links (Del / Backspace)">
-            <i data-lucide="trash-2"></i>
-          </button>
-          <button class="subtool-btn" id="deletion-history-btn" title="Deletion History">
-            <i data-lucide="history"></i>
-          </button>
-          <div
-            style="
-              width: 24px;
-              height: 1px;
-              background: rgba(255, 255, 255, 0.1);
-              margin: 4px 0;
-            "
-          ></div>
           <button
             class="subtool-btn"
             id="export-json-btn"
@@ -137,6 +138,7 @@
           >
             <i data-lucide="upload-cloud"></i>
           </button>
+
           <button
             class="subtool-btn"
             id="import-json-btn"
@@ -172,6 +174,21 @@
             title="Export node metadata to CSV"
           >
             <i data-lucide="file-spreadsheet"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn"
+            id="export-report-btn"
+            title="Export OSINT Collections Report (.docx)"
+          >
+            <i data-lucide="file-text"></i>
           </button>
           <!-- Hidden file input for uploading JSON -->
           <input
@@ -288,6 +305,13 @@
           >
             <i data-lucide="undo-2"></i>
           </button>
+          <!-- Deletion Tools moved from DATA -->
+          <button class="subtool-btn" id="delete-selected-btn" title="Delete selected (Del / Backspace)">
+            <i data-lucide="trash-2"></i>
+          </button>
+          <button class="subtool-btn" id="deletion-history-btn" title="Deletion History">
+            <i data-lucide="history"></i>
+          </button>
           <div
             style="
               width: 24px;
@@ -398,6 +422,13 @@
                     title="Reheat by FFP Distance"
                   >
                     <i data-lucide="scatter-chart"></i>
+                  </button>
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ffp-ghost-btn"
+                    title="Toggle Topology Ghost Mode (Fade non-FFP elements)"
+                  >
+                    <i data-lucide="eye-off"></i>
                   </button>
                   <!-- Divider -->
                   <div class="ffp-divider"></div>
@@ -581,6 +612,20 @@
           >
             <i data-lucide="lasso"></i>
           </button>
+          <button
+            class="subtool-btn mt-2"
+            id="find-overlaps-btn"
+            title="Find Network Overlaps (Nodes connected to 2+ seeds)"
+          >
+            <i data-lucide="git-pull-request"></i>
+          </button>
+          <button
+            class="subtool-btn mt-2"
+            id="influence-toggle-btn"
+            title="Rank by Influence (Scale nodes by total connections)"
+          >
+            <i data-lucide="trending-up"></i>
+          </button>
         </div>
 
         <div class="panel-section hidden" data-panel="SETTINGS">
@@ -603,6 +648,13 @@
             title="Export Paste Buffer (.json)"
           >
             <i data-lucide="bug"></i>
+          </button>
+          <button
+            class="subtool-btn"
+            id="about-btn"
+            title="About TikTok OSINT Graph"
+          >
+            <i data-lucide="info"></i>
           </button>
         </div>
       </div>
@@ -742,6 +794,15 @@
         <div class="modal-body">
           <div class="form-section">
             <h3>Layout & Ingest</h3>
+            <div class="form-group mb-3">
+              <label for="pref-layout-style">Layout Style</label>
+              <select id="pref-layout-style" class="ui-select" style="margin-top: 4px;">
+                <option value="organic">Organic (Force-Directed)</option>
+                <option value="concentric">Concentric (Hub & Spoke)</option>
+                <option value="hierarchical">Hierarchical (Tree)</option>
+                <option value="circular">Circular (Ring)</option>
+              </select>
+            </div>
             <div class="form-group">
               <label for="pref-scatter-radius">
                 New Node Scatter Radius (<span id="val-scatter-radius">300</span>px)
@@ -1018,6 +1079,46 @@
         <div class="modal-footer">
           <button id="cancel-note-editor-btn" class="btn btn-secondary">Cancel</button>
           <button id="save-note-btn" class="btn btn-primary">Save Note</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- About Modal -->
+    <div id="about-modal-backdrop" class="modal-backdrop hidden">
+      <div id="about-modal" class="modal" style="width:480px">
+        <div class="modal-header">
+          <h2>About TikTok OSINT Graph</h2>
+          <button id="close-about-modal-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body" style="text-align: center; padding: 24px 16px;">
+          <div style="margin-bottom: 24px;">
+            <div style="font-size: 1.1rem; font-weight: 600; color: var(--accent); margin-bottom: 4px;">Version 0.9</div>
+            <div style="font-size: 0.85rem; opacity: 0.7;">Modern OSINT Visualization Suite</div>
+          </div>
+          
+          <div style="margin-bottom: 24px;">
+            <p style="margin-bottom: 12px; line-height: 1.5;">
+              A professional intelligence tool for mapping and analyzing TikTok social networks, 
+              designed for deep investigation and link analysis.
+            </p>
+            <p style="font-weight: 600;">Developed by Wayfinder</p>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
+            <a href="https://wayfinder.co.nz" target="_blank" class="btn" style="width: 100%; justify-content: center; text-decoration: none;">
+              <i data-lucide="globe" style="width: 16px; margin-right: 8px;"></i>
+              wayfinder.co.nz
+            </a>
+            <a href="https://wayfinder-intel.github.io/tools" target="_blank" class="btn" style="width: 100%; justify-content: center; text-decoration: none;">
+              <i data-lucide="hammer" style="width: 16px; margin-right: 8px;"></i>
+              Wayfinder Tools Archive
+            </a>
+          </div>
+        </div>
+        <div class="modal-footer" style="justify-content: center; opacity: 0.5; font-size: 0.8rem;">
+          &copy; 2026 Wayfinder Intelligence
         </div>
       </div>
     </div>

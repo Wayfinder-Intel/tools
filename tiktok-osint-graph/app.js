@@ -22,6 +22,7 @@ class GraphApp {
       nodeRepulsion: 12000,
       snapGrid: 100,
       avatarStyle: "avatar", // "avatar" or "dot"
+      linkLabelSize: 13,
     };
 
     this.influenceMode = false;
@@ -298,6 +299,12 @@ class GraphApp {
 
     this.isDragging = false;
     this.cy.on("grab", "node", (e) => {
+      // Clear hover on interaction
+      if (typeof hoverShowTimeout !== 'undefined') clearTimeout(hoverShowTimeout);
+      if (typeof hoverTimeout !== 'undefined') clearTimeout(hoverTimeout);
+      const hoverPanel = document.getElementById("node-hover-panel");
+      if (hoverPanel) hoverPanel.classList.add("hidden");
+
       // If user grabs a selection containing locked nodes, Cytoscape blocks the entire drag.
       const selectedLocked = this.cy.nodes(":selected").filter((n) => n.data("locked"));
       if (selectedLocked.length > 0) {
@@ -1277,6 +1284,9 @@ class GraphApp {
 
       const avatarRad = document.querySelector(`input[name="pref-avatar-style"][value="${this.settings.avatarStyle}"]`);
       if (avatarRad) avatarRad.checked = true;
+
+      document.getElementById("pref-link-label-size").value = this.settings.linkLabelSize;
+      document.getElementById("val-link-label-size").textContent = this.settings.linkLabelSize;
       },
     });
     const openPrefModal = () => prefModal.open(btnPreferences);
@@ -1287,7 +1297,7 @@ class GraphApp {
     onClickIf(btnCancelPref, closePrefModal);
 
     // Sync slider display values
-    ["scatter-radius", "ideal-edge", "repulsion", "snap-grid"].forEach(id => {
+    ["scatter-radius", "ideal-edge", "repulsion", "snap-grid", "link-label-size"].forEach(id => {
       const input = document.getElementById(`pref-${id}`);
       const val = document.getElementById(`val-${id}`);
       if (input && val) {
@@ -1310,6 +1320,7 @@ class GraphApp {
         const avatarStyle = document.querySelector('input[name="pref-avatar-style"]:checked').value;
         const styleChanged = (this.settings.avatarStyle !== avatarStyle);
         this.settings.avatarStyle = avatarStyle;
+        this.settings.linkLabelSize = parseInt(document.getElementById("pref-link-label-size").value);
 
         if (styleChanged) {
           this.isDotMode = (this.settings.avatarStyle === "dot");
@@ -1321,40 +1332,43 @@ class GraphApp {
         }
 
         this.showToast("Preferences updated.");
+        if (this.ffpMode !== "off") this.applyFFPStyles();
         closePrefModal();
       });
     }
 
     // Bulk Note Modal Logic
-    const btnBulkNote = document.getElementById("bulk-note-btn");
+    // Removed bulk-note-btn (now integrated into radial menu)
     const bulkNoteBackdrop = document.getElementById("bulk-note-backdrop");
     const btnCloseBulkNote = document.getElementById("close-bulk-note-btn");
     const btnCancelBulkNote = document.getElementById("cancel-bulk-note-btn");
     const btnSubmitBulkNote = document.getElementById("submit-bulk-note-btn");
     const bulkNoteModal = createModalController(bulkNoteBackdrop, {
       onOpen: () => {
-      const area = document.getElementById("bulk-note-area");
-      const selectedNodes = this.cy.nodes(":selected");
+        const area = document.getElementById("bulk-note-area");
+        const selectedNodes = this.cy.nodes(":selected");
 
-      if (selectedNodes.length > 0) {
-        // Build alphabetical list of @usernames
-        const userList = selectedNodes
-          .toArray()
-          .map((n) => `@${n.id()} : `)
-          .sort()
-          .join("\n");
-        area.value = userList;
-      } else {
-        area.value = "";
-      }
+        if (selectedNodes.length > 0) {
+          // Build list with existing notes
+          const userList = selectedNodes
+            .toArray()
+            .map((n) => {
+              const note = n.data("note") || "";
+              return `@${n.id()} : ${note.replace(/\n/g, " ")}`;
+            })
+            .sort()
+            .join("\n");
+          area.value = userList;
+        } else {
+          area.value = "";
+        }
 
-      area.focus();
+        area.focus();
       },
     });
-    const openBulkNoteModal = () => bulkNoteModal.open(btnBulkNote);
+    this.openBulkNoteModal = () => bulkNoteModal.open(null);
     const closeBulkNoteModal = () => bulkNoteModal.close();
 
-    onClickIf(btnBulkNote, () => openBulkNoteModal());
     onClickIf(btnCloseBulkNote, closeBulkNoteModal);
     onClickIf(btnCancelBulkNote, closeBulkNoteModal);
 
@@ -2205,12 +2219,14 @@ class GraphApp {
 
     this.cy.on("mouseover", "node", (e) => {
       const node = e.target;
+      if (this.isDragging || node.grabbed()) return;
 
       if (hoverTimeout) clearTimeout(hoverTimeout);
       if (hoverShowTimeout) clearTimeout(hoverShowTimeout);
 
-      // Wait 250ms of continuous hover before showing (snappier feel)
+      // Wait 400ms of continuous hover before showing (stability)
       hoverShowTimeout = setTimeout(() => {
+        if (this.isDragging || node.grabbed()) return;
         const data = node.data();
         activeHoverNodeData = data;
         const isSeed = data.type === "seed";
@@ -2304,12 +2320,11 @@ class GraphApp {
         hoverPanel.style.top = `${top}px`;
 
         hoverPanel.classList.remove("hidden");
-      }, 250);
+      }, 400);
     });
 
     this.cy.on("mouseout", "node", (e) => {
       const node = e.target;
-      if (node.data("type") !== "seed") return;
 
       if (hoverShowTimeout) clearTimeout(hoverShowTimeout); // Cancel if they leave too soon
       hoverTimeout = setTimeout(() => {
@@ -2752,9 +2767,15 @@ class GraphApp {
     if (btnNoteNode) {
       btnNoteNode.addEventListener("click", (e) => {
         e.stopPropagation();
-        const target = activeRadialNode;
-        if (!target) return;
-        this.openNoteEditor(target);
+        hideRadialMenu(); // Close menu before opening modal
+        const selected = this.cy.nodes(":selected");
+        if (selected.length > 1) {
+          this.openBulkNoteModal();
+        } else {
+          const target = activeRadialNode || (selected.length > 0 ? selected[0] : null);
+          if (!target) return;
+          this.openNoteEditor(target);
+        }
       });
     }
 
@@ -3554,6 +3575,10 @@ class GraphApp {
   }
 
   bindExportActions(onClickIf) {
+    onClickIf(document.getElementById("isolate-selection-btn"), () =>
+      this.isolateToNewTab(),
+    );
+
     onClickIf(document.getElementById("export-json-btn"), () =>
       this.exportToJSON(),
     );
@@ -3839,6 +3864,55 @@ class GraphApp {
     );
   }
 
+  isolateToNewTab() {
+    const selectedNodes = this.cy.nodes(":selected");
+    let targetNodes;
+
+    if (selectedNodes.length > 0) {
+      // Branch off from specific selection
+      targetNodes = selectedNodes;
+    } else {
+      // Branch off from currently visible (non-ghosted) nodes
+      targetNodes = this.cy.nodes().not(".faded");
+      if (targetNodes.length === 0) {
+        this.showToast("No visible nodes to isolate!");
+        return;
+      }
+    }
+
+    // Capture the nodes and any edges connecting them
+    const targetEles = targetNodes.union(targetNodes.edgesWith(targetNodes));
+
+    // Get the base JSON structure
+    const graphData = targetEles.jsons();
+
+    const payload = {
+      elements: graphData,
+      uiState: {
+        isDarkMode: this.isDarkMode,
+        layoutStyle: this.settings.layoutStyle,
+        ffpMode: this.ffpMode,
+        ffpDepth: this.ffpDepth,
+        ktrussMode: this.ktrussMode,
+        ktrussK: this.ktrussK,
+        influenceMode: this.influenceMode,
+        showMutuals: this.showMutuals,
+        isDotMode: this.isDotMode,
+        isolateSource: true,
+      },
+    };
+
+    try {
+      const json = JSON.stringify(payload);
+      sessionStorage.setItem("wayfinder_isolate_bootstrap", json);
+      this.showToast("Opening isolated workspace in a new tab...");
+      window.open(window.location.href, "_blank");
+    } catch (err) {
+      console.error("Isolate failed:", err);
+      this.showToast("Selection too large to hand over via session storage.");
+    }
+  }
+
 
   normalizeImportedPayload(parsed) {
     if (Array.isArray(parsed)) {
@@ -3991,6 +4065,23 @@ class GraphApp {
       this.updateStylesheetForMode();
     }
 
+    if (uiState.influenceMode !== undefined) {
+      this.influenceMode = uiState.influenceMode;
+      const influenceBtn = document.getElementById("influence-toggle-btn");
+      if (influenceBtn) influenceBtn.classList.toggle("active", this.influenceMode);
+      if (this.influenceMode) this.updateInfluenceScaling();
+    }
+
+    if (uiState.ktrussMode !== undefined || uiState.ktrussK !== undefined) {
+      if (uiState.ktrussMode !== undefined) this.ktrussMode = uiState.ktrussMode;
+      if (uiState.ktrussK !== undefined) this.ktrussK = uiState.ktrussK;
+      
+      const ktrussBtn = document.getElementById("ktruss-toggle-btn");
+      if (ktrussBtn) ktrussBtn.classList.toggle("btn-ffp-active", this.ktrussMode);
+      
+      if (this.ktrussMode) this.updateKTrussUI();
+    }
+
     this.callIfFn("updateFFPUI");
   }
 
@@ -4009,36 +4100,7 @@ class GraphApp {
     reader.onload = (e) => {
       try {
         const parsed = JSON.parse(e.target.result);
-        const existingNodeCount = this.cy.nodes().length;
-        const { elements, uiState } = this.normalizeImportedPayload(parsed);
-        const newElements = this.mergeImportedElements(elements);
-        const addedElements = this.addElementsAndRebuildEdgeSet(newElements);
-        const needsLayout = this.positionImportedNodes(
-          addedElements,
-          existingNodeCount,
-        );
-
-        this.runImportLayoutOrFit(needsLayout);
-        this.updateStats();
-        this.updateDropdown();
-        this.applyImportedUiState(uiState);
-
-        setTimeout(() => {
-          addedElements.nodes().select();
-        }, 200);
-
-        const skipped = elements.length - newElements.length;
-        const msg =
-          skipped > 0
-            ? `Merged ${file.name}: ${newElements.length} new, ${skipped} updated`
-            : `Imported ${file.name}`;
-        this.showToast(msg);
-
-        if (this.ffpMode !== "off") {
-          this.applyFFPStyles();
-        }
-
-        this.refreshImportedOverlays();
+        this.bootFromSerializedState(parsed, file.name);
       } catch (err) {
         console.error(err);
         this.showToast("Error parsing JSON file. Is it corrupt?");
@@ -4050,6 +4112,44 @@ class GraphApp {
     };
 
     reader.readAsText(file);
+  }
+
+  bootFromSerializedState(parsed, sourceLabel = "Bootstrap") {
+    const existingNodeCount = this.cy.nodes().length;
+    const { elements, uiState } = this.normalizeImportedPayload(parsed);
+    const newElements = this.mergeImportedElements(elements);
+    const addedElements = this.addElementsAndRebuildEdgeSet(newElements);
+    const needsLayout = this.positionImportedNodes(
+      addedElements,
+      existingNodeCount,
+    );
+
+    this.runImportLayoutOrFit(needsLayout);
+    this.updateStats();
+    this.updateDropdown();
+    this.applyImportedUiState(uiState);
+
+    setTimeout(() => {
+      addedElements.nodes().select();
+    }, 200);
+
+    const skipped = elements.length - newElements.length;
+    const msg =
+      skipped > 0
+        ? `Merged ${sourceLabel}: ${newElements.length} new, ${skipped} updated`
+        : `Loaded ${sourceLabel}`;
+    this.showToast(msg);
+
+    if (this.ffpMode !== "off") {
+      this.applyFFPStyles();
+    }
+
+    this.refreshImportedOverlays();
+    
+    // If we're bootstrapping into a new workspace, fit the view nicely
+    if (existingNodeCount === 0 && addedElements.length > 0) {
+      this.cy.fit(addedElements, 80);
+    }
   }
 
   // --- HTML Scrape Parsing ---
@@ -4416,12 +4516,12 @@ class GraphApp {
           // Rank label: show number if toggle is on
           if (this.ffpRankLabelMode) {
             edge.style("label", String(rank));
-            edge.style("font-size", "9px");
-            edge.style("color", "#e2e8f0");
+            edge.style("font-size", `${this.settings.linkLabelSize || 13}px`);
+            edge.style("font-weight", "600");
+            edge.style("color", "#ffffff");
             edge.style("text-background-color", "#1e293b");
-            edge.style("text-background-opacity", 0.75);
-            edge.style("text-background-padding", "2px");
-            edge.style("text-background-shape", "roundrectangle");
+            edge.style("text-background-opacity", 0.85);
+            edge.style("text-background-padding", "3px");
             edge.style("text-rotation", "autorotate");
           } else {
             edge.removeStyle("label");
@@ -4670,14 +4770,16 @@ class GraphApp {
 
   exportToCSV() {
     const nodes = this.cy.nodes();
+    const edges = this.cy.edges();
     if (nodes.length === 0) {
       this.showToast("No data to export!");
       return;
     }
 
-    // Define CSV Headers
-    const headers = ["Username (ID)", "Display Name", "Type", "Bio", "Following", "Followers", "Likes", "Notes", "Ingested At"];
-    const rows = [headers];
+    // --- SECTION 1: NODES (ACCOUNTS) ---
+    // Define CSV Headers for Nodes
+    const nodeHeaders = ["Username (ID)", "Display Name", "Type", "Bio", "Following", "Followers", "Likes", "Notes", "Capture/Ingest Time"];
+    const rows = [["--- ACCOUNTS (NODES) ---"], nodeHeaders];
 
     nodes.forEach(node => {
       const d = node.data();
@@ -4690,15 +4792,38 @@ class GraphApp {
         d.followers || "Unknown",
         d.likes || "Unknown",
         (d.note || "").replace(/<[^>]*>/g, "").replace(/\n/g, " "), // strip HTML from notes
-        d.ingestTime || ""
-      ].map(field => `"${String(field).replace(/"/g, '""')}"`); // CSV escaping
+        d.captureTime || d.ingestTime || ""
+      ].map(field => `"${String(field).replace(/"/g, '""')}"`);
       rows.push(row);
     });
+
+    // --- SPACER ---
+    rows.push([]);
+    rows.push([]);
+
+    // --- SECTION 2: EDGES (RELATIONSHIPS) ---
+    // Define CSV Headers for Edges
+    const edgeHeaders = ["Source (ID)", "Target (ID)", "Relationship Type", "Mutual?", "Date of Capture"];
+    rows.push(["--- RELATIONSHIPS (EDGES) ---"]);
+    rows.push(edgeHeaders);
+
+    edges.forEach(edge => {
+      const d = edge.data();
+      const row = [
+        d.source || "",
+        d.target || "",
+        d.ffpDirection || "link",
+        d.mutual === "true" ? "Yes" : "No",
+        d.ingestedAt || d.captureTime || ""
+      ].map(field => `"${String(field).replace(/"/g, '""')}"`);
+      rows.push(row);
+    });
+
     const csvContent = rows.map(r => r.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
-    this.downloadFile(url, `tiktok-node-data-${this.getTimestamp()}.csv`);
-    this.showToast(`Exported ${nodes.length} nodes to CSV.`);
+    this.downloadFile(url, `tiktok-graph-data-${this.getTimestamp()}.csv`);
+    this.showToast(`Exported ${nodes.length} accounts and ${edges.length} relationships.`);
   }
 
   async fetchImageAsArrayBuffer(url) {
@@ -5326,4 +5451,16 @@ class GraphApp {
 // Boot application
 window.addEventListener("DOMContentLoaded", () => {
   window.app = new GraphApp();
+
+  // Check for isolated workspace handoff
+  const isolateDataRaw = sessionStorage.getItem("wayfinder_isolate_bootstrap");
+  if (isolateDataRaw) {
+    sessionStorage.removeItem("wayfinder_isolate_bootstrap");
+    try {
+      const parsed = JSON.parse(isolateDataRaw);
+      window.app.bootFromSerializedState(parsed, "Isolated Selection");
+    } catch (e) {
+      console.error("Failed to load isolated workspace state:", e);
+    }
+  }
 });

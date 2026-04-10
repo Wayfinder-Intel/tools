@@ -133,6 +133,13 @@
           ></div>
           <button
             class="subtool-btn"
+            id="isolate-selection-btn"
+            title="Isolate Selection to New Workspace (New Tab)"
+          >
+            <i data-lucide="external-link"></i>
+          </button>
+          <button
+            class="subtool-btn"
             id="export-json-btn"
             title="Export Graph to JSON"
           >
@@ -171,7 +178,7 @@
           <button
             class="subtool-btn"
             id="export-csv-btn"
-            title="Export node metadata to CSV"
+            title="Export Graph data to CSV (Nodes + Relationships)"
           >
             <i data-lucide="file-spreadsheet"></i>
           </button>
@@ -334,13 +341,7 @@
           >
             <i data-lucide="git-commit"></i>
           </button>
-          <button
-            class="subtool-btn mt-2"
-            id="bulk-note-btn"
-            title="Bulk Annotations (Bulk Notes)"
-          >
-            <i data-lucide="edit"></i>
-          </button>
+
         </div>
 
         <div class="panel-section hidden" data-panel="ANALYSIS">
@@ -836,6 +837,12 @@
                 <label><input type="radio" name="pref-avatar-style" value="avatar" checked /> Avatar</label>
                 <label><input type="radio" name="pref-avatar-style" value="dot" /> Dot</label>
               </div>
+            </div>
+            <div class="form-group" style="margin-top: 12px;">
+              <label for="pref-link-label-size">
+                Link Label Size (<span id="val-link-label-size">13</span>px)
+              </label>
+              <input type="range" id="pref-link-label-size" min="8" max="24" step="1" value="13" class="ui-slider" />
             </div>
           </div>
         </div>

@@ -294,7 +294,7 @@ class GraphApp {
         idealEdgeLength: () => 100,
       },
       wheelSensitivity: 0.2,
-      selectionType: "additive", // Cytoscape handles shift-click naturally if we let it, or we handle it manually. 'additive' means standard click behavior.
+      selectionType: "single",
     });
 
     this.isDragging = false;
@@ -991,33 +991,12 @@ class GraphApp {
         // Detect double click (300ms window) on the same node
         if (lastTappedNode === node.id() && now - lastTapTime < 300) {
           // Double click: Select the node and everything it is connected to
-          if (singleTapTimeout) clearTimeout(singleTapTimeout); // Prevent unselecting previous selection
-
-          // Use setTimeout to ensure our explicit select() overrides Cytoscape's native toggle unselect
-          setTimeout(() => {
-            node.select();
-            // Select edges attached to this node
-            node.connectedEdges().select();
-            // Select nodes attached to those edges
-            node.connectedEdges().connectedNodes().select();
-          }, 10);
-        } else {
-          // Single click: If not holding shift/ctrl, clear others after 300ms (allows time for a potential double click to keep them)
-          if (
-            !originalEvent.shiftKey &&
-            !originalEvent.ctrlKey &&
-            !originalEvent.metaKey
-          ) {
-            if (singleTapTimeout) clearTimeout(singleTapTimeout);
-            singleTapTimeout = setTimeout(() => {
-              this.cy.nodes().difference(node).unselect();
-              // Because 'additive' selection type natively toggles nodes immediately,
-              // clicking an already-selected node toggles it OFF natively before we reach here.
-              // So we explicitly select it to ensure unmodified click makes it the sole selection.
-              node.select();
-            }, 300);
-          }
-        }
+          node.select();
+          node.connectedEdges().select();
+          node.connectedEdges().connectedNodes().select();
+        } 
+        // Single click: Native 'single' selection handles unselecting others instantly.
+        // We don't need the 300ms setTimeout anymore.
 
         lastTapTime = now;
         lastTappedNode = node.id();
@@ -2149,9 +2128,15 @@ class GraphApp {
         neighbourhood = neighbourhood.union(neighbourhood.neighborhood());
       }
 
+      // Clean up any high-level highlight classes that might interfere with view focus
+      this.cy.nodes().removeClass("search-hit ktruss-highlight");
+
       // Show only those elements, hide everything else
       this.cy.elements().hide();
       neighbourhood.show();
+
+      // Ensure selections are cleared so we don't have "active" borders on hidden elements
+      this.cy.elements().unselect();
 
       // Update UI
       const name = node.data("label") || "@" + node.id();
@@ -2167,6 +2152,8 @@ class GraphApp {
       egoMode = false;
       egoNode = null;
       this.cy.elements().show();
+      this.cy.elements().unselect();
+      this.cy.nodes().removeClass("search-hit ktruss-highlight");
       egoModeBanner.classList.add("hidden");
       egoToggleBtn.classList.remove("active");
       egoHop1Btn.classList.remove("active");

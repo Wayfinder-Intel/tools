@@ -715,11 +715,31 @@ class GraphApp {
             return;
           }
 
-          const overlaps = this.cy.nodes('[type!="seed"]').filter(node => {
-            // Count unique seed neighbors
-            const seedNeighbors = node.neighborhood('[type="seed"]');
-            return seedNeighbors.length >= 2;
+          const seedIds = new Set(seeds.map(n => n.id()));
+          const overlapCounts = new Map();
+
+          // Iterate all edges strictly to map overlaps in plain JS memory (O(E))
+          this.cy.edges().forEach(e => {
+            const u = e.source().id();
+            const v = e.target().id();
+            const isUSeed = seedIds.has(u);
+            const isVSeed = seedIds.has(v);
+
+            if (isUSeed && !isVSeed) {
+              if (!overlapCounts.has(v)) overlapCounts.set(v, new Set());
+              overlapCounts.get(v).add(u);
+            } else if (isVSeed && !isUSeed) {
+              if (!overlapCounts.has(u)) overlapCounts.set(u, new Set());
+              overlapCounts.get(u).add(v);
+            }
           });
+
+          const overlapIds = new Set();
+          for (const [nodeId, seedSet] of overlapCounts.entries()) {
+            if (seedSet.size >= 2) overlapIds.add(nodeId);
+          }
+
+          const overlaps = this.cy.nodes().filter(node => overlapIds.has(node.id()));
 
           if (overlaps.length === 0) {
             this.showToast("No common denominators found between current seeds.");
@@ -1021,12 +1041,6 @@ class GraphApp {
     });
 
     // --- Ingest Modal Logic ---
-    const ingestModalBackdrop = document.getElementById(
-      "ingest-modal-backdrop",
-    );
-    const btnCloseModal = document.getElementById("close-modal-btn");
-    const btnCancelIngest = document.getElementById("cancel-ingest-btn");
-    const btnSubmitIngest = document.getElementById("submit-ingest-btn");
     const radioTypes = document.querySelectorAll('input[name="ingest-type"]');
     const seedSelectGroup = document.getElementById("seed-select-group");
     const onClickIf = (el, handler) => {
@@ -1051,23 +1065,41 @@ class GraphApp {
       };
     };
 
-    const ingestModal = createModalController(ingestModalBackdrop, {
-      onClose: () => {
-        const pasteArea = document.getElementById("html-paste-area");
-        if (pasteArea) pasteArea.innerHTML = "";
-      },
-    });
-    const openIngestModal = (triggerBtn) => ingestModal.open(triggerBtn);
-    const closeIngestModal = () => ingestModal.close();
+    const registerModal = (config) => {
+      const backdrop = document.getElementById(config.backdropId);
+      const closeBtn = document.getElementById(config.closeBtnId);
+      const cancelBtn = document.getElementById(config.cancelBtnId);
+      const submitBtn = document.getElementById(config.submitBtnId);
+      const triggerBtn = config.triggerBtnId 
+        ? document.getElementById(config.triggerBtnId) 
+        : (config.triggerSelector ? document.querySelector(config.triggerSelector) : null);
 
-    // Wire Ingest Button
-    const ingestBtn = document.querySelector('[data-action="Ingest"]');
-    onClickIf(ingestBtn, () => {
-      this.updateDropdown(); // ensure seeds are populated
-      openIngestModal(ingestBtn);
-    });
-    onClickIf(btnCloseModal, closeIngestModal);
-    onClickIf(btnCancelIngest, closeIngestModal);
+      const modalController = createModalController(backdrop, {
+        onOpen: config.onOpen,
+        onClose: config.onClose
+      });
+
+      const openModal = () => modalController.open(triggerBtn);
+      const closeModal = () => modalController.close();
+
+      if (triggerBtn) {
+        onClickIf(triggerBtn, () => {
+          if (config.onTriggerClick) config.onTriggerClick();
+          openModal();
+        });
+      }
+      if (closeBtn) onClickIf(closeBtn, closeModal);
+      if (cancelBtn) onClickIf(cancelBtn, closeModal);
+      
+      if (submitBtn && config.onSubmitClick) {
+        onClickIf(submitBtn, () => {
+          config.onSubmitClick();
+          if (config.closeOnSubmit !== false) closeModal();
+        });
+      }
+
+      return { open: openModal, close: closeModal, controller: modalController };
+    };
 
     // Hide/Show seed dropdown based on type selection
     radioTypes.forEach((radio) => {
@@ -1080,9 +1112,18 @@ class GraphApp {
       });
     });
 
-    onClickIf(btnSubmitIngest, () => {
-      this.handleImport();
-      closeIngestModal();
+    const ingestModal = registerModal({
+      backdropId: "ingest-modal-backdrop",
+      closeBtnId: "close-modal-btn",
+      cancelBtnId: "cancel-ingest-btn",
+      submitBtnId: "submit-ingest-btn",
+      triggerSelector: '[data-action="Ingest"]',
+      onTriggerClick: () => this.updateDropdown(),
+      onClose: () => {
+        const pasteArea = document.getElementById("html-paste-area");
+        if (pasteArea) pasteArea.innerHTML = "";
+      },
+      onSubmitClick: () => this.handleImport(),
     });
 
     // --- Auto-detect seed + ingest type from pasted TikTok follower/following panel ---
@@ -1258,44 +1299,6 @@ class GraphApp {
       }
     });
 
-    // Preferences Modal Logic
-    const btnPreferences = document.querySelector('[data-action="Preferences"]');
-    const prefModalBackdrop = document.getElementById("pref-modal-backdrop");
-    const btnClosePref = document.getElementById("close-pref-modal-btn");
-    const btnCancelPref = document.getElementById("cancel-pref-btn");
-    const btnSavePref = document.getElementById("save-pref-btn");
-    const prefModal = createModalController(prefModalBackdrop, {
-      onOpen: () => {
-      // Populate fields from current settings
-      const layoutStyleEl = document.getElementById("pref-layout-style");
-      if (layoutStyleEl) layoutStyleEl.value = this.settings.layoutStyle || "organic";
-
-      document.getElementById("pref-scatter-radius").value = this.settings.scatterRadius;
-      document.getElementById("val-scatter-radius").textContent = this.settings.scatterRadius;
-      
-      document.getElementById("pref-ideal-edge").value = this.settings.idealEdgeLength;
-      document.getElementById("val-ideal-edge").textContent = this.settings.idealEdgeLength;
-      
-      document.getElementById("pref-repulsion").value = this.settings.nodeRepulsion;
-      document.getElementById("val-repulsion").textContent = this.settings.nodeRepulsion;
-
-      document.getElementById("pref-snap-grid").value = this.settings.snapGrid;
-      document.getElementById("val-snap-grid").textContent = this.settings.snapGrid;
-
-      const avatarRad = document.querySelector(`input[name="pref-avatar-style"][value="${this.settings.avatarStyle}"]`);
-      if (avatarRad) avatarRad.checked = true;
-
-      document.getElementById("pref-link-label-size").value = this.settings.linkLabelSize;
-      document.getElementById("val-link-label-size").textContent = this.settings.linkLabelSize;
-      },
-    });
-    const openPrefModal = () => prefModal.open(btnPreferences);
-    const closePrefModal = () => prefModal.close();
-
-    onClickIf(btnPreferences, () => openPrefModal());
-    onClickIf(btnClosePref, closePrefModal);
-    onClickIf(btnCancelPref, closePrefModal);
-
     // Sync slider display values
     ["scatter-radius", "ideal-edge", "repulsion", "snap-grid", "link-label-size"].forEach(id => {
       const input = document.getElementById(`pref-${id}`);
@@ -1307,8 +1310,37 @@ class GraphApp {
       }
     });
 
-    if (btnSavePref) {
-      btnSavePref.addEventListener("click", () => {
+    // Preferences Modal Logic
+    const prefModal = registerModal({
+      backdropId: "pref-modal-backdrop",
+      closeBtnId: "close-pref-modal-btn",
+      cancelBtnId: "cancel-pref-btn",
+      submitBtnId: "save-pref-btn",
+      triggerSelector: '[data-action="Preferences"]',
+      onOpen: () => {
+        // Populate fields from current settings
+        const layoutStyleEl = document.getElementById("pref-layout-style");
+        if (layoutStyleEl) layoutStyleEl.value = this.settings.layoutStyle || "organic";
+
+        document.getElementById("pref-scatter-radius").value = this.settings.scatterRadius;
+        document.getElementById("val-scatter-radius").textContent = this.settings.scatterRadius;
+        
+        document.getElementById("pref-ideal-edge").value = this.settings.idealEdgeLength;
+        document.getElementById("val-ideal-edge").textContent = this.settings.idealEdgeLength;
+        
+        document.getElementById("pref-repulsion").value = this.settings.nodeRepulsion;
+        document.getElementById("val-repulsion").textContent = this.settings.nodeRepulsion;
+
+        document.getElementById("pref-snap-grid").value = this.settings.snapGrid;
+        document.getElementById("val-snap-grid").textContent = this.settings.snapGrid;
+
+        const avatarRad = document.querySelector(`input[name="pref-avatar-style"][value="${this.settings.avatarStyle}"]`);
+        if (avatarRad) avatarRad.checked = true;
+
+        document.getElementById("pref-link-label-size").value = this.settings.linkLabelSize;
+        document.getElementById("val-link-label-size").textContent = this.settings.linkLabelSize;
+      },
+      onSubmitClick: () => {
         const layoutStyleEl = document.getElementById("pref-layout-style");
         if (layoutStyleEl) this.settings.layoutStyle = layoutStyleEl.value;
 
@@ -1333,12 +1365,10 @@ class GraphApp {
 
         this.showToast("Preferences updated.");
         if (this.ffpMode !== "off") this.applyFFPStyles();
-        closePrefModal();
-      });
-    }
+      }
+    });
 
     // Bulk Note Modal Logic
-    // Removed bulk-note-btn (now integrated into radial menu)
     const bulkNoteBackdrop = document.getElementById("bulk-note-backdrop");
     const btnCloseBulkNote = document.getElementById("close-bulk-note-btn");
     const btnCancelBulkNote = document.getElementById("cancel-bulk-note-btn");
@@ -2526,26 +2556,14 @@ class GraphApp {
 
         this.saveState();
 
-        // Create edge
-        const edgeId = `manual-${sourceId}-${targetId}-${Date.now()}`;
+        // Create edge via Data Manager
+        const newEdge = this.addEdgeToGraph(sourceId, targetId, null, null, "manual-link line-solid arrow-right");
 
-        this.cy.add({
-          group: "edges",
-          data: {
-            id: edgeId,
-            source: sourceId,
-            target: targetId,
-            mutual: "false",
-          },
-          // Ensure base styles are applied
-          classes: "manual-link line-solid arrow-right",
-        });
-
-        this.updateInfluenceScaling();
-
-        this.showToast(`Linked @${sourceId} to @${targetId}`);
-
-        const newEdge = this.cy.getElementById(edgeId);
+        if (newEdge) {
+          this.showToast(`Linked @${sourceId} to @${targetId}`);
+        } else {
+          this.showToast(`Link already exists.`);
+        }
 
         // Trigger radial menu immediately and artificially position it
         activeRadialEdge = newEdge;
@@ -3099,6 +3117,13 @@ class GraphApp {
       .update();
   }
 
+  /**
+   * Attempts to auto-detect both the target seed node and the relationship type
+   * (followers vs following) by analyzing the heuristic layout of raw TikTok profile text.
+   *
+   * @param {string} rawText - Raw, unformatted text pasted from the clipboard.
+   * @returns {Object|null} Object containing `candidateSeed` string and `detectedType` string, or null.
+   */
   detectIngestPasteContext(rawText) {
     const lines = (rawText || "")
       .split("\n")
@@ -3163,6 +3188,10 @@ class GraphApp {
     }
   }
 
+  /**
+   * Orchestrates the parsing of raw HTML pasted by the user into nodes and edges.
+   * Dispatches data to Graph Data Manager utilities based on the ingestion radio type.
+   */
   handleImport() {
     const typeSelect = document.querySelector(
       'input[name="ingest-type"]:checked',
@@ -3193,7 +3222,6 @@ class GraphApp {
     // Let the UI render before locking the thread with parsing
     setTimeout(() => {
       const profiles = this.parseTikTokProfiles(html, rawText, typeSelect);
-      console.log(`Parsed ${profiles.length} profiles from paste.`);
 
       // Always clear the paste area after attempting to parse, so it doesn't get stuck on failed ingests
       if (pasteArea) {
@@ -4161,7 +4189,6 @@ class GraphApp {
 
     if (mode === "seed") {
       // Seed parsing relies heavily on the provided text string format
-      console.log("Attempting string-based Seed extraction");
 
       // Look for patterns like:
       // "11\nFollowing\n2206\nFollowers\n363.4K\nLikes"
@@ -4320,7 +4347,6 @@ class GraphApp {
 
       // Regex Fallback if DOM routing fails
       if (profiles.length === 0) {
-        console.log("No anchor tags found, trying regex fallback");
         const regex = /(?:tiktok\.com)?\/@([^?/"\s>]+)/g;
         let match;
         while ((match = regex.exec(htmlString)) !== null) {
@@ -4345,6 +4371,12 @@ class GraphApp {
     return profiles;
   }
 
+  /**
+   * Safely injects a new Node or updates an existing Node using standard profile schema.
+   *
+   * @param {Object} profile - Parsed TikTok profile payload from paste tools.
+   * @param {boolean} isSeed - Is the node an original point of inquiry?
+   */
   addNodeToGraph(profile, isSeed) {
     let node;
     this.nodes.set(profile.id, profile);
@@ -4412,15 +4444,28 @@ class GraphApp {
     }
   }
 
-  addEdgeToGraph(source, target, rank = null, rankDirection = null) {
-    if (source === target) return;
+  /**
+   * Safely injects an edge between two nodes, automatically handling mutual logic detection.
+   *
+   * @param {string} source - The source node ID.
+   * @param {string} target - The target node ID.
+   * @param {number|null} [rank=null] - Optional layout ranking logic for force-directed styling.
+   * @param {string|null} [rankDirection=null] - Optional rank direction.
+   * @param {string} [extraClasses=""] - Optional extra classes for manual styling logic.
+   * @returns {Object|null} Cytoscape Edge element or null if invalid.
+   */
+  addEdgeToGraph(source, target, rank = null, rankDirection = null, extraClasses = "") {
+    if (source === target) return null;
 
     const edgeId = `${source}_${target}`;
     const reverseStr = `${target}->${source}`;
     const forwardStr = `${source}->${target}`;
 
-    if (this.edgeSet.has(forwardStr)) return; // Logic check
-    if (!this.cy.getElementById(edgeId).empty()) return; // Cytoscape strict element check
+    if (this.edgeSet.has(forwardStr)) return this.cy.getElementById(edgeId); // Logic check
+    if (!this.cy.getElementById(edgeId).empty()) {
+      this.edgeSet.add(forwardStr);
+      return this.cy.getElementById(edgeId); // Cytoscape strict element check
+    }
 
     this.edgeSet.add(forwardStr);
     let isMutual = false;
@@ -4437,7 +4482,7 @@ class GraphApp {
       }
     }
 
-    this.cy.add({
+    const newEdge = this.cy.add({
       group: "edges",
       data: {
         id: edgeId,
@@ -4448,9 +4493,11 @@ class GraphApp {
         ffpDirection: rankDirection,
         ingestedAt: new Date().toISOString(),
       },
+      classes: extraClasses
     });
 
     this.updateInfluenceScaling();
+    return newEdge;
   }
 
   applyFFPStyles(skipGhostUpdate = false) {
@@ -5202,6 +5249,10 @@ class GraphApp {
     return upper.concat(lower);
   }
 
+  /**
+   * Calculates the shortest path between all pairwise combinations of selected nodes
+   * using a Breath-First Search approach. Selects connecting paths and nodes visually.
+   */
   calculateShortestRoute() {
     const selectedNodes = this.cy.nodes(":selected");
     if (selectedNodes.length < 2) {
@@ -5226,41 +5277,41 @@ class GraphApp {
     // For every pairwise combination of selected nodes:
     for (let i = 0; i < ids.length; i++) {
       for (let j = i + 1; j < ids.length; j++) {
-        const A = ids[i];
-        const B = ids[j];
-        const distA = distMaps.get(A);
-        const distB = distMaps.get(B);
+        const startNodeId = ids[i];
+        const endNodeId = ids[j];
+        const sourceDistanceMap = distMaps.get(startNodeId);
+        const targetDistanceMap = distMaps.get(endNodeId);
 
-        const shortestPathLen = distA.get(B);
+        const minimumDistance = sourceDistanceMap.get(endNodeId);
 
-        if (shortestPathLen === undefined) {
-          continue; // No path exists between A and B
+        if (minimumDistance === undefined) {
+          continue; // No path exists between startNodeId and endNodeId
         }
 
-        // Any node V is on A shortest path between A and B if:
-        // dist(A, V) + dist(B, V) === dist(A, B)
+        // Any node V is on a shortest path between startNodeId and endNodeId if:
+        // dist(startNodeId, V) + dist(endNodeId, V) === dist(startNodeId, endNodeId)
         this.cy.nodes().forEach((n) => {
-          const v = n.id();
-          if (distA.has(v) && distB.has(v)) {
-            if (distA.get(v) + distB.get(v) === shortestPathLen) {
+          const targetId = n.id();
+          if (sourceDistanceMap.has(targetId) && targetDistanceMap.has(targetId)) {
+            if (sourceDistanceMap.get(targetId) + targetDistanceMap.get(targetId) === minimumDistance) {
               resultElements.merge(n);
             }
           }
         });
 
-        // Any Edge E(u,v) is on a shortest path between A and B if it connects two nodes
-        // on the shortest path in a way that increments the distance from A toward B.
+        // Any Edge E(sourceId, targetId) is on a shortest path between startNodeId and endNodeId if it connects two nodes
+        // on the shortest path in a way that increments the distance from startNodeId toward endNodeId.
         this.cy.edges().forEach((e) => {
-          const u = e.source().id();
-          const v = e.target().id();
+          const sourceId = e.source().id();
+          const targetId = e.target().id();
 
-          if (distA.has(u) && distB.has(u) && distA.has(v) && distB.has(v)) {
-            // Check if travelling A -> u -> v -> B matches the exact length
-            if (distA.get(u) + 1 + distB.get(v) === shortestPathLen) {
+          if (sourceDistanceMap.has(sourceId) && targetDistanceMap.has(sourceId) && sourceDistanceMap.has(targetId) && targetDistanceMap.has(targetId)) {
+            // Check if travelling startNodeId -> sourceId -> targetId -> endNodeId matches the exact length
+            if (sourceDistanceMap.get(sourceId) + 1 + targetDistanceMap.get(targetId) === minimumDistance) {
               resultElements.merge(e);
             }
-            // Check reverse traversal A -> v -> u -> B
-            else if (distA.get(v) + 1 + distB.get(u) === shortestPathLen) {
+            // Check reverse traversal startNodeId -> targetId -> sourceId -> endNodeId
+            else if (sourceDistanceMap.get(targetId) + 1 + targetDistanceMap.get(sourceId) === minimumDistance) {
               resultElements.merge(e);
             }
           }
@@ -5275,6 +5326,12 @@ class GraphApp {
     this.showToast("Shortest routes selected.");
   }
 
+  /**
+   * Applies the K-Truss community detection algorithm (Cohen's Linear algorithm) to the graph.
+   * Modifies visual styling to highlight heavily interconnected subgroups.
+   *
+   * @param {number} k - The minimum degree of interconnectedness (number of triangles + 2).
+   */
   computeKTrussAndColor(k) {
     // Reset all nodes to base colors and unhide all edges
     this.cy.nodes().removeClass("faded");
@@ -5291,99 +5348,123 @@ class GraphApp {
     }
 
     // We operate on an undirected version of the graph for classic k-truss
-    const adj = new Map();
+    const adjacencyMap = new Map();
 
-    // Ensure every node is in adj
-    this.cy.nodes().forEach((n) => adj.set(n.id(), new Set()));
+    // Ensure every node is in adjacencyMap
+    this.cy.nodes().forEach((n) => adjacencyMap.set(n.id(), new Set()));
 
     // Build adjacency from visible edges
     this.cy.edges().forEach((e) => {
-      const u = e.source().id();
-      const v = e.target().id();
-      if (u !== v) {
-        adj.get(u).add(v);
-        adj.get(v).add(u);
+      const sourceId = e.source().id();
+      const targetId = e.target().id();
+      if (sourceId !== targetId) {
+        adjacencyMap.get(sourceId).add(targetId);
+        adjacencyMap.get(targetId).add(sourceId);
       }
     });
 
-    let changed = true;
-
-    // Iteratively remove edges that are part of < (k-2) triangles
-    while (changed) {
-      changed = false;
-
-      // Collect all current undirected edges
-      const currentEdges = [];
-      const seenUndirected = new Set();
-      for (const [u, neighbors] of adj.entries()) {
-        for (const v of neighbors) {
-          const edgeKey = u < v ? `${u}-${v}` : `${v}-${u}`;
-          if (!seenUndirected.has(edgeKey)) {
-            seenUndirected.add(edgeKey);
-            currentEdges.push({ u, v, key: edgeKey });
-          }
+    // 1. Collect all current undirected edges and initialize support
+    const currentEdges = [];
+    const edgeSupport = new Map();
+    const edgeToNodes = new Map();
+    const seenUndirected = new Set();
+    
+    for (const [sourceId, neighbors] of adjacencyMap.entries()) {
+      for (const targetId of neighbors) {
+        const edgeKey = sourceId < targetId ? `${sourceId}-${targetId}` : `${targetId}-${sourceId}`;
+        if (!seenUndirected.has(edgeKey)) {
+          seenUndirected.add(edgeKey);
+          currentEdges.push(edgeKey);
+          edgeToNodes.set(edgeKey, { sourceId, targetId });
+          edgeSupport.set(edgeKey, 0);
         }
-      }
-
-      const edgesToRemove = [];
-
-      // Count triangles for each edge
-      for (const edge of currentEdges) {
-        const { u, v } = edge;
-        let triangles = 0;
-
-        // Intersection of neighbors of u and v
-        for (const w of adj.get(u)) {
-          if (adj.get(v).has(w)) {
-            triangles++;
-          }
-        }
-
-        if (triangles < k - 2) {
-          edgesToRemove.push(edge);
-        }
-      }
-
-      if (edgesToRemove.length > 0) {
-        for (const edge of edgesToRemove) {
-          adj.get(edge.u).delete(edge.v);
-          adj.get(edge.v).delete(edge.u);
-        }
-        changed = true;
       }
     }
+
+    // 2. Initial triangle counting (support calculation)
+    // Evaluated only once! -> O(E * sqrt(E))
+    for (const edgeKey of currentEdges) {
+      const { sourceId, targetId } = edgeToNodes.get(edgeKey);
+      let triangles = 0;
+      for (const commonNeighborId of adjacencyMap.get(sourceId)) {
+        if (adjacencyMap.get(targetId).has(commonNeighborId)) {
+          triangles++;
+        }
+      }
+      edgeSupport.set(edgeKey, triangles);
+    }
+
+    // 3. Queue baseline removals
+    let edgesToRemove = [];
+    for (const [edgeKey, support] of edgeSupport.entries()) {
+      if (support < k - 2) {
+        edgesToRemove.push(edgeKey);
+      }
+    }
+
+    // 4. Process edge removal cascade
+    while (edgesToRemove.length > 0) {
+      const edgeKey = edgesToRemove.pop();
+      if (!edgeSupport.has(edgeKey)) continue; // Already processed
+
+      const { sourceId, targetId } = edgeToNodes.get(edgeKey);
+      
+      // Remove edge from graph
+      adjacencyMap.get(sourceId).delete(targetId);
+      adjacencyMap.get(targetId).delete(sourceId);
+      edgeSupport.delete(edgeKey);
+
+      // Find affected triangles and cascade support
+      for (const commonNeighborId of adjacencyMap.get(sourceId)) {
+        if (adjacencyMap.get(targetId).has(commonNeighborId)) {
+          // Both (sourceId, commonNeighborId) and (targetId, commonNeighborId) edge supports must decrement
+          const sourceToNeighborEdge = sourceId < commonNeighborId ? `${sourceId}-${commonNeighborId}` : `${commonNeighborId}-${sourceId}`;
+          const targetToNeighborEdge = targetId < commonNeighborId ? `${targetId}-${commonNeighborId}` : `${commonNeighborId}-${targetId}`;
+
+          if (edgeSupport.has(sourceToNeighborEdge)) {
+            const newSupp = edgeSupport.get(sourceToNeighborEdge) - 1;
+            edgeSupport.set(sourceToNeighborEdge, newSupp);
+            if (newSupp < k - 2 && newSupp === k - 3) edgesToRemove.push(sourceToNeighborEdge); // Push only once when it directly falls below threshold
+          }
+          if (edgeSupport.has(targetToNeighborEdge)) {
+            const newSupp = edgeSupport.get(targetToNeighborEdge) - 1;
+            edgeSupport.set(targetToNeighborEdge, newSupp);
+            if (newSupp < k - 2 && newSupp === k - 3) edgesToRemove.push(targetToNeighborEdge);
+          }
+        }
+      }
+    }
+
 
     // Now find connected components among remaining edges to define communities
     const visited = new Set();
     const components = [];
 
-    for (const [node, neighbors] of adj.entries()) {
+    for (const [node, neighbors] of adjacencyMap.entries()) {
       if (!visited.has(node) && neighbors.size > 0) {
-        const comp = [];
-        const q = [node];
+        const communityComponent = [];
+        const nodeQueue = [node];
         visited.add(node);
 
-        while (q.length > 0) {
-          const curr = q.shift();
-          comp.push(curr);
-          for (const nbor of adj.get(curr)) {
+        while (nodeQueue.length > 0) {
+          const curr = nodeQueue.shift();
+          communityComponent.push(curr);
+          for (const nbor of adjacencyMap.get(curr)) {
             if (!visited.has(nbor)) {
               visited.add(nbor);
-              q.push(nbor);
+              nodeQueue.push(nbor);
             }
           }
         }
         // Only consider substantial components
-        if (comp.length >= k) {
-          components.push(comp);
+        if (communityComponent.length >= k) {
+          components.push(communityComponent);
         }
       }
     }
 
     // Sort by size descending
     components.sort((a, b) => b.length - a.length);
-
-    console.log(`Found ${components.length} k-truss communities for k=${k}`);
 
     if (components.length === 0) {
       alert(

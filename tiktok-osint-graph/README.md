@@ -27,6 +27,8 @@ A streamlined UI focus on the graph itself.
 - **Dynamic Visuals**: Adjust link label sizing and transparency via the **Graph Preferences** menu.
 
 ### 5. Advanced Analysis Tools
+- **K-Truss Communities**: Identify deeply interconnected subgroups. Powered by Cohen's Linear Algorithm, the graph engine gracefully processes massive $O(E \sqrt{E})$ workloads.
+- **Find Overlaps**: Instantly isolate structural common denominators using ultra-fast native ES6 Javascript Map caching logic.
 - **FFP Mode**: Force-Followed-Paths logic for finding hidden connections.
 - **Global Ghost Mode**: Fade the rest of the graph to focus on specific clusters.
 - **Snap-to-Grid**: Neatly organize your intelligence map for screenshots.

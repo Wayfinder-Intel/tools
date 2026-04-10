@@ -3917,10 +3917,13 @@ class GraphApp {
     const payload = {
       elements: graphData,
       uiState: {
-        isDarkMode: this.isDarkMode,
+        isLightMode: this.isLightMode,
         layoutStyle: this.settings.layoutStyle,
         ffpMode: this.ffpMode,
         ffpDepth: this.ffpDepth,
+        ffpGhostMode: this.ffpGhostMode,
+        ffpRankLabelMode: this.ffpRankLabelMode,
+        globalGhostMode: this.globalGhostMode,
         ktrussMode: this.ktrussMode,
         ktrussK: this.ktrussK,
         influenceMode: this.influenceMode,
@@ -4046,6 +4049,7 @@ class GraphApp {
 
     if (uiState.ffpMode !== undefined) this.ffpMode = uiState.ffpMode;
     if (uiState.ffpDepth !== undefined) this.ffpDepth = uiState.ffpDepth;
+    if (uiState.ffpGhostMode !== undefined) this.ffpGhostMode = uiState.ffpGhostMode;
     if (uiState.ffpRankLabelMode !== undefined) {
       this.ffpRankLabelMode = uiState.ffpRankLabelMode;
     }

@@ -17,9 +17,10 @@ Export full network intelligence in portable formats.
 
 ### 3. Integrated Contextual Workflow
 A streamlined UI focus on the graph itself.
-- **Radial Context Menu**: Long-click or right-click any node to access all primary investigative actions.
+- **Radial Context Menu**: Long-click or right-click any node or link to access investigative actions.
+- **Link Annotations**: Right-click any link to add focused notes. Visual "pencil" badges appear at link midpoints for instant access.
 - **Unified Bulk Actions**: Selecting multiple nodes and clicking **Lock** or **Note** applies those changes to the entire selection instantly.
-- **Data-Informed Notes**: The bulk note editor comes pre-populated with existing intelligence (`@user : note`), ensuring you never lose context.
+- **Data-Informed Notes**: Both node and link note editors come pre-populated with existing intelligence, ensuring you never lose context.
 
 ### 4. Real-Time Intelligence
 - **Universal Hover Panel**: Mouse over any account to see bios, stats, and investigator notes without clicking (400ms steady delay).
@@ -33,6 +34,11 @@ A streamlined UI focus on the graph itself.
 - **Global Ghost Mode**: Fade the rest of the graph to focus on specific clusters.
 - **Snap-to-Grid**: Neatly organize your intelligence map for screenshots.
 - **Ego Networks**: Focus on the 1-hop or 2-hop neighborhood of a specific target.
+
+### 6. Enhanced OSINT Reporting
+- **Sectioned Collection Report**: The .docx Intelligence Report now includes granular per-seed analysis.
+- **Ingest Coverage**: Every seed in the graph gets a dedicated breakdown of "Imported vs Total Seen" followers/following.
+- **Account Tables**: Detailed tables for every seed identifying exactly which accounts were ingested for the current project.
 
 ## 🛠 Usage
 

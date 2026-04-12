@@ -2146,6 +2146,8 @@ class GraphApp {
       egoToggleBtn.classList.add("active");
       egoHop1Btn.classList.toggle("active", depth === 1);
       egoHop2Btn.classList.toggle("active", depth === 2);
+
+      if (typeof updateSelectionCounter === "function") updateSelectionCounter();
     };
 
     const exitEgoMode = () => {
@@ -2158,6 +2160,8 @@ class GraphApp {
       egoToggleBtn.classList.remove("active");
       egoHop1Btn.classList.remove("active");
       egoHop2Btn.classList.remove("active");
+
+      if (typeof updateSelectionCounter === "function") updateSelectionCounter();
     };
 
     if (egoToggleBtn) {
@@ -2391,19 +2395,35 @@ class GraphApp {
     // --- Selection Counter ---
     const selectionCounter = document.getElementById("selection-counter");
     const updateSelectionCounter = () => {
-      const nodes = this.cy.nodes(":selected").length;
-      const edges = this.cy.edges(":selected").length;
-      if (nodes === 0 && edges === 0) {
+      const selectedNodes = this.cy.nodes(":selected");
+      const nodesCount = selectedNodes.length;
+      const edgesCount = this.cy.edges(":selected").length;
+
+      // Update Ego View button state: enabled only if exactly 1 node is selected OR already in ego mode
+      if (egoToggleBtn) {
+        if (nodesCount === 1 || egoMode) {
+          egoToggleBtn.classList.remove("disabled");
+          egoToggleBtn.title = egoMode ? "Exit Ego View" : "Ego Network View";
+        } else {
+          egoToggleBtn.classList.add("disabled");
+          egoToggleBtn.title = "Ego Network View (Select exactly 1 node)";
+        }
+      }
+
+      if (nodesCount === 0 && edgesCount === 0) {
         selectionCounter.classList.add("hidden");
         return;
       }
       let parts = [];
-      if (nodes > 0) parts.push(`${nodes} node${nodes !== 1 ? "s" : ""}`);
-      if (edges > 0) parts.push(`${edges} link${edges !== 1 ? "s" : ""}`);
+      if (nodesCount > 0) parts.push(`${nodesCount} node${nodesCount !== 1 ? "s" : ""}`);
+      if (edgesCount > 0) parts.push(`${edgesCount} link${edgesCount !== 1 ? "s" : ""}`);
       selectionCounter.textContent = parts.join(", ") + " selected";
       selectionCounter.classList.remove("hidden");
     };
     this.cy.on("select unselect", updateSelectionCounter);
+    
+    // Initial evaluation
+    updateSelectionCounter();
 
     // --- Right-Click Radial Menu ---
     const radialMenu = document.getElementById("radial-menu");
@@ -2709,10 +2729,14 @@ class GraphApp {
       if (!activeNoteNode) return;
       this.saveState();
       const html = noteEditorArea.innerHTML.trim();
-      activeNoteNode.data("note", html || null);
+      const text = noteEditorArea.innerText.trim();
+      // If no plain text remains, clear the note entirely
+      const finalNote = text ? html : null;
+      
+      activeNoteNode.data("note", finalNote);
       this.refreshNoteBadges();
       closeNoteEditor();
-      this.showToast(html ? "Note saved." : "Note cleared.");
+      this.showToast(finalNote ? "Note saved." : "Note cleared.");
     });
 
     // Rich-text toolbar buttons
@@ -2772,7 +2796,7 @@ class GraphApp {
     if (btnNoteNode) {
       btnNoteNode.addEventListener("click", (e) => {
         e.stopPropagation();
-        hideRadialMenu(); // Close menu before opening modal
+        hideRadialMenu();
         const selected = this.cy.nodes(":selected");
         if (selected.length > 1) {
           this.openBulkNoteModal();
@@ -2780,6 +2804,18 @@ class GraphApp {
           const target = activeRadialNode || (selected.length > 0 ? selected[0] : null);
           if (!target) return;
           this.openNoteEditor(target);
+        }
+      });
+    }
+
+    const btnNoteEdge = document.getElementById("btn-note-edge");
+    if (btnNoteEdge) {
+      btnNoteEdge.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const targetLink = activeRadialEdge;
+        hideEdgeRadialMenu();
+        if (targetLink) {
+          this.openNoteEditor(targetLink);
         }
       });
     }
@@ -2799,27 +2835,46 @@ class GraphApp {
         // Scale badge from 16px at zoom=1, clamped between 12 and 40px
         const badgeSize = Math.min(40, Math.max(12, Math.round(16 * zoom)));
         const iconSize  = Math.round(badgeSize * 0.55);
+
         container.querySelectorAll(".note-badge").forEach(badge => {
-          const nodeId = badge.dataset.nodeId;
-          const node = this.cy.getElementById(nodeId);
-          if (node.empty()) { badge.remove(); return; }
-          const hidden = !node.visible();
+          const eleId = badge.dataset.eleId;
+          const eleType = badge.dataset.eleType;
+          const ele = this.cy.getElementById(eleId);
+          if (ele.empty()) { badge.remove(); return; }
+          
+          const hidden = !ele.visible();
           badge.style.display = hidden ? "none" : "";
           if (hidden) return;
 
-          // Sync opacity with node fading
-          const isFaded = node.hasClass("faded") || node.hasClass("ktruss-faded");
+          // Sync opacity with fading
+          const isFaded = ele.hasClass("faded") || ele.hasClass("ktruss-faded");
           badge.style.opacity = isFaded ? "0.2" : "1";
 
-          const pos = node.renderedPosition();
-          // Use actual node circle size, not bounding box (which includes label text)
-          const halfW = parseFloat(node.renderedStyle('width')) / 2;
-          // Place badge on the circle rim (inset=1.0 = exactly on the border)
-          const inset = 1.0;
+          let pos;
+          if (eleType === "node") {
+            const nodePos = ele.renderedPosition();
+            // Use actual node circle size
+            const halfW = parseFloat(ele.renderedStyle("width")) / 2;
+            // Place badge on the circle rim (top-right: -45 degrees)
+            pos = {
+              x: nodePos.x + halfW * Math.cos(-Math.PI / 4),
+              y: nodePos.y + halfW * Math.sin(-Math.PI / 4)
+            };
+          } else {
+            // Edge Midpoint
+            const srcPos = ele.source().renderedPosition();
+            const tgtPos = ele.target().renderedPosition();
+            pos = {
+              x: (srcPos.x + tgtPos.x) / 2,
+              y: (srcPos.y + tgtPos.y) / 2
+            };
+          }
+
           badge.style.width  = `${badgeSize}px`;
           badge.style.height = `${badgeSize}px`;
-          badge.style.left = `${pos.x + halfW * inset * Math.cos(-Math.PI / 4) - badgeSize / 2}px`;
-          badge.style.top  = `${pos.y + halfW * inset * Math.sin(-Math.PI / 4) - badgeSize / 2}px`;
+          badge.style.left = `${pos.x - badgeSize / 2}px`;
+          badge.style.top  = `${pos.y - badgeSize / 2}px`;
+
           // Scale the SVG icon inside
           const svg = badge.querySelector("svg");
           if (svg) {
@@ -2834,18 +2889,39 @@ class GraphApp {
         this.cy.off("pan zoom render", this._badgePanHandler);
       }
 
+      // Create badges for Nodes
       this.cy.nodes().forEach(node => {
         const note = node.data("note");
         if (!note || !note.trim()) return;
 
         const badge = document.createElement("div");
         badge.className = "note-badge";
-        badge.dataset.nodeId = node.id();
-        badge.title = "Edit note";
+        badge.dataset.eleId = node.id();
+        badge.dataset.eleType = "node";
+        badge.title = "View note";
+        // Use an inline SVG for the pencil icon
         badge.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>`;
         badge.addEventListener("click", (e) => {
           e.stopPropagation();
           this.openNoteEditor(node);
+        });
+        container.appendChild(badge);
+      });
+
+      // Create badges for Edges
+      this.cy.edges().forEach(edge => {
+        const note = edge.data("note");
+        if (!note || !note.trim()) return;
+
+        const badge = document.createElement("div");
+        badge.className = "note-badge";
+        badge.dataset.eleId = edge.id();
+        badge.dataset.eleType = "edge";
+        badge.title = "View note";
+        badge.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>`;
+        badge.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.openNoteEditor(edge);
         });
         container.appendChild(badge);
       });
@@ -3880,23 +3956,26 @@ class GraphApp {
   }
 
   isolateToNewTab() {
-    const selectedNodes = this.cy.nodes(":selected");
+    // Helper to identify visibility/ghosting state
+    const isVisible = (el) => el.visible() && !el.hasClass("faded") && !el.hasClass("ktruss-faded");
+
+    const selectedNodes = this.cy.nodes(":selected").filter(isVisible);
     let targetNodes;
 
     if (selectedNodes.length > 0) {
-      // Branch off from specific selection
+      // Branch off from specific selection (filtered by visibility)
       targetNodes = selectedNodes;
     } else {
-      // Branch off from currently visible (non-ghosted) nodes
-      targetNodes = this.cy.nodes().not(".faded");
+      // Branch off from all currently visible (non-ghosted) nodes
+      targetNodes = this.cy.nodes().filter(isVisible);
       if (targetNodes.length === 0) {
         this.showToast("No visible nodes to isolate!");
         return;
       }
     }
 
-    // Capture the nodes and any edges connecting them
-    const targetEles = targetNodes.union(targetNodes.edgesWith(targetNodes));
+    // Capture visible nodes and only edges that connect them AND are also visible
+    const targetEles = targetNodes.union(targetNodes.edgesWith(targetNodes)).filter(isVisible);
 
     // Get the base JSON structure
     const graphData = targetEles.jsons();
@@ -5126,6 +5205,94 @@ class GraphApp {
             spacing: { before: 100, after: 200, left: 400 },
           }));
         });
+      }
+
+      // --- Section 5: Detailed Ingest Analysis (Per Seed) ---
+      summaryItems.push(
+        new Paragraph({
+          text: "5. Detailed Ingest Analysis (Per Seed)",
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 400, after: 200 },
+        })
+      );
+
+      if (seeds.length === 0) {
+        summaryItems.push(new Paragraph({ text: "No seeds identified for detailed analysis.", italics: true }));
+      } else {
+        for (const s of seeds) {
+          const d = s.data();
+          const seedLabel = d.label || d.id || "Unknown";
+          const seedId = d.id || "unknown";
+
+          summaryItems.push(new Paragraph({
+            children: [
+              new TextRun({ text: `Analysis for: `, bold: true }),
+              new TextRun({ text: `${seedLabel} (@${seedId})`, color: "2ea8ff", bold: true }),
+            ],
+            heading: HeadingLevel.HEADING_3,
+            spacing: { before: 300, after: 200 },
+          }));
+
+          const edges = s.connectedEdges();
+          const followersEdges = edges.filter(e => e.data("ffpDirection") === "followers");
+          const followingEdges = edges.filter(e => e.data("ffpDirection") === "following");
+
+          const totalFollowers = d.followers || 0;
+          const totalFollowing = d.following || 0;
+
+          summaryItems.push(new Paragraph({
+            children: [
+              new TextRun({ text: "Followers: ", bold: true }),
+              new TextRun(`${followersEdges.length} imported of ${totalFollowers} total seen.`),
+              new TextRun({ text: "\nFollowing: ", bold: true }),
+              new TextRun(`${followingEdges.length} imported of ${totalFollowing} total seen.`),
+            ],
+            spacing: { after: 200 },
+          }));
+
+          // Tables
+          const createAccountTable = (edgesCol, title, direction) => {
+            const rowCount = edgesCol.length;
+            const displayEdges = edgesCol.toArray().slice(0, 500); // UI performance cap
+
+            const tableRows = [
+              new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph({ text: "User ID", bold: true })], shading: { fill: "f2f2f2" } }),
+                  new TableCell({ children: [new Paragraph({ text: "Display Name", bold: true })], shading: { fill: "f2f2f2" } }),
+                ],
+              }),
+            ];
+
+            displayEdges.forEach(e => {
+              const otherNode = direction === "followers" ? e.source() : e.target();
+              const od = otherNode.data();
+              tableRows.push(new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph(`@${od.id || "unknown"}`)] }),
+                  new TableCell({ children: [new Paragraph(od.label || "N/A")] }),
+                ],
+              }));
+            });
+
+            summaryItems.push(new Paragraph({ text: title, bold: true, spacing: { before: 200, after: 100 } }));
+            
+            if (rowCount === 0) {
+              summaryItems.push(new Paragraph({ text: "No accounts imported for this category.", italics: true }));
+            } else {
+              summaryItems.push(new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                rows: tableRows,
+              }));
+              if (rowCount > 500) {
+                summaryItems.push(new Paragraph({ text: `... and ${rowCount - 500} more items (Report capped at 500 for performance).`, italics: true, size: 18 }));
+              }
+            }
+          };
+
+          createAccountTable(followersEdges, "Imported Followers", "followers");
+          createAccountTable(followingEdges, "Imported Following", "following");
+        }
       }
 
       summaryItems.push(new Paragraph({

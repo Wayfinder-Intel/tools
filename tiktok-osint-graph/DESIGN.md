@@ -20,6 +20,7 @@ With extreme data loads (graphs potentially exceeding 5,000+ nodes/edges), UI re
 ## 3. Contextual UI Patterns
 The tool prioritizes a "graph-first" workflow by moving non-ingest actions into the radial menu.
 - **Solo vs. Bulk Logic**: The `btn-note-node` (Radial Menu) uses logic to detect the current selection. If `selection > 1`, it triggers the `openBulkNoteModal()`. If `selection === 1`, it opens the focused `openNoteEditor()`.
+- **Edge Context Menu**: The radial menu system extends $O(1)$ to edges (links), supporting style toggles, deletion, and investigative notes.
 - **Locking Lifecycle**: Manual locking (`node.lock()`) is complemented by a data attribute `locked: true`. Both must be synchronized to ensure UI badges and physics remain consistent.
 
 ## 4. Coordinate Management

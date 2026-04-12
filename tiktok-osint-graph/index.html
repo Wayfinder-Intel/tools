@@ -911,7 +911,7 @@
     <div id="edge-radial-menu" class="radial-menu hidden">
       <div class="radial-center"></div>
 
-      <!-- Line styles: 180 / 231 / 282 deg -->
+      <!-- Line styles: 180 / 225 / 270 deg -->
       <div
         class="radial-item edge-style-btn"
         data-type="line"
@@ -926,9 +926,8 @@
         data-type="line"
         data-style="dashed"
         title="Dashed Line"
-        style="--angle: 231deg"
+        style="--angle: 225deg"
       >
-        <!-- Inline dashed SVG since no Lucide glyph exists -->
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="20"
@@ -949,18 +948,18 @@
         data-type="line"
         data-style="dotted"
         title="Dotted Line"
-        style="--angle: 282deg"
+        style="--angle: 270deg"
       >
         <i data-lucide="more-horizontal"></i>
       </div>
 
-      <!-- Arrow styles: 129 / 78 / 27 deg -->
+      <!-- Arrow styles: 135 / 90 / 45 deg -->
       <div
         class="radial-item edge-style-btn"
         data-type="arrow"
         data-style="both"
         title="Bidirectional Arrows (Toggle)"
-        style="--angle: 129deg"
+        style="--angle: 135deg"
       >
         <i data-lucide="move-horizontal"></i>
       </div>
@@ -969,7 +968,7 @@
         data-type="arrow"
         data-style="left"
         title="Arrow to Source (Toggle)"
-        style="--angle: 78deg"
+        style="--angle: 90deg"
       >
         <i data-lucide="arrow-left"></i>
       </div>
@@ -978,19 +977,28 @@
         data-type="arrow"
         data-style="right"
         title="Arrow to Target (Toggle)"
-        style="--angle: 27deg"
+        style="--angle: 45deg"
       >
         <i data-lucide="arrow-right"></i>
       </div>
 
-      <!-- Delete: 333 deg -->
+      <!-- Action items: 315 / 0 deg -->
+      <div
+        class="radial-item"
+        id="btn-note-edge"
+        title="Add / Edit Note"
+        style="--angle: 315deg"
+      >
+        <i data-lucide="pencil"></i>
+      </div>
+
       <div
         class="radial-item edge-style-btn radial-danger"
         id="btn-delete-edge"
         data-type="action"
         data-style="delete"
         title="Delete Link"
-        style="--angle: 333deg"
+        style="--angle: 0deg"
       >
         <i data-lucide="trash-2"></i>
       </div>
@@ -1101,7 +1109,7 @@
         </div>
         <div class="modal-body" style="text-align: center; padding: 24px 16px;">
           <div style="margin-bottom: 24px;">
-            <div style="font-size: 1.1rem; font-weight: 600; color: var(--accent); margin-bottom: 4px;">Version 1.0</div>
+            <div style="font-size: 1.1rem; font-weight: 600; color: var(--accent); margin-bottom: 4px;">Version 1.1</div>
             <div style="font-size: 0.85rem; opacity: 0.7;">Modern OSINT Visualization Suite</div>
           </div>
           

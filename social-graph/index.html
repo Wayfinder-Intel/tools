@@ -1,0 +1,1223 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Social Graph Builder — Wayfinder</title>
+    <!-- Word Document Generation -->
+    <script type="module">
+      import * as docx from 'https://cdn.jsdelivr.net/npm/docx@8.5.0/+esm';
+      window.docx = docx;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Shared CSS -->
+    <link rel="stylesheet" href="../css/style.css" />
+
+    <!-- Cytoscape & D3 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-svg@0.4.0/cytoscape-svg.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-canvas@3.0.1/dist/cytoscape-canvas.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="style.css?v=1023" />
+
+    <!-- Shared JS -->
+    <script src="../js/common.js" defer></script>
+  </head>
+
+  <body>
+    <div id="cy"></div>
+
+    <!-- Selection counter badge (top-right) -->
+    <div id="selection-counter" class="selection-counter hidden"></div>
+
+    <!-- Ego Network Mode Banner (top-centre) -->
+    <div id="ego-mode-banner" class="hidden">
+      👤 Ego view: <strong id="ego-mode-label">—</strong>
+      <span id="ego-hop-label" style="opacity:0.7;font-size:11px"></span>
+      <button id="ego-exit-btn">✕ Exit</button>
+    </div>
+
+    <div class="ui-layer">
+      <!-- Floating horizontal top bar for categories -->
+      <div class="floating-bar horizontal top-nav">
+        <a
+          href="https://wayfinder-intel.github.io/tools"
+          class="brand-link"
+          title="Wayfinder Intelligence"
+          onclick="if(!confirm('Navigate away to the Wayfinder Tools page?')) event.preventDefault()"
+        >
+          <img
+            class="logo"
+            src="https://raw.githubusercontent.com/Wayfinder-Intel/tools/main/Wayfinder%20white%20arrow.png"
+            alt="Wayfinder Logo"
+          />
+        </a>
+        <span
+          style="font-size:11px;font-weight:700;letter-spacing:0.1em;color:var(--text);opacity:0.6;margin-left:6px;pointer-events:none;white-space:nowrap;text-transform:uppercase;"
+          title="Social Graph Builder"
+        >Social Graph</span>
+        <div class="divider vertical"></div>
+        <button class="nav-btn" data-category="DATA" title="DATA">
+          <i data-lucide="database"></i>
+        </button>
+        <button class="nav-btn" data-category="APPEARANCE" title="APPEARANCE">
+          <i data-lucide="palette"></i>
+        </button>
+        <button class="nav-btn" data-category="EDITING" title="EDITING">
+          <i data-lucide="edit-3"></i>
+        </button>
+        <button class="nav-btn" data-category="ANALYSIS" title="ANALYSIS">
+          <i data-lucide="line-chart"></i>
+        </button>
+        <button class="nav-btn" data-category="SETTINGS" title="SETTINGS">
+          <i data-lucide="settings"></i>
+        </button>
+        <div class="divider vertical"></div>
+        <div class="search-container" id="search-container">
+          <button class="nav-btn" id="search-toggle-btn" title="Search Graph">
+            <i data-lucide="search"></i>
+          </button>
+          <input type="text" id="search-input" placeholder="Search users..." class="search-input" />
+        </div>
+      </div>
+
+      <!-- Vertical floating subtool pill wrapper -->
+      <div id="side-panel" class="subtools-wrapper">
+        <div class="panel-section hidden" data-panel="DATA">
+          <div
+            class="floating-bar icon-only header-icon-bar"
+            title="DATA Category"
+          >
+            <i data-lucide="database"></i>
+          </div>
+          <button
+            class="subtool-btn"
+            data-action="Ingest"
+            title="Ingest HTML Snippets"
+          >
+            <i data-lucide="download"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button class="subtool-btn" id="wipe-graph-btn" title="Wipe Graph">
+            <i data-lucide="eraser"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn"
+            id="isolate-selection-btn"
+            title="Isolate Selection to New Workspace (New Tab)"
+          >
+            <i data-lucide="external-link"></i>
+          </button>
+          <button
+            class="subtool-btn"
+            id="export-json-btn"
+            title="Export Graph to JSON"
+          >
+            <i data-lucide="upload-cloud"></i>
+          </button>
+
+          <button
+            class="subtool-btn"
+            id="import-json-btn"
+            title="Import Graph from JSON"
+          >
+            <i data-lucide="download-cloud"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn"
+            id="export-png-btn"
+            title="Export graph as PNG image"
+          >
+            <i data-lucide="image"></i>
+          </button>
+          <button
+            class="subtool-btn"
+            id="export-svg-btn"
+            title="Export graph as SVG (High Res)"
+          >
+            <i data-lucide="file-code"></i>
+          </button>
+          <button
+            class="subtool-btn"
+            id="export-csv-btn"
+            title="Export Graph data to CSV (Nodes + Relationships)"
+          >
+            <i data-lucide="file-spreadsheet"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn"
+            id="export-report-btn"
+            title="Export OSINT Collections Report (.docx)"
+          >
+            <i data-lucide="file-text"></i>
+          </button>
+          <!-- Hidden file input for uploading JSON -->
+          <input
+            type="file"
+            id="import-json-hidden"
+            accept=".json"
+            style="display: none"
+          />
+        </div>
+
+        <div class="panel-section hidden" data-panel="APPEARANCE">
+          <div
+            class="floating-bar icon-only header-icon-bar"
+            title="APPEARANCE Category"
+          >
+            <i data-lucide="palette"></i>
+          </div>
+          <button
+            class="subtool-btn"
+            id="avatar-dot-toggle-btn"
+            title="Avatar / Dot toggle"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="3"></circle>
+              <line x1="12" y1="9" x2="12" y2="3"></line>
+              <line x1="9" y1="14" x2="4" y2="19"></line>
+              <line x1="15" y1="14" x2="20" y2="19"></line>
+            </svg>
+          </button>
+          <button
+            class="subtool-btn"
+            id="reheat-btn"
+            title="Reheat — re-run force layout to spread nodes"
+          >
+            <i data-lucide="flame"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn"
+            id="theme-toggle-btn"
+            title="Toggle White/Dark Mode"
+          >
+            <i data-lucide="sun"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+
+          <button
+            class="subtool-btn"
+            id="center-graph-btn"
+            title="Center Graph / Fit to Screen"
+          >
+            <i data-lucide="frame"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn"
+            id="expand-space-btn"
+            title="Expand Graph Spacing"
+          >
+            <i data-lucide="maximize-2"></i>
+          </button>
+          <button
+            class="subtool-btn"
+            id="contract-space-btn"
+            title="Contract Graph Spacing"
+          >
+            <i data-lucide="minimize-2"></i>
+          </button>
+        </div>
+
+        <div class="panel-section hidden" data-panel="EDITING">
+          <div
+            class="floating-bar icon-only header-icon-bar"
+            title="EDITING Category"
+          >
+            <i data-lucide="edit-3"></i>
+          </div>
+          <!-- Initially disabled until there is a state to undo to -->
+          <button
+            class="subtool-btn disabled"
+            id="undo-btn"
+            title="Undo Last Action"
+          >
+            <i data-lucide="undo-2"></i>
+          </button>
+          <!-- Deletion Tools moved from DATA -->
+          <button class="subtool-btn" id="delete-selected-btn" title="Delete selected (Del / Backspace)">
+            <i data-lucide="trash-2"></i>
+          </button>
+          <button class="subtool-btn" id="deletion-history-btn" title="Deletion History">
+            <i data-lucide="history"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn"
+            id="snap-grid-btn"
+            title="Toggle Snap to Grid"
+          >
+            <i data-lucide="grid-3x3"></i>
+          </button>
+          <button
+            class="subtool-btn mt-2"
+            id="draw-link-btn"
+            title="Draw Manual Link"
+          >
+            <i data-lucide="git-commit"></i>
+          </button>
+
+        </div>
+
+        <div class="panel-section hidden" data-panel="ANALYSIS">
+          <div
+            class="floating-bar icon-only header-icon-bar"
+            title="ANALYSIS Category"
+          >
+            <i data-lucide="line-chart"></i>
+          </div>
+
+          <!-- First Follower Principle (FFP) Tools -->
+          <div class="tool-group ffp-controls" id="ffp-controls-container">
+            <div class="ffp-main-row">
+              <button
+                class="subtool-btn"
+                id="ffp-toggle-btn"
+                title="Toggle First Follower Principle (Both)"
+              >
+                <i data-lucide="heart"></i>
+              </button>
+
+              <!-- Slide-out specific direction toggles -->
+              <div class="ffp-sub-clip" id="ffp-sub-toggles">
+                <div class="ffp-sub-toggles">
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ffp-followers-btn"
+                    title="Pioneer Followers Only"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <circle cx="15" cy="15" r="7" />
+                      <path d="M4 4l9 9" />
+                      <polyline points="8 13 13 13 13 8" />
+                    </svg>
+                  </button>
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ffp-following-btn"
+                    title="Pioneer Following Only"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <circle cx="9" cy="15" r="7" />
+                      <path d="M9 15l11-11" />
+                      <polyline points="15 4 20 4 20 9" />
+                    </svg>
+                  </button>
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ffp-rank-label-btn"
+                    title="Show Rank Numbers on Links"
+                    style="font-size: 13px; font-weight: 700; line-height: 1"
+                    disabled
+                  >
+                    #
+                  </button>
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ffp-distance-reheat-btn"
+                    title="Reheat by FFP Distance"
+                  >
+                    <i data-lucide="scatter-chart"></i>
+                  </button>
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ffp-ghost-btn"
+                    title="Toggle Topology Ghost Mode (Fade non-FFP elements)"
+                  >
+                    <i data-lucide="eye-off"></i>
+                  </button>
+                  <!-- Divider -->
+                  <div class="ffp-divider"></div>
+                  <!-- Depth N Adjusters -->
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ffp-depth-down"
+                    title="Decrease Depth"
+                  >
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ffp-depth-up"
+                    title="Increase Depth"
+                  >
+                    <i data-lucide="chevron-up"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Transient Depth Display Overlay -->
+              <div id="ffp-depth-toast" class="ffp-depth-toast hidden">10</div>
+            </div>
+          </div>
+
+          <!-- Top Friends Principle (TFP) — Facebook only, hidden until FB nodes present -->
+          <div class="tool-group ffp-controls" id="tfp-controls-container" style="display:none;">
+            <div class="ffp-main-row">
+              <button
+                class="subtool-btn"
+                id="tfp-toggle-btn"
+                title="Toggle Top Friends (Facebook — star the first N friends ingested)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+              </button>
+
+              <!-- Slide-out sub-toggles -->
+              <div class="ffp-sub-clip" id="tfp-sub-toggles">
+                <div class="ffp-sub-toggles">
+                  <button class="subtool-btn micro-btn" id="tfp-ghost-btn" title="Ghost Mode — Fade non-Top-Friend nodes">
+                    <i data-lucide="eye-off"></i>
+                  </button>
+                  <div class="ffp-divider"></div>
+                  <button class="subtool-btn micro-btn" id="tfp-n-down" title="Decrease Top Friends Count (N)">
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                  <button class="subtool-btn micro-btn" id="tfp-n-up" title="Increase Top Friends Count (N)">
+                    <i data-lucide="chevron-up"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Transient N Display -->
+              <div id="tfp-n-toast" class="ffp-depth-toast hidden">6</div>
+            </div>
+          </div>
+
+          <!-- K-Truss Tool -->
+          <div class="tool-group ffp-controls" id="ktruss-controls-container">
+            <div class="ffp-main-row">
+              <button
+                class="subtool-btn"
+                id="ktruss-toggle-btn"
+                title="Toggle K-Truss Analysis"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="5" r="3" />
+                  <circle cx="5" cy="19" r="3" />
+                  <circle cx="19" cy="19" r="3" />
+                  <line x1="10" y1="7" x2="6.5" y2="16.5" />
+                  <line x1="14" y1="7" x2="17.5" y2="16.5" />
+                  <line x1="8" y1="19" x2="16" y2="19" />
+                </svg>
+              </button>
+
+              <!-- Slide-out specific direction toggles -->
+              <div class="ffp-sub-clip" id="ktruss-sub-toggles">
+                <div class="ffp-sub-toggles">
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ktruss-depth-down"
+                    title="Decrease K"
+                  >
+                    <i data-lucide="chevron-down"></i>
+                  </button>
+                  <button
+                    class="subtool-btn micro-btn"
+                    id="ktruss-depth-up"
+                    title="Increase K"
+                  >
+                    <i data-lucide="chevron-up"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Transient Depth Display Overlay -->
+              <div id="ktruss-depth-toast" class="ffp-depth-toast hidden">
+                3
+              </div>
+            </div>
+          </div>
+
+          <button
+            class="subtool-btn mt-2"
+            id="shortest-route-btn"
+            title="Shortest Route (Select 2+ nodes)"
+          >
+            <i data-lucide="route"></i>
+          </button>
+          <button
+            class="subtool-btn mt-2"
+            id="highlight-mutuals-btn"
+            title="Highlight Mutual Connections"
+          >
+            <i data-lucide="arrow-left-right"></i>
+          </button>
+          <button
+            class="subtool-btn mt-2"
+            id="global-ghost-btn"
+            title="Global Ghost (Fade unselected)"
+          >
+            <i data-lucide="ghost"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn mt-2"
+            id="select-seeds-btn"
+            title="Select All Seeds"
+          >
+            <i data-lucide="sprout"></i>
+          </button>
+          <button
+            class="subtool-btn mt-2"
+            id="select-singletons-btn"
+            title="Select Singletons (1 Link Only)"
+          >
+            <i data-lucide="target"></i>
+          </button>
+          <button
+            class="subtool-btn mt-2"
+            id="select-pages-btn"
+            title="Select Facebook Pages"
+            style="display: none"
+          >
+            <i data-lucide="flag"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+
+          <!-- Ego Network View -->
+          <div class="tool-group ffp-controls" id="ego-controls-container">
+            <div class="ffp-main-row">
+              <button
+                class="subtool-btn"
+                id="ego-toggle-btn"
+                title="Ego Network View (select a node first)"
+              >
+                <i data-lucide="user-circle-2"></i>
+              </button>
+              <!-- Depth sub-controls -->
+              <div class="ffp-sub-clip" id="ego-sub-toggles">
+                <div class="ffp-sub-toggles">
+                  <button class="subtool-btn micro-btn" id="ego-hop-1-btn" title="1-Hop neighbourhood"
+                    style="font-size:11px;font-weight:700">1°</button>
+                  <button class="subtool-btn micro-btn" id="ego-hop-2-btn" title="2-Hop neighbourhood"
+                    style="font-size:11px;font-weight:700">2°</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button
+            class="subtool-btn mt-2"
+            id="inverse-select-btn"
+            title="Inverse Selection"
+          >
+            <i data-lucide="contrast"></i>
+          </button>
+          <div
+            style="
+              width: 24px;
+              height: 1px;
+              background: rgba(255, 255, 255, 0.1);
+              margin: 4px 0;
+            "
+          ></div>
+          <button
+            class="subtool-btn"
+            id="collapse-singletons-btn"
+            title="Collapse singleton nodes into their hub (toggle)"
+          >
+            <i data-lucide="git-merge"></i>
+          </button>
+          <button
+            class="subtool-btn mt-2"
+            id="hull-toggle-btn"
+            title="Show Cluster Hulls (Group boundaries)"
+          >
+            <i data-lucide="lasso"></i>
+          </button>
+          <button
+            class="subtool-btn mt-2"
+            id="find-overlaps-btn"
+            title="Find Network Overlaps (Nodes connected to 2+ seeds)"
+          >
+            <i data-lucide="git-pull-request"></i>
+          </button>
+          <button
+            class="subtool-btn mt-2"
+            id="influence-toggle-btn"
+            title="Rank by Influence (Scale nodes by total connections)"
+          >
+            <i data-lucide="trending-up"></i>
+          </button>
+        </div>
+
+        <div class="panel-section hidden" data-panel="SETTINGS">
+          <div
+            class="floating-bar icon-only header-icon-bar"
+            title="SETTINGS Category"
+          >
+            <i data-lucide="settings"></i>
+          </div>
+          <button
+            class="subtool-btn placeholder-btn"
+            data-action="Preferences"
+            title="Preferences"
+          >
+            <i data-lucide="sliders"></i>
+          </button>
+          <button
+            class="subtool-btn"
+            id="debug-paste-btn"
+            title="Export Paste Buffer (.json)"
+          >
+            <i data-lucide="bug"></i>
+          </button>
+          <button
+            class="subtool-btn"
+            id="about-btn"
+            title="About Wayfinder Social Graph Builder"
+          >
+            <i data-lucide="info"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <!-- Ingest Modal -->
+    <div id="ingest-modal-backdrop" class="modal-backdrop hidden">
+      <div id="ingest-modal" class="modal">
+        <div class="modal-header">
+          <h2>Ingest Social Data</h2>
+          <button id="close-modal-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <!-- Hidden compatibility elements to prevent JS errors -->
+          <select id="active-seed" class="ui-select" style="display: none">
+            <option value="">-- Select a Target Profile --</option>
+          </select>
+
+          <div class="form-group">
+            <label id="paste-area-label">Paste JSON Payload Here</label>
+            <div
+              id="html-paste-area"
+              contenteditable="true"
+              class="paste-area"
+              placeholder="Paste the JSON payload generated by a Wayfinder bookmarklet..."
+            ></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-ingest-btn" class="btn btn-secondary">
+            Cancel
+          </button>
+          <button id="submit-ingest-btn" class="btn btn-primary">
+            Process
+          </button>
+        </div>
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay hidden">
+          <div class="spinner"></div>
+          <span>Processing...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wipe Graph Modal -->
+    <div id="wipe-modal-backdrop" class="modal-backdrop hidden">
+      <div id="wipe-modal" class="modal">
+        <div class="modal-header">
+          <h2>Wipe Graph</h2>
+          <button id="close-wipe-modal-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <p style="color: var(--text); font-size: 14px; margin-bottom: 8px">
+              Are you sure you want to completely clear the entire graph? This
+              will remove all nodes and edges.
+            </p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-wipe-btn" class="btn btn-secondary">Cancel</button>
+          <button
+            id="submit-wipe-btn"
+            class="btn btn-primary"
+            style="background-color: #ef4444"
+          >
+            Wipe
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Debug Paste Modal -->
+    <div id="debug-modal-backdrop" class="modal-backdrop hidden">
+      <div id="debug-modal" class="modal">
+        <div class="modal-header">
+          <h2>Paste Debugger</h2>
+          <button id="close-debug-modal-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Paste DOM Content here to export for debugging:</label>
+            <div
+              id="debug-paste-area"
+              contenteditable="true"
+              class="paste-area"
+              placeholder="Paste data here..."
+            ></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-debug-btn" class="btn btn-secondary">
+            Cancel
+          </button>
+          <button id="download-debug-btn" class="btn btn-primary">
+            Download JSON
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preferences Modal -->
+    <div id="pref-modal-backdrop" class="modal-backdrop hidden">
+      <div id="pref-modal" class="modal">
+        <div class="modal-header">
+          <h2>Graph Preferences</h2>
+          <button id="close-pref-modal-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-section">
+            <h3>Layout & Ingest</h3>
+            <div class="form-group mb-3">
+              <label for="pref-layout-style">Layout Style</label>
+              <select id="pref-layout-style" class="ui-select" style="margin-top: 4px;">
+                <option value="organic">Organic (Force-Directed)</option>
+                <option value="concentric">Concentric (Hub & Spoke)</option>
+                <option value="hierarchical">Hierarchical (Tree)</option>
+                <option value="circular">Circular (Ring)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="pref-scatter-radius">
+                New Node Scatter Radius (<span id="val-scatter-radius">300</span>px)
+              </label>
+              <input type="range" id="pref-scatter-radius" min="100" max="800" step="50" value="300" class="ui-slider" />
+            </div>
+            <div class="form-group">
+              <label for="pref-ideal-edge">
+                Ideal Edge Length (<span id="val-ideal-edge">120</span>px)
+              </label>
+              <input type="range" id="pref-ideal-edge" min="40" max="300" step="10" value="120" class="ui-slider" />
+            </div>
+            <div class="form-group">
+              <label for="pref-repulsion">
+                Node Repulsion (<span id="val-repulsion">12000</span>)
+              </label>
+              <input type="range" id="pref-repulsion" min="2000" max="30000" step="1000" value="12000" class="ui-slider" />
+            </div>
+            <div class="form-group" style="margin-top: 12px;">
+              <label for="pref-snap-grid">
+                Snapping Grid Size (<span id="val-snap-grid">100</span>px)
+              </label>
+              <input type="range" id="pref-snap-grid" min="20" max="200" step="10" value="100" class="ui-slider" />
+            </div>
+          </div>
+          <div class="form-section" style="margin-top: 12px; border-top: 1px solid var(--ui-border); padding-top: 12px;">
+            <h3>Default Appearance</h3>
+            <div class="form-group">
+              <label>Default Avatar Style:</label>
+              <div class="radio-group">
+                <label><input type="radio" name="pref-avatar-style" value="avatar" checked /> Avatar</label>
+                <label><input type="radio" name="pref-avatar-style" value="dot" /> Dot</label>
+              </div>
+            </div>
+            <div class="form-group" style="margin-top: 12px;">
+              <label for="pref-link-label-size">
+                Link Label Size (<span id="val-link-label-size">13</span>px)
+              </label>
+              <input type="range" id="pref-link-label-size" min="8" max="24" step="1" value="13" class="ui-slider" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-pref-btn" class="btn btn-secondary">Cancel</button>
+          <button id="save-pref-btn" class="btn btn-primary">Apply Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bulk Note Modal -->
+    <div id="bulk-note-backdrop" class="modal-backdrop hidden">
+      <div id="bulk-note-modal" class="modal">
+        <div class="modal-header">
+          <h2>Bulk Annotations (Bulk Notes)</h2>
+          <button id="close-bulk-note-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size: 13px; color: var(--ui-muted); margin-bottom: 8px;">
+            Paste text where each line contains a <strong>username</strong> and a <strong>note</strong> separated by a colon (e.g., <code>username: This is a note</code>). Matches are case-insensitive.
+          </p>
+          <div class="form-group">
+            <textarea
+              id="bulk-note-area"
+              class="paste-area"
+              style="height: 200px;"
+              placeholder="user1: Target's family member&#10;user2: Frequent collaborator"
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-bulk-note-btn" class="btn btn-secondary">Cancel</button>
+          <button id="submit-bulk-note-btn" class="btn btn-primary">Process Bulk Notes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right-Click Radial Menu for Nodes -->
+    <div id="radial-menu" class="radial-menu hidden">
+      <!-- Center anchor -->
+      <div class="radial-center"></div>
+
+      <!-- Radial Items -->
+      <div
+        class="radial-item"
+        id="btn-lock-node"
+        title="Lock Selected Nodes"
+        style="--angle: 270deg"
+      >
+        <i data-lucide="lock"></i>
+      </div>
+      <div
+        class="radial-item"
+        id="btn-note-node"
+        title="Add / Edit Note"
+        style="--angle: 315deg"
+      >
+        <i data-lucide="pencil"></i>
+      </div>
+      <div
+        class="radial-item"
+        id="btn-toggle-page-node"
+        title="Toggle Page / Person Node"
+        style="--angle: 225deg"
+      >
+        <i data-lucide="refresh-cw"></i>
+      </div>
+    </div>
+
+    <!-- Edge Radial Menu for Manual Links -->
+    <!-- 7 items at 0, 51, 103, 154, 206, 257, 309 deg -->
+    <div id="edge-radial-menu" class="radial-menu hidden">
+      <div class="radial-center"></div>
+
+      <!-- Line styles: 180 / 225 / 270 deg -->
+      <div
+        class="radial-item edge-style-btn"
+        data-type="line"
+        data-style="solid"
+        title="Solid Line"
+        style="--angle: 180deg"
+      >
+        <i data-lucide="minus"></i>
+      </div>
+      <div
+        class="radial-item edge-style-btn"
+        data-type="line"
+        data-style="dashed"
+        title="Dashed Line"
+        style="--angle: 225deg"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+        >
+          <line x1="2" y1="12" x2="7" y2="12" />
+          <line x1="10" y1="12" x2="14" y2="12" />
+          <line x1="17" y1="12" x2="22" y2="12" />
+        </svg>
+      </div>
+      <div
+        class="radial-item edge-style-btn"
+        data-type="line"
+        data-style="dotted"
+        title="Dotted Line"
+        style="--angle: 270deg"
+      >
+        <i data-lucide="more-horizontal"></i>
+      </div>
+
+      <!-- Arrow styles: 135 / 90 / 45 deg -->
+      <div
+        class="radial-item edge-style-btn"
+        data-type="arrow"
+        data-style="both"
+        title="Bidirectional Arrows (Toggle)"
+        style="--angle: 135deg"
+      >
+        <i data-lucide="move-horizontal"></i>
+      </div>
+      <div
+        class="radial-item edge-style-btn"
+        data-type="arrow"
+        data-style="left"
+        title="Arrow to Source (Toggle)"
+        style="--angle: 90deg"
+      >
+        <i data-lucide="arrow-left"></i>
+      </div>
+      <div
+        class="radial-item edge-style-btn"
+        data-type="arrow"
+        data-style="right"
+        title="Arrow to Target (Toggle)"
+        style="--angle: 45deg"
+      >
+        <i data-lucide="arrow-right"></i>
+      </div>
+
+      <!-- Action items: 315 / 0 deg -->
+      <div
+        class="radial-item"
+        id="btn-note-edge"
+        title="Add / Edit Note"
+        style="--angle: 315deg"
+      >
+        <i data-lucide="pencil"></i>
+      </div>
+
+      <div
+        class="radial-item edge-style-btn radial-danger"
+        id="btn-delete-edge"
+        data-type="action"
+        data-style="delete"
+        title="Delete Link"
+        style="--angle: 0deg"
+      >
+        <i data-lucide="trash-2"></i>
+      </div>
+    </div>
+
+    <!-- Hover Panel (Hidden by default) -->
+    <div id="node-hover-panel" class="hover-panel hidden">
+      <div class="hover-panel-header">
+        <div class="hover-titles">
+          <h3 id="hover-display-name">Display Name</h3>
+          <span
+            id="hover-username"
+            style="cursor: pointer; text-decoration: underline; color: #3b82f6"
+            title="Open TikTok Profile"
+            >@username</span
+          >
+          <a
+            id="hover-marketplace-link"
+            href="#"
+            target="_blank"
+            style="display: none; font-size: 11px; color: #a855f7; align-items: center; gap: 4px; margin-top: 4px; text-decoration: none;"
+            title="Open Facebook Marketplace Profile"
+          >
+            <i data-lucide="shopping-bag" style="width: 12px; height: 12px; display: inline-block;"></i> Marketplace Profile
+          </a>
+        </div>
+        <button id="hover-copy-btn" class="icon-btn" title="Copy Info">
+          <i data-lucide="copy"></i>
+        </button>
+      </div>
+      <div id="hover-bio" class="hover-bio">Bio text goes here...</div>
+      <div id="hover-connections-box" style="display: none; flex-wrap: wrap; gap: 6px; padding: 0 16px 12px 16px;"></div>
+      <div class="hover-stats">
+        <div class="stat-box" id="hover-following-box">
+          <span class="stat-value" id="hover-following-count">0</span>
+          <span class="stat-label">Following</span>
+        </div>
+        <div class="stat-box" id="hover-followers-box">
+          <span class="stat-value" id="hover-followers-count">0</span>
+          <span class="stat-label" id="hover-followers-label">Followers</span>
+        </div>
+      </div>
+      <!-- Note Snippet (hidden unless node has a note) -->
+      <div id="hover-note-row" class="hover-note-row hidden">
+        <span id="hover-note-snippet" class="hover-note-snippet"></span>
+        <button id="hover-note-expand-btn" class="icon-btn" title="View full note">
+          <i data-lucide="book-open"></i>
+        </button>
+      </div>
+      <div
+        class="hover-footer"
+        style="
+          margin-top: 12px;
+          padding: 12px 16px 12px 16px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        "
+      >
+        <span class="stat-label">INGESTED</span>
+        <span
+          id="hover-ingest-time"
+          class="stat-label"
+          style="
+            font-family: &quot;Inter&quot;, monospace;
+            text-transform: none;
+          "
+          >N/A</span
+        >
+      </div>
+    </div>
+
+    <!-- Note Editor Modal -->
+    <div id="note-editor-backdrop" class="modal-backdrop hidden">
+      <div id="note-editor-modal" class="modal" style="width:560px">
+        <div class="modal-header">
+          <h2 id="note-editor-title">Add Note</h2>
+          <button id="close-note-editor-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body" style="gap:12px">
+          <!-- Rich-text toolbar -->
+          <div class="note-toolbar">
+            <button class="note-toolbar-btn" data-cmd="bold" title="Bold"><strong>B</strong></button>
+            <button class="note-toolbar-btn" data-cmd="italic" title="Italic"><em>I</em></button>
+            <button class="note-toolbar-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+            <div class="note-toolbar-sep"></div>
+            <button class="note-toolbar-btn" id="note-link-btn" title="Insert link"><i data-lucide="link"></i></button>
+            <button class="note-toolbar-btn" id="note-unlink-btn" title="Remove link"><i data-lucide="unlink"></i></button>
+            <div class="note-toolbar-sep"></div>
+            <button class="note-toolbar-btn" data-cmd="insertUnorderedList" title="Bullet list"><i data-lucide="list"></i></button>
+          </div>
+          <!-- Editable note area -->
+          <div
+            id="note-editor-area"
+            class="note-editor-area"
+            contenteditable="true"
+            placeholder="Type your note here…"
+          ></div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-note-editor-btn" class="btn btn-secondary">Cancel</button>
+          <button id="save-note-btn" class="btn btn-primary">Save Note</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- About Modal -->
+    <div id="about-modal-backdrop" class="modal-backdrop hidden">
+      <div id="about-modal" class="modal" style="width:480px">
+        <div class="modal-header">
+          <h2>About TikTok OSINT Graph</h2>
+          <button id="close-about-modal-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body" style="text-align: center; padding: 24px 16px;">
+          <div style="margin-bottom: 24px;">
+            <div style="font-size: 1.1rem; font-weight: 600; color: var(--accent); margin-bottom: 4px;">Version 1.1</div>
+            <div style="font-size: 0.85rem; opacity: 0.7;">Modern OSINT Visualization Suite</div>
+          </div>
+          
+          <div style="margin-bottom: 24px;">
+            <p style="margin-bottom: 12px; line-height: 1.5;">
+              A professional intelligence tool for mapping and analyzing TikTok social networks, 
+              designed for deep investigation and link analysis.
+            </p>
+            <p style="font-weight: 600;">Developed by Wayfinder</p>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
+            <a href="https://wayfinder.co.nz" target="_blank" class="btn" style="width: 100%; justify-content: center; text-decoration: none;">
+              <i data-lucide="globe" style="width: 16px; margin-right: 8px;"></i>
+              wayfinder.co.nz
+            </a>
+            <a href="https://wayfinder-intel.github.io/tools" target="_blank" class="btn" style="width: 100%; justify-content: center; text-decoration: none;">
+              <i data-lucide="hammer" style="width: 16px; margin-right: 8px;"></i>
+              Wayfinder Tools Archive
+            </a>
+          </div>
+        </div>
+        <div class="modal-footer" style="justify-content: center; opacity: 0.5; font-size: 0.8rem;">
+          &copy; 2026 Wayfinder Intelligence
+        </div>
+      </div>
+    </div>
+
+    <!-- Note Viewer Modal -->
+    <div id="note-viewer-backdrop" class="modal-backdrop hidden">
+      <div id="note-viewer-modal" class="modal" style="width:560px">
+        <div class="modal-header">
+          <h2 id="note-viewer-title">Note</h2>
+          <button id="close-note-viewer-btn" class="icon-btn" title="Close">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div id="note-viewer-body" class="note-viewer-body"></div>
+        </div>
+        <div class="modal-footer" style="justify-content:space-between">
+          <button id="delete-note-btn" class="btn btn-secondary" style="color:#ef4444;border-color:rgba(239,68,68,0.4)">
+            <i data-lucide="trash-2" style="width:14px;height:14px;vertical-align:middle;margin-right:4px"></i>Delete
+          </button>
+          <div style="display:flex;gap:8px">
+            <button id="edit-note-btn" class="btn btn-secondary">Edit</button>
+            <button id="viewer-close-btn" class="btn btn-primary">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Deletion History Drawer -->
+    <div id="deletion-history-panel" class="deletion-history-panel hidden">
+      <div class="deletion-history-header">
+        <span>Deletion History</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button id="clear-deletion-history-btn" class="btn btn-secondary" style="font-size:11px;padding:4px 8px">Clear</button>
+          <button id="close-deletion-history-btn" class="icon-btn"><i data-lucide="x"></i></button>
+        </div>
+      </div>
+      <div id="deletion-history-list" class="deletion-history-list">
+        <div class="deletion-history-empty">No deletions yet.</div>
+      </div>
+    </div>
+
+    <script src="app.js?v=1049"></script>
+    <script>
+      lucide.createIcons();
+    </script>
+  </body>
+</html>

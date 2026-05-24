@@ -98,29 +98,12 @@
         </div>
 
         <div class="card">
-          <h2>Facebook Graph Builder (<code>graph.html</code>)</h2>
+          <h2>Social Graph Builder (<code>social-graph/index.html</code>)</h2>
           <ul>
-            <li><strong>Data sent externally:</strong> <em>None.</em> Parsing and graph operations run locally in your
-              browser.</li>
-            <li><strong>Local storage:</strong> uses <code>localStorage</code> to persist Sessions/graph state (you can
-              clear this any time).</li>
-            <li><strong>Exports:</strong> JSON/CSV/PNG exports are generated in-browser for download.</li>
-            <li><strong>Third‑party assets:</strong> D3 library via CDN. No tracking and no API calls.</li>
-          </ul>
-        </div>
-
-        <div class="card">
-          <h2>Facebook Meta Mapper (<code>map.html</code>)</h2>
-          <ul>
-            <li><strong>Data sent externally:</strong> <em>place‑name text only</em> is sent to OpenStreetMap’s
-              Nominatim service for geocoding (converting names to coordinates).</li>
-            <li><strong>Map tiles:</strong> basemap imagery loads from OpenStreetMap (OSM) tile servers.</li>
-            <li><strong>Local storage:</strong> geocoding results are cached in <code>localStorage</code> to minimise
-              repeat lookups.</li>
-            <li><strong>Exports:</strong> JSON/CSV exports are generated locally from your filtered/mapped data.</li>
-            <li><strong>Third‑party assets:</strong> Leaflet + MarkerCluster via CDN; OSM Tiles; OSM Nominatim.</li>
-            <li><strong>Tip:</strong> avoid personal identifiers in the <em>place</em> text if you don’t want them sent
-              to the geocoder.</li>
+            <li><strong>Data sent externally:</strong> <em>None.</em> Parsing and graph operations run entirely locally in your browser. No data leaves your machine.</li>
+            <li><strong>Local storage:</strong> Uses <code>localStorage</code> to persist workspaces, notes, and visual layout states so you can resume your investigations. You can clear this at any time.</li>
+            <li><strong>Exports:</strong> JSON, CSV, and image (PNG/SVG) exports are generated locally in-browser.</li>
+            <li><strong>Third‑party assets:</strong> Cytoscape.js, D3, and Lucide Icons via CDN. No tracking, analytics, or API calls are made to these hosts.</li>
           </ul>
         </div>
 
@@ -159,10 +142,8 @@
         <div class="card">
           <h2>CDNs & Services Used</h2>
           <ul>
-            <li><strong>D3 (Graph Builder):</strong> served from a CDN.</li>
-            <li><strong>Leaflet & MarkerCluster (Meta Mapper):</strong> served from a CDN.</li>
-            <li><strong>OpenStreetMap Tiles (Meta Mapper):</strong> basemap imagery.</li>
-            <li><strong>OpenStreetMap Nominatim (Meta Mapper):</strong> geocoding service for place‑name queries.</li>
+            <li><strong>Cytoscape.js & D3 (Social Graph Builder):</strong> served from a CDN.</li>
+            <li><strong>Lucide Icons:</strong> served from a CDN.</li>
           </ul>
           <p class="help" style="margin-top:10px">No analytics beacons or tracking scripts are embedded in these pages.
           </p>

@@ -385,6 +385,11 @@ body.light-mode {
   align-items: flex-start;
 }
 
+.ffp-controls.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 .ffp-main-row {
   display: flex;
   align-items: center;
@@ -1579,7 +1584,7 @@ body.light-mode {
 .tour-tooltip {
   position: absolute;
   z-index: 1000000;
-  width: 320px;
+  width: 350px;
   background: var(--ui-bg-translucent);
   backdrop-filter: blur(12px);
   border: 1px solid var(--ui-border);

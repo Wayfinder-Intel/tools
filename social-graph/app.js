@@ -1135,14 +1135,37 @@ class GraphApp {
     // ANALYSIS PANEL VISIBILITY GATING
     // =============================================
     this.updateAnalysisPanelVisibility = () => {
-      const totalNodes  = this.cy.nodes().length;
-      // Show FFP if graph is empty (default TikTok state) or contains TikTok nodes
-      const hasTikTok   = totalNodes === 0 || this.cy.nodes().some(n => (n.data("platform") || "tiktok") === "tiktok");
+      const hasTikTok   = this.cy.nodes().some(n => (n.data("platform") || "tiktok") === "tiktok");
       const hasFacebook = this.cy.nodes().some(n => n.data("platform") === "facebook");
       const ffpEl = document.getElementById("ffp-controls-container");
       const tfpEl = document.getElementById("tfp-controls-container");
-      if (ffpEl) ffpEl.style.display = hasTikTok ? "" : "none";
-      if (tfpEl) tfpEl.style.display = hasFacebook ? "" : "none";
+      
+      if (ffpEl) {
+        if (hasTikTok) {
+          ffpEl.classList.remove("disabled");
+        } else {
+          ffpEl.classList.add("disabled");
+          if (this.ffpMode !== "off") {
+            this.ffpMode = "off";
+            this.updateFFPUI();
+          }
+        }
+      }
+      if (tfpEl) {
+        if (hasFacebook) {
+          tfpEl.classList.remove("disabled");
+        } else {
+          tfpEl.classList.add("disabled");
+          if (this.tfpMode) {
+            this.tfpMode = false;
+            const tfpToggleBtn = document.getElementById("tfp-toggle-btn");
+            if (tfpToggleBtn) tfpToggleBtn.classList.remove("btn-tfp-active");
+            const tfpSubs = document.getElementById("tfp-sub-toggles");
+            if (tfpSubs) tfpSubs.classList.remove("open");
+            this.applyTFPStyles();
+          }
+        }
+      }
     };
     this.updateAnalysisPanelVisibility();
 
@@ -1221,12 +1244,35 @@ class GraphApp {
       clearTimeout(this._tfpToastTimer);
       this._tfpToastTimer = setTimeout(() => tfpNToast.classList.add("hidden"), 1800);
     };
+    const tfpControlsContainer = document.getElementById("tfp-controls-container");
+    const tfpSubs = document.getElementById("tfp-sub-toggles");
+    if (tfpSubs) {
+      tfpSubs.style.maxWidth = "0px";
+      tfpSubs.style.opacity = "0";
+      tfpSubs.style.pointerEvents = "none";
+
+      const showTfpSub = () => {
+        tfpSubs.style.maxWidth = "400px";
+        tfpSubs.style.opacity = "1";
+        tfpSubs.style.pointerEvents = "auto";
+      };
+
+      const hideTfpSub = () => {
+        tfpSubs.style.maxWidth = "0px";
+        tfpSubs.style.opacity = "0";
+        tfpSubs.style.pointerEvents = "none";
+      };
+
+      if (tfpControlsContainer) {
+        tfpControlsContainer.addEventListener("mouseenter", showTfpSub);
+        tfpControlsContainer.addEventListener("mouseleave", hideTfpSub);
+      }
+    }
+
     if (tfpToggleBtn) {
-      const tfpSubs = document.getElementById("tfp-sub-toggles");
       tfpToggleBtn.addEventListener("click", () => {
         this.tfpMode = !this.tfpMode;
         tfpToggleBtn.classList.toggle("btn-tfp-active", this.tfpMode);
-        if (tfpSubs) tfpSubs.classList.toggle("open", this.tfpMode);
         this.applyTFPStyles();
         this.showToast(this.tfpMode ? `Top Friends active (N = ${this.tfpN})` : "Top Friends mode off");
       });
@@ -1447,10 +1493,20 @@ class GraphApp {
         this.ffpDepth = 10;
         this.ffpRankLabelMode = false;
 
+        this.tfpMode = false;
+        this.tfpN = 6;
+        const tfpToggleBtn = document.getElementById("tfp-toggle-btn");
+        if (tfpToggleBtn) tfpToggleBtn.classList.remove("btn-tfp-active");
+        const tfpSubsVal = document.getElementById("tfp-sub-toggles");
+        if (tfpSubsVal) tfpSubsVal.classList.remove("open");
+        this.applyTFPStyles();
+
         this.updateFFPUI();
         this.updateStats();
         this.updateDropdown();
         this.refreshSingletonBadges();
+        if (typeof this.refreshPlatformBadges === "function") this.refreshPlatformBadges();
+        if (typeof this.updateAnalysisPanelVisibility === "function") this.updateAnalysisPanelVisibility();
 
         this.showToast("Graph wiped completely.");
         closeWipeModal();
@@ -1835,6 +1891,8 @@ class GraphApp {
       this.refreshLockBadges();
       this.refreshSeedBadges();
       this.refreshSingletonBadges();
+      if (typeof this.refreshPlatformBadges === "function") this.refreshPlatformBadges();
+      if (typeof this.updateAnalysisPanelVisibility === "function") this.updateAnalysisPanelVisibility();
       renderDeletionHistory();
       this.showToast(`Deleted ${parts.join(", ")}`);
     };
@@ -5173,6 +5231,8 @@ class GraphApp {
     }
 
     this.refreshImportedOverlays();
+    if (typeof this.refreshPlatformBadges === "function") this.refreshPlatformBadges();
+    if (typeof this.updateAnalysisPanelVisibility === "function") this.updateAnalysisPanelVisibility();
     
     // If we're bootstrapping into a new workspace, fit the view nicely
     if (existingNodeCount === 0 && addedElements.length > 0) {
@@ -7249,13 +7309,23 @@ class GraphApp {
     this.showTourStep(0);
   }
 
-  showTourStep(index) {
-    const steps = [
+  getTourSteps() {
+    return [
       {
         title: "Welcome to Wayfinder Connect",
         content: "A secure, in-browser OSINT utility to map relationships and analyze social networks (Facebook, Instagram, Threads, and TikTok). No data ever leaves your computer.",
         target: null,
         category: null
+      },
+      {
+        title: "Saving & Loading Work",
+        content: `Keep your investigations secure by saving and loading locally:
+        <ul style="margin: 6px 0 0 16px; padding: 0; font-size: 11.5px; display: flex; flex-direction: column; gap: 4px;">
+          <li><strong>Export JSON</strong>: Saves the entire current graph, notes, and visual settings as a local backup file.</li>
+          <li><strong>Import JSON</strong>: Restores your workspace exactly where you left off.</li>
+        </ul>`,
+        target: '#export-json-btn',
+        category: 'DATA'
       },
       {
         title: "Ingest Social Data",
@@ -7270,19 +7340,50 @@ class GraphApp {
         category: 'close'
       },
       {
-        title: "Visual & Layout Controls",
-        content: "Rearrange the graph using layouts, toggle between colored dots and photo avatars, snap nodes to grid, and optimize spacing.",
-        target: '#avatar-dot-toggle-btn',
+        title: "Themes & Layouts",
+        content: `Customize how you view the network:
+        <ul style="margin: 6px 0 0 16px; padding: 0; font-size: 11.5px; display: flex; flex-direction: column; gap: 4px;">
+          <li><strong>Theme Toggle (Black/White)</strong>: Switches between dark mode (power-efficient, high contrast) and light mode (printing/reports).</li>
+          <li><strong>Avatar / Dot Toggle</strong>: Switch between photo avatars and clean dot representation to simplify complex networks.</li>
+          <li><strong>Reheat Layout</strong>: Spread nodes out using our local physics simulation.</li>
+        </ul>`,
+        target: '#theme-toggle-btn',
         category: 'APPEARANCE'
       },
       {
-        title: "OSINT Reports & Backups",
-        content: "Export professional Word (.docx) intelligence reports, download spreadsheets (CSVs), export PNG/SVGs, or back up to JSON.",
+        title: "OSINT Analysis Suite",
+        content: `Investigate relationships with advanced mathematical tools:
+        <ul style="margin: 6px 0 0 16px; padding: 0; font-size: 11.5px; display: flex; flex-direction: column; gap: 4px;">
+          <li><strong>Shortest Route</strong>: Connects two or more nodes to find intermediaries.</li>
+          <li><strong>Highlight Mutuals</strong>: Quickly color mutual connections.</li>
+          <li><strong>Global Ghost</strong>: Fades out all unselected elements to isolate hubs.</li>
+          <li><strong>Seed & Singleton Selection</strong>: Automatically highlights source targets or disconnected outer leaf profiles.</li>
+        </ul>`,
+        target: '#shortest-route-btn',
+        category: 'ANALYSIS'
+      },
+      {
+        title: "TikTok & Facebook Principles",
+        content: `These advanced analysis tools are greyed out by default because they require data from their respective platforms to run:
+        <ul style="margin: 6px 0 0 16px; padding: 0; font-size: 11.5px; display: flex; flex-direction: column; gap: 4px;">
+          <li><strong>First Follower Principle (FFP)</strong>: (TikTok) Traces early network sequences to identify pioneer followers/following chains.</li>
+          <li><strong>Top Friends Principle (TFP)</strong>: (Facebook) Maps closest relationships based on FB friend rank.</li>
+          <li><strong>Sub-options</strong>: Hovering over these buttons when active reveals options to restrict flow directions, show rank numbers, customize depth/friend thresholds, and fade non-matching nodes (Ghost mode).</li>
+        </ul>`,
+        target: '#ffp-toggle-btn',
+        category: 'ANALYSIS'
+      },
+      {
+        title: "OSINT Reports & Output",
+        content: "Export professional Word (.docx) intelligence reports, download spreadsheets (CSVs), or save high-res PNG/SVGs of your visual graphs.",
         target: '#export-report-btn',
         category: 'DATA'
       }
     ];
+  }
 
+  showTourStep(index) {
+    const steps = this.getTourSteps();
     if (index < 0 || index >= steps.length) return;
     this.currentTourStep = index;
     const step = steps[index];
@@ -7303,7 +7404,7 @@ class GraphApp {
 
     // Update texts
     document.getElementById("tour-title").textContent = step.title;
-    document.getElementById("tour-content").textContent = step.content;
+    document.getElementById("tour-content").innerHTML = step.content;
     document.getElementById("tour-progress").textContent = `Step ${index + 1} of ${steps.length}`;
 
     // Update buttons
@@ -7349,7 +7450,7 @@ class GraphApp {
   }
 
   nextTourStep() {
-    const stepsCount = 5;
+    const stepsCount = this.getTourSteps().length;
     if (this.currentTourStep < stepsCount - 1) {
       this.showTourStep(this.currentTourStep + 1);
     } else {

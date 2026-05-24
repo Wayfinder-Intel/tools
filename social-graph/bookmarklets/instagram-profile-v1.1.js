@@ -134,9 +134,16 @@
         return;
       }
       
-      // Exclude internal help, legal, static pages
-      if (href.indexOf(location.hostname) !== -1) {
-        if (/about|legal|terms|privacy|help|developer|directory|jobs/i.test(cleanPath)) {
+      // Exclude internal help, legal, static and system pages
+      if (href.indexOf(location.hostname) !== -1 || href.indexOf('instagram.com') !== -1 || href.startsWith('/') || href.startsWith('./')) {
+        var firstSegment = cleanPath.split('/')[0];
+        var ignoredSystemPaths = [
+          'about', 'legal', 'terms', 'privacy', 'help', 'developer', 'directory', 
+          'jobs', 'explore', 'reels', 'stories', 'direct', 'inbox', 'emails', 
+          'oauth', 'press', 'business', 'creators', 'safety', 'popular', 'play', 
+          'p', 'reel'
+        ];
+        if (ignoredSystemPaths.indexOf(firstSegment) !== -1) {
           return;
         }
       }

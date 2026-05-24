@@ -4580,47 +4580,62 @@ class GraphApp {
       };
     };
 
+    const IGNORED_PATHS = [
+      "profile.php", "home", "groups", "pages", "events", "marketplace", 
+      "watch", "gaming", "fundraisers", "friends", "photo", "photo.php", 
+      "photos", "explore", "reels", "developer", "about", "blog", "jobs", 
+      "help", "api", "privacy", "terms", "locations", "popular", "play", 
+      "p", "reel", "stories", "direct", "inbox", "emails", "oauth", "legal", 
+      "press", "business", "creators", "safety"
+    ];
+
     const processInstagramConnections = (p, fbNodeId) => {
       const extra = [];
       if (p.connections && Array.isArray(p.connections)) {
         p.connections.forEach(conn => {
-          if (conn.href && conn.href.includes("instagram.com")) {
-            const match = conn.href.match(/instagram\.com\/([a-zA-Z0-9._-]+)/);
-            if (match) {
-              const igUser = match[1];
-              if (igUser && !["profile.php","home","groups","pages","events","marketplace","watch","gaming","fundraisers","friends","photo","photo.php","photos"].includes(igUser)) {
-                const igNodeId = `ig_${igUser}`;
-                extra.push({
-                  group: "nodes",
-                  data: {
-                    id: igNodeId,
-                    label: igUser,
-                    type: "normal",
-                    platform: "instagram",
-                    image: `https://ui-avatars.com/api/?name=${encodeURIComponent(igUser)}&background=random`,
-                    url: `https://www.instagram.com/${igUser}`,
-                    bio: "Linked Instagram Profile",
-                    followers: "Unknown",
-                    following: "Unknown",
-                    likes: "Unknown",
-                    ingestTime: ingestDateTime
+          if (conn.href) {
+            try {
+              const urlObj = new URL(conn.href);
+              const host = urlObj.hostname.toLowerCase();
+              if (host === "instagram.com" || host === "www.instagram.com") {
+                const pathParts = urlObj.pathname.split('/').filter(Boolean);
+                if (pathParts.length > 0) {
+                  const igUser = pathParts[0];
+                  if (igUser && !IGNORED_PATHS.includes(igUser.toLowerCase())) {
+                    const igNodeId = `ig_${igUser}`;
+                    extra.push({
+                      group: "nodes",
+                      data: {
+                        id: igNodeId,
+                        label: igUser,
+                        type: "normal",
+                        platform: "instagram",
+                        image: `https://ui-avatars.com/api/?name=${encodeURIComponent(igUser)}&background=random`,
+                        url: `https://www.instagram.com/${igUser}`,
+                        bio: "Linked Instagram Profile",
+                        followers: "Unknown",
+                        following: "Unknown",
+                        likes: "Unknown",
+                        ingestTime: ingestDateTime
+                      }
+                    });
+                    extra.push({
+                      group: "edges",
+                      data: {
+                        id: `${fbNodeId}_${igNodeId}`,
+                        source: fbNodeId,
+                        target: igNodeId,
+                        platform: p.platform || platform,
+                        mutual: "false",
+                        type: "also-operates",
+                        ingestTime: ingestDateTime
+                      },
+                      classes: "also-operates"
+                    });
                   }
-                });
-                extra.push({
-                  group: "edges",
-                  data: {
-                    id: `${fbNodeId}_${igNodeId}`,
-                    source: fbNodeId,
-                    target: igNodeId,
-                    platform: p.platform || platform,
-                    mutual: "false",
-                    type: "also-operates",
-                    ingestTime: ingestDateTime
-                  },
-                  classes: "also-operates"
-                });
+                }
               }
-            }
+            } catch (ex) {}
           }
         });
       }
@@ -4631,43 +4646,164 @@ class GraphApp {
       const extra = [];
       if (p.connections && Array.isArray(p.connections)) {
         p.connections.forEach(conn => {
-          if (conn.href && (conn.href.includes("threads.net") || conn.href.includes("threads.com"))) {
-            const match = conn.href.match(/threads\.(net|com)\/@([a-zA-Z0-9._-]+)/) || conn.href.match(/threads\.(net|com)\/([a-zA-Z0-9._-]+)/);
-            if (match) {
-              const threadsUser = match[2];
-              if (threadsUser && !["profile.php","home","groups","pages","events","marketplace","watch","gaming","fundraisers","friends","photo","photo.php","photos"].includes(threadsUser)) {
-                const threadsNodeId = `threads_${threadsUser}`;
-                extra.push({
-                  group: "nodes",
-                  data: {
-                    id: threadsNodeId,
-                    label: threadsUser,
-                    type: "normal",
-                    platform: "threads",
-                    image: `https://ui-avatars.com/api/?name=${encodeURIComponent(threadsUser)}&background=random`,
-                    url: `https://www.threads.net/@${threadsUser}`,
-                    bio: "Linked Threads Profile",
-                    followers: "Unknown",
-                    following: "Unknown",
-                    likes: "Unknown",
-                    ingestTime: ingestDateTime
+          if (conn.href) {
+            try {
+              const urlObj = new URL(conn.href);
+              const host = urlObj.hostname.toLowerCase();
+              if (host === "threads.net" || host === "www.threads.net" || host === "threads.com" || host === "www.threads.com") {
+                const pathParts = urlObj.pathname.split('/').filter(Boolean);
+                if (pathParts.length > 0) {
+                  let threadsUser = pathParts[0];
+                  if (threadsUser.startsWith("@")) {
+                    threadsUser = threadsUser.substring(1);
                   }
-                });
-                extra.push({
-                  group: "edges",
-                  data: {
-                    id: `${sourceNodeId}_${threadsNodeId}`,
-                    source: sourceNodeId,
-                    target: threadsNodeId,
-                    platform: p.platform || platform,
-                    mutual: "false",
-                    type: "also-operates",
-                    ingestTime: ingestDateTime
-                  },
-                  classes: "also-operates"
-                });
+                  if (threadsUser && !IGNORED_PATHS.includes(threadsUser.toLowerCase())) {
+                    const threadsNodeId = `threads_${threadsUser}`;
+                    extra.push({
+                      group: "nodes",
+                      data: {
+                        id: threadsNodeId,
+                        label: threadsUser,
+                        type: "normal",
+                        platform: "threads",
+                        image: `https://ui-avatars.com/api/?name=${encodeURIComponent(threadsUser)}&background=random`,
+                        url: `https://www.threads.net/@${threadsUser}`,
+                        bio: "Linked Threads Profile",
+                        followers: "Unknown",
+                        following: "Unknown",
+                        likes: "Unknown",
+                        ingestTime: ingestDateTime
+                      }
+                    });
+                    extra.push({
+                      group: "edges",
+                      data: {
+                        id: `${sourceNodeId}_${threadsNodeId}`,
+                        source: sourceNodeId,
+                        target: threadsNodeId,
+                        platform: p.platform || platform,
+                        mutual: "false",
+                        type: "also-operates",
+                        ingestTime: ingestDateTime
+                      },
+                      classes: "also-operates"
+                    });
+                  }
+                }
               }
-            }
+            } catch (ex) {}
+          }
+        });
+      }
+      return extra;
+    };
+
+    const processFacebookConnections = (p, sourceNodeId) => {
+      const extra = [];
+      if (p.connections && Array.isArray(p.connections)) {
+        p.connections.forEach(conn => {
+          if (conn.href) {
+            try {
+              const urlObj = new URL(conn.href);
+              const host = urlObj.hostname.toLowerCase();
+              if (host === "facebook.com" || host === "www.facebook.com" || host === "m.facebook.com") {
+                const pathParts = urlObj.pathname.split('/').filter(Boolean);
+                if (pathParts.length > 0) {
+                  let fbUser = pathParts[0];
+                  if (fbUser === "profile.php") {
+                    fbUser = urlObj.searchParams.get("id") || "";
+                  }
+                  if (fbUser && !IGNORED_PATHS.includes(fbUser.toLowerCase())) {
+                    const fbNodeId = `fb_${fbUser}`;
+                    extra.push({
+                      group: "nodes",
+                      data: {
+                        id: fbNodeId,
+                        label: conn.text || fbUser,
+                        type: "normal",
+                        platform: "facebook",
+                        image: `https://ui-avatars.com/api/?name=${encodeURIComponent(conn.text || fbUser)}&background=random`,
+                        url: `https://www.facebook.com/${fbUser}`,
+                        bio: "Linked Facebook Profile",
+                        followers: "Unknown",
+                        following: "Unknown",
+                        likes: "Unknown",
+                        ingestTime: ingestDateTime
+                      }
+                    });
+                    extra.push({
+                      group: "edges",
+                      data: {
+                        id: `${sourceNodeId}_${fbNodeId}`,
+                        source: sourceNodeId,
+                        target: fbNodeId,
+                        platform: p.platform || platform,
+                        mutual: "false",
+                        type: "also-operates",
+                        ingestTime: ingestDateTime
+                      },
+                      classes: "also-operates"
+                    });
+                  }
+                }
+              }
+            } catch (ex) {}
+          }
+        });
+      }
+      return extra;
+    };
+
+    const processTikTokConnections = (p, sourceNodeId) => {
+      const extra = [];
+      if (p.connections && Array.isArray(p.connections)) {
+        p.connections.forEach(conn => {
+          if (conn.href) {
+            try {
+              const urlObj = new URL(conn.href);
+              const host = urlObj.hostname.toLowerCase();
+              if (host === "tiktok.com" || host === "www.tiktok.com" || host === "m.tiktok.com") {
+                const pathParts = urlObj.pathname.split('/').filter(Boolean);
+                if (pathParts.length > 0) {
+                  let ttUser = pathParts[0];
+                  if (ttUser.startsWith("@")) {
+                    ttUser = ttUser.substring(1);
+                  }
+                  if (ttUser && !IGNORED_PATHS.includes(ttUser.toLowerCase())) {
+                    const ttNodeId = `tt_${ttUser}`;
+                    extra.push({
+                      group: "nodes",
+                      data: {
+                        id: ttNodeId,
+                        label: conn.text || ttUser,
+                        type: "normal",
+                        platform: "tiktok",
+                        image: `https://ui-avatars.com/api/?name=${encodeURIComponent(conn.text || ttUser)}&background=random`,
+                        url: `https://www.tiktok.com/@${ttUser}`,
+                        bio: "Linked TikTok Profile",
+                        followers: "Unknown",
+                        following: "Unknown",
+                        likes: "Unknown",
+                        ingestTime: ingestDateTime
+                      }
+                    });
+                    extra.push({
+                      group: "edges",
+                      data: {
+                        id: `${sourceNodeId}_${ttNodeId}`,
+                        source: sourceNodeId,
+                        target: ttNodeId,
+                        platform: p.platform || platform,
+                        mutual: "false",
+                        type: "also-operates",
+                        ingestTime: ingestDateTime
+                      },
+                      classes: "also-operates"
+                    });
+                  }
+                }
+              }
+            } catch (ex) {}
           }
         });
       }
@@ -4682,12 +4818,16 @@ class GraphApp {
       elements.push(ownerNode);
       elements.push(...processInstagramConnections(parsed.owner, ownerNode.data.id));
       elements.push(...processThreadsConnections(parsed.owner, ownerNode.data.id));
+      elements.push(...processFacebookConnections(parsed.owner, ownerNode.data.id));
+      elements.push(...processTikTokConnections(parsed.owner, ownerNode.data.id));
 
       parsed[connKey].forEach((item, idx) => {
         const itemNode = makeNode(item, false);
         elements.push(itemNode);
         elements.push(...processInstagramConnections(item, itemNode.data.id));
         elements.push(...processThreadsConnections(item, itemNode.data.id));
+        elements.push(...processFacebookConnections(item, itemNode.data.id));
+        elements.push(...processTikTokConnections(item, itemNode.data.id));
 
         let edge;
         const rankVal = platform === "instagram" ? null : (item.rank || item.friendRank || (idx + 1));
@@ -4716,6 +4856,8 @@ class GraphApp {
           elements.push(mainNode);
           elements.push(...processInstagramConnections(item, mainNode.data.id));
           elements.push(...processThreadsConnections(item, mainNode.data.id));
+          elements.push(...processFacebookConnections(item, mainNode.data.id));
+          elements.push(...processTikTokConnections(item, mainNode.data.id));
         });
         return elements;
       }
@@ -4728,6 +4870,8 @@ class GraphApp {
         elements.push(mainNode);
         elements.push(...processInstagramConnections(item, mainNode.data.id));
         elements.push(...processThreadsConnections(item, mainNode.data.id));
+        elements.push(...processFacebookConnections(item, mainNode.data.id));
+        elements.push(...processTikTokConnections(item, mainNode.data.id));
       });
       return elements;
     }
@@ -4738,6 +4882,8 @@ class GraphApp {
       elements.push(mainNode);
       elements.push(...processInstagramConnections(parsed, mainNode.data.id));
       elements.push(...processThreadsConnections(parsed, mainNode.data.id));
+      elements.push(...processFacebookConnections(parsed, mainNode.data.id));
+      elements.push(...processTikTokConnections(parsed, mainNode.data.id));
       return elements;
     }
 

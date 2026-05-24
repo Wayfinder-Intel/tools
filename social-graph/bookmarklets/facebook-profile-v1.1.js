@@ -1,11 +1,11 @@
 /**
- * Wayfinder — Facebook Profile Ingester
- * Version: 1.0
+ * Wayfinder Connect — Facebook Profile Ingester
+ * Version: 1.1
  * Date: 2026-05-22
  *
  * USAGE:
  *   Create a new bookmark in Chrome. Set the URL to the contents of
- *   facebook-profile-v1.0.min.js (the single-line minified version).
+ *   facebook-profile-v1.1.min.js (the single-line minified version).
  *   Navigate to any Facebook profile page and click the bookmark.
  *
  * WHAT IT CAPTURES:
@@ -298,7 +298,7 @@
       : '';
 
     cd.innerHTML =
-      '<div class="h"><span class="t">Wayfinder \u2014 Facebook Profile v1.0</span><button class="btn cb" id="cl">Close</button></div>' +
+      '<div class="h"><span class="t">Wayfinder Connect \u2014 Facebook Profile Ingester v1.1</span><button class="btn cb" id="cl">Close</button></div>' +
       (av ? '<img class="av" src="' + av + '" onerror="this.style.display=\'none\'">' : '') +
       '<div class="g">' +
         '<span class="l">Name</span><span class="v">'    + name  + '</span>' +

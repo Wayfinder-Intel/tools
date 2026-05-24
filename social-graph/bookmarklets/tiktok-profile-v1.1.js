@@ -1,11 +1,11 @@
 /**
- * Wayfinder — TikTok Profile Ingester
- * Version: 1.0
+ * Wayfinder Connect — TikTok Profile Ingester
+ * Version: 1.1
  * Date: 2026-05-24
  *
  * USAGE:
  *   Create a new bookmark in Chrome. Set the URL to the contents of
- *   tiktok-profile-v1.0.min.js.
+ *   tiktok-profile-v1.1.min.js.
  *   Navigate to any TikTok profile page (e.g. tiktok.com/@username)
  *   and click the bookmark.
  *
@@ -172,7 +172,7 @@
     }
 
     cd.innerHTML =
-      '<div class="h"><span class="t">Wayfinder \u2014 TikTok Profile v1.0</span><button class="btn cb" id="cl">Close</button></div>' +
+      '<div class="h"><span class="t">Wayfinder Connect \u2014 TikTok Profile Ingester v1.1</span><button class="btn cb" id="cl">Close</button></div>' +
       (avatar ? '<img class="av" src="' + avatar + '" onerror="this.style.display=\'none\'">' : '') +
       '<div class="g">' +
         '<span class="l">Username</span><span class="v">'    + username  + '</span>' +

@@ -1,5 +1,5 @@
 /**
- * Wayfinder Social Graph Builder — Multi-Platform Graph Logic
+ * Wayfinder Connect - Multi-Platform Graph Logic
  */
 
 class GraphApp {
@@ -6318,7 +6318,7 @@ class GraphApp {
         new Paragraph({
           children: [
             new TextRun({ text: `Generated: ${timestamp}`, italics: true }),
-            new TextRun({ text: "\nSoftware: Wayfinder Social Graph Builder (v2.0)" }),
+            new TextRun({ text: "\nSoftware: Wayfinder Connect (v2.0)" }),
           ],
           alignment: AlignmentType.CENTER,
           spacing: { after: 400 },
@@ -6647,7 +6647,7 @@ class GraphApp {
       }
 
       summaryItems.push(new Paragraph({
-        text: "\n---\nEnd of Report — Wayfinder Social Graph Builder",
+        text: "\n---\nEnd of Report — Wayfinder Connect",
         alignment: AlignmentType.CENTER,
         spacing: { before: 600 },
       }));

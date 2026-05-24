@@ -1,11 +1,11 @@
 /**
- * Wayfinder — Instagram Friends Ingester
- * Version: 1.0
+ * Wayfinder Connect — Instagram Friends Ingester
+ * Version: 1.1
  * Date: 2026-05-24
  *
  * USAGE:
  *   Create a new bookmark in Chrome. Set the URL to the contents of
- *   instagram-friends-v1.0.min.js.
+ *   instagram-friends-v1.1.min.js.
  *   Navigate to any Instagram profile page, click on "followers" or "following"
  *   to open the pop-up modal dialog, and click the bookmark.
  *

@@ -92,30 +92,68 @@
       bio = bioEl.innerText.trim();
     }
 
-    // ── CONNECTIONS (Threads / External links) ─────────────────────────────────
+    // ── CONNECTIONS (Threads / External links / Emails) ────────────────────────
     var connections = [];
-    var links = Array.from(document.querySelectorAll('header a'));
+    
+    // Extract emails from bio text
+    var emails = bio.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [];
+    emails.forEach(function (email) {
+      var mailto = 'mailto:' + email;
+      if (!connections.some(function (c) { return c.href === mailto; })) {
+        connections.push({
+          text: 'Email: ' + email,
+          href: mailto
+        });
+      }
+    });
+
+    // Query links inside header and sections (to cover modern DOM structures)
+    var links = Array.from(document.querySelectorAll('header a, section a'));
     links.forEach(function (link) {
       var href = link.href;
       if (!href) return;
       var text = link.innerText.trim();
       
-      // Exclude internal navigation links
+      // Normalize Instagram link shim redirects
+      if (href.indexOf('l.instagram.com/?u=') !== -1 || href.indexOf('l.instagram.com/l.php?u=') !== -1) {
+        try {
+          var uParam = new URL(href).searchParams.get('u');
+          if (uParam) href = uParam;
+        } catch (ex) {}
+      }
+
+      // Exclude posts tabs, follower lists, avatar clicks, and navigation
+      var path = link.getAttribute('href') || '';
+      var cleanPath = path.replace(/^\/+|\/+$/g, '').toLowerCase(); // e.g. "username/followers"
+      var cleanUsername = username.toLowerCase();
+
+      if (cleanPath === '' || cleanPath === '#' || cleanPath === cleanUsername) {
+        return;
+      }
+      if (cleanPath === cleanUsername + '/followers' || cleanPath === cleanUsername + '/following' || cleanPath === cleanUsername + '/saved' || cleanPath === cleanUsername + '/tagged' || cleanPath === cleanUsername + '/reels') {
+        return;
+      }
+      
+      // Exclude internal help, legal, static pages
       if (href.indexOf(location.hostname) !== -1) {
-        var path = link.getAttribute('href') || '';
-        if (path === '#' || path === '/' || path.indexOf('/followers') !== -1 || path.indexOf('/following') !== -1) {
-          return;
-        }
-        if (path.replace(/\//g, '') === username) {
+        if (/about|legal|terms|privacy|help|developer|directory|jobs/i.test(cleanPath)) {
           return;
         }
       }
-      
+
       // Avoid duplicate hrefs
       if (connections.some(function (c) { return c.href === href; })) {
         return;
       }
       
+      // If it's an internal Instagram link, it must be a user mention (e.g. /username/) or tag
+      if (href.indexOf('instagram.com') !== -1 || href.startsWith('/') || href.startsWith('./')) {
+        if (cleanPath.indexOf('/') !== -1) {
+          return; // Skip complex paths
+        }
+        if (!text) text = '@' + cleanPath;
+      }
+
       connections.push({
         text: text || href,
         href: href

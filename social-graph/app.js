@@ -215,7 +215,7 @@ class GraphApp {
           "line-style": "dashed",
           "target-arrow-shape": "none",
           "source-arrow-shape": "none",
-          label: "also operates",
+          label: "Connected to",
           "font-size": 11,
           "font-family": "Inter, system-ui, sans-serif",
           "text-background-color": rootStyles.getPropertyValue("--bg").trim() || "#0f1115",

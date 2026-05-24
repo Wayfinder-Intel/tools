@@ -35,8 +35,13 @@ function main() {
             rawContent = rawContent.substring("javascript:".length);
         }
 
-        // Decode the existing partial encoding
-        const decoded = decodeURIComponent(rawContent);
+        // Decode the existing partial encoding if it is encoded; otherwise use raw content
+        let decoded;
+        try {
+            decoded = decodeURIComponent(rawContent);
+        } catch (e) {
+            decoded = rawContent;
+        }
 
         // Fully encode all characters (using encodeURIComponent)
         // Custom escape function to ensure RFC 3986 compliance, matching EscapeDataString

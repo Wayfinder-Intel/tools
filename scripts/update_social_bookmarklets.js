@@ -8,7 +8,7 @@ function main() {
     const mappings = {
         "social-graph/bookmarklets/facebook-profile-v1.1.min.js": "bm-facebook-profile",
         "social-graph/bookmarklets/facebook-friends-v1.1.min.js": "bm-facebook-friends",
-        "social-graph/bookmarklets/instagram-profile-v1.1.min.js": "bm-instagram-profile",
+        "social-graph/bookmarklets/instagram-profile-v1.11.min.js": "bm-instagram-profile",
         "social-graph/bookmarklets/instagram-friends-v1.1.min.js": "bm-instagram-friends",
         "social-graph/bookmarklets/tiktok-profile-v1.1.min.js": "bm-tiktok-profile",
         "social-graph/bookmarklets/tiktok-friends-v1.1.min.js": "bm-tiktok-friends",

@@ -69,6 +69,9 @@
           style="font-size:11px;font-weight:700;letter-spacing:0.1em;color:var(--text);opacity:0.6;margin-left:6px;pointer-events:none;white-space:nowrap;text-transform:uppercase;"
           title="Wayfinder Connect"
         >Wayfinder Connect</span>
+        <button class="nav-btn" id="tour-btn" title="Quick Tour" style="margin-left: 8px;">
+          <i data-lucide="help-circle"></i>
+        </button>
         <div class="divider vertical"></div>
         <button class="nav-btn" data-category="DATA" title="DATA">
           <i data-lucide="database"></i>
@@ -1142,7 +1145,7 @@
     <div id="about-modal-backdrop" class="modal-backdrop hidden">
       <div id="about-modal" class="modal" style="width:480px">
         <div class="modal-header">
-          <h2>About TikTok OSINT Graph</h2>
+          <h2>About Wayfinder Connect</h2>
           <button id="close-about-modal-btn" class="icon-btn" title="Close">
             <i data-lucide="x"></i>
           </button>
@@ -1212,6 +1215,22 @@
       </div>
       <div id="deletion-history-list" class="deletion-history-list">
         <div class="deletion-history-empty">No deletions yet.</div>
+      </div>
+    </div>
+
+    <!-- Guided Tour Overlay -->
+    <div id="tour-backdrop" class="tour-backdrop hidden"></div>
+    <div id="tour-highlight" class="tour-highlight hidden"></div>
+    <div id="tour-tooltip" class="tour-tooltip hidden">
+      <h3 id="tour-title">Title</h3>
+      <p id="tour-content">Content goes here.</p>
+      <div class="tour-footer">
+        <span id="tour-progress" class="tour-progress">Step 1 of 5</span>
+        <div class="tour-buttons">
+          <button id="tour-prev-btn" class="tour-btn">Back</button>
+          <button id="tour-next-btn" class="tour-btn primary">Next</button>
+          <button id="tour-skip-btn" class="tour-btn" style="opacity: 0.6;">Skip</button>
+        </div>
       </div>
     </div>
 

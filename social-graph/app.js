@@ -1659,6 +1659,10 @@ class GraphApp {
     onClickIf(btnAbout, () => openAboutModal(btnAbout));
     onClickIf(btnCloseAbout, closeAboutModal);
 
+    // Tour Button Logic
+    const btnTour = document.getElementById("tour-btn");
+    onClickIf(btnTour, () => this.startTour());
+
     // ---- Search Logic ----
     const searchToggleBtn = document.getElementById("search-toggle-btn");
     const searchInput = document.getElementById("search-input");
@@ -7210,6 +7214,165 @@ class GraphApp {
 
     this.cy.style().selector(".faded").style("opacity", 0.2).update();
   }
+
+  checkTourOnLoad() {
+    setTimeout(() => {
+      const tourSeen = localStorage.getItem("wayfinder_connect_tour_seen");
+      if (!tourSeen) {
+        this.startTour();
+      }
+    }, 1000);
+  }
+
+  startTour() {
+    this.tourActive = true;
+    this.currentTourStep = 0;
+    
+    this.tourBackdrop = document.getElementById("tour-backdrop");
+    this.tourHighlight = document.getElementById("tour-highlight");
+    this.tourTooltip = document.getElementById("tour-tooltip");
+    
+    if (!this.tourBackdrop || !this.tourHighlight || !this.tourTooltip) {
+      console.warn("Tour elements not found in HTML");
+      return;
+    }
+    
+    const btnNext = document.getElementById("tour-next-btn");
+    const btnPrev = document.getElementById("tour-prev-btn");
+    const btnSkip = document.getElementById("tour-skip-btn");
+    
+    if (btnNext) btnNext.onclick = () => this.nextTourStep();
+    if (btnPrev) btnPrev.onclick = () => this.prevTourStep();
+    if (btnSkip) btnSkip.onclick = () => this.endTour(true);
+    
+    this.tourBackdrop.classList.remove("hidden");
+    this.showTourStep(0);
+  }
+
+  showTourStep(index) {
+    const steps = [
+      {
+        title: "Welcome to Wayfinder Connect",
+        content: "A secure, in-browser OSINT utility to map relationships and analyze social networks (Facebook, Instagram, Threads, and TikTok). No data ever leaves your computer.",
+        target: null,
+        category: null
+      },
+      {
+        title: "Ingest Social Data",
+        content: "Paste profile snippets, relationship lists, or profile JSON extracted by our bookmarklets. Wayfinder Connect parses them instantly.",
+        target: 'button[data-action="Ingest"]',
+        category: 'DATA'
+      },
+      {
+        title: "Account Search",
+        content: "Search for specific profiles or handles on your graph. Hits are immediately highlighted in real-time.",
+        target: '#search-toggle-btn',
+        category: 'close'
+      },
+      {
+        title: "Visual & Layout Controls",
+        content: "Rearrange the graph using layouts, toggle between colored dots and photo avatars, snap nodes to grid, and optimize spacing.",
+        target: '#avatar-dot-toggle-btn',
+        category: 'APPEARANCE'
+      },
+      {
+        title: "OSINT Reports & Backups",
+        content: "Export professional Word (.docx) intelligence reports, download spreadsheets (CSVs), export PNG/SVGs, or back up to JSON.",
+        target: '#export-report-btn',
+        category: 'DATA'
+      }
+    ];
+
+    if (index < 0 || index >= steps.length) return;
+    this.currentTourStep = index;
+    const step = steps[index];
+
+    // Trigger category sections opening / closing
+    if (step.category === 'close') {
+      const activeBtn = document.querySelector('.floating-bar.top-nav button.nav-btn.active');
+      if (activeBtn && activeBtn.id !== 'search-toggle-btn') activeBtn.click();
+    } else if (step.category) {
+      const catBtn = document.querySelector(`.floating-bar.top-nav button.nav-btn[data-category="${step.category}"]`);
+      if (catBtn && !catBtn.classList.contains("active")) {
+        catBtn.click();
+      }
+    } else {
+      const activeBtn = document.querySelector('.floating-bar.top-nav button.nav-btn.active');
+      if (activeBtn) activeBtn.click();
+    }
+
+    // Update texts
+    document.getElementById("tour-title").textContent = step.title;
+    document.getElementById("tour-content").textContent = step.content;
+    document.getElementById("tour-progress").textContent = `Step ${index + 1} of ${steps.length}`;
+
+    // Update buttons
+    const btnNext = document.getElementById("tour-next-btn");
+    const btnPrev = document.getElementById("tour-prev-btn");
+    if (btnPrev) btnPrev.style.display = index === 0 ? "none" : "block";
+    if (btnNext) btnNext.textContent = index === steps.length - 1 ? "Finish" : "Next";
+
+    // Position and Highlight after layout adjustments
+    setTimeout(() => {
+      if (step.target) {
+        const targetEl = document.querySelector(step.target);
+        if (targetEl && targetEl.offsetWidth > 0 && targetEl.offsetHeight > 0) {
+          const rect = targetEl.getBoundingClientRect();
+          this.tourHighlight.classList.remove("hidden");
+          this.tourHighlight.style.top = `${rect.top + window.scrollY - 4}px`;
+          this.tourHighlight.style.left = `${rect.left + window.scrollX - 4}px`;
+          this.tourHighlight.style.width = `${rect.width + 8}px`;
+          this.tourHighlight.style.height = `${rect.height + 8}px`;
+
+          this.tourTooltip.classList.remove("centered");
+          this.tourTooltip.classList.remove("hidden");
+          this.tourTooltip.style.top = "";
+          this.tourTooltip.style.left = "";
+
+          if (step.target === '#search-toggle-btn') {
+            this.tourTooltip.style.top = `${rect.bottom + window.scrollY + 12}px`;
+            this.tourTooltip.style.left = `${rect.left + window.scrollX - 260}px`;
+          } else {
+            this.tourTooltip.style.top = `${rect.top + window.scrollY}px`;
+            this.tourTooltip.style.left = `${rect.right + window.scrollX + 16}px`;
+          }
+          return;
+        }
+      }
+
+      this.tourHighlight.classList.add("hidden");
+      this.tourTooltip.classList.add("centered");
+      this.tourTooltip.classList.remove("hidden");
+      this.tourTooltip.style.top = "";
+      this.tourTooltip.style.left = "";
+    }, 200);
+  }
+
+  nextTourStep() {
+    const stepsCount = 5;
+    if (this.currentTourStep < stepsCount - 1) {
+      this.showTourStep(this.currentTourStep + 1);
+    } else {
+      this.endTour(true);
+    }
+  }
+
+  prevTourStep() {
+    if (this.currentTourStep > 0) {
+      this.showTourStep(this.currentTourStep - 1);
+    }
+  }
+
+  endTour(markAsSeen = false) {
+    this.tourActive = false;
+    if (this.tourBackdrop) this.tourBackdrop.classList.add("hidden");
+    if (this.tourHighlight) this.tourHighlight.classList.add("hidden");
+    if (this.tourTooltip) this.tourTooltip.classList.add("hidden");
+    
+    if (markAsSeen) {
+      localStorage.setItem("wayfinder_connect_tour_seen", "true");
+    }
+  }
 }
 
 // Boot application
@@ -7227,4 +7390,7 @@ window.addEventListener("DOMContentLoaded", () => {
       console.error("Failed to load isolated workspace state:", e);
     }
   }
+
+  // Trigger guided tour check
+  window.app.checkTourOnLoad();
 });

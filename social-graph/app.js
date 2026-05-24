@@ -79,11 +79,34 @@ class GraphApp {
           "border-width": 2,
           "border-color": "#94a3b8",
           label: function (ele) {
-            const id = ele.data("id");
+            const id = ele.data("id") || "";
             const label = ele.data("label") || id;
             const platform = ele.data("platform");
             if (platform === "tiktok") {
-              return label + "\n@" + id;
+              let cleanId = id;
+              if (cleanId.startsWith("tt_")) cleanId = cleanId.substring(3);
+              return label + "\n@" + cleanId;
+            }
+            if (platform === "instagram") {
+              let cleanId = id;
+              if (cleanId.startsWith("ig_")) cleanId = cleanId.substring(3);
+              return label + "\n@" + cleanId;
+            }
+            if (platform === "facebook") {
+              let cleanId = id;
+              if (cleanId.startsWith("fb_")) cleanId = cleanId.substring(3);
+              const isNumeric = /^\d+$/.test(cleanId);
+              if (!isNumeric && cleanId && cleanId !== "unknown" && cleanId !== "unknown_owner") {
+                return label + "\n@" + cleanId;
+              }
+              const url = ele.data("url") || "";
+              const vanityMatch = url.match(/facebook\.com\/([a-zA-Z0-9._-]+)/);
+              if (vanityMatch) {
+                const slug = vanityMatch[1];
+                if (slug && !["profile.php","home","groups","pages","events","marketplace","watch","gaming","fundraisers","friends","photo","photo.php","photos"].includes(slug.toLowerCase())) {
+                  return label + "\n@" + slug;
+                }
+              }
             }
             return label;
           },

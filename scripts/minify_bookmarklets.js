@@ -27,6 +27,9 @@ function minifyFile(srcPath, destPath) {
             if (commentIdx > 0 && line.charAt(commentIdx - 1) === ':') {
                 // Find next occurrence after this URL prefix
                 commentIdx = line.indexOf('//', commentIdx + 2);
+            } else if (commentIdx > 0 && line.charAt(commentIdx - 1) === '\\') {
+                // Preceded by a backslash (like \// inside regex or string)
+                commentIdx = line.indexOf('//', commentIdx + 2);
             } else {
                 // Truncate comment
                 line = line.substring(0, commentIdx).trim();

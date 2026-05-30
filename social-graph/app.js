@@ -799,8 +799,8 @@ class GraphApp {
       globalGhostBtn.addEventListener("click", () => {
         this.globalGhostMode = !this.globalGhostMode;
         globalGhostBtn.classList.toggle("active", this.globalGhostMode);
-        this.updateGlobalGhost();
         this.updateSelectedEdges();
+        this.updateGlobalGhost();
       });
     }
 
@@ -1400,12 +1400,17 @@ class GraphApp {
       }
     });
 
+    // Remove search-hit class on unselect
+    this.cy.on("unselect", "node", (e) => {
+      e.target.removeClass("search-hit");
+    });
+
     // Attach selection listeners for Ghost Mode and Connected Edges
     this.cy.on("select unselect", () => {
+      this.updateSelectedEdges();
       if (this.globalGhostMode) {
         this.updateGlobalGhost();
       }
-      this.updateSelectedEdges();
     });
 
     // --- Ingest Modal Logic ---
@@ -6453,7 +6458,7 @@ class GraphApp {
       // If BOTH are active, selection stays bright (protected elements).
       if (this.globalGhostMode) {
           this.cy.elements(":selected").removeClass("faded");
-          this.cy.elements(".ktruss-highlight, .manual-link, .connected-selected").removeClass("faded");
+          this.cy.elements(".ktruss-highlight, .manual-link, .connected-selected, .search-hit").removeClass("faded");
       }
     });
   }

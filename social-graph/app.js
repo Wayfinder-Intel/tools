@@ -45,9 +45,8 @@ class GraphApp {
       rootStyles.getPropertyValue("--muted").trim() || "#94a3b8";
 
     const defaultEdgeColor = this.isLightMode ? "#cbd5e1" : "#475569";
-    const mutualEdgeColor = this.showMutuals ? brandColor : defaultEdgeColor;
 
-    return [
+    const stylesheet = [
       {
         selector: "node",
         style: {
@@ -261,38 +260,10 @@ class GraphApp {
         },
       },
       {
-        selector: 'edge[mutual = "true"]',
-        style: {
-          width: 2,
-          "line-color": mutualEdgeColor,
-          "target-arrow-color": mutualEdgeColor,
-          "source-arrow-color": mutualEdgeColor,
-          opacity: 0.8,
-          "z-index": 5,
-        },
-      },
-      {
-        selector: "edge.connected-selected",
-        style: {
-          width: 3,
-          "line-color": brandColor,
-          "target-arrow-color": brandColor,
-          "source-arrow-color": brandColor,
-          opacity: 1,
-          "z-index": 10,
-        },
-      },
-      {
         selector: "node.faded",
         style: {
           opacity: 0.15,
           "text-opacity": 0.15,
-        },
-      },
-      {
-        selector: "edge.faded",
-        style: {
-          opacity: 0.05,
         },
       },
       {
@@ -305,26 +276,10 @@ class GraphApp {
         },
       },
       {
-        selector: "edge.ktruss-highlight",
-        style: {
-          width: 2,
-          "line-color": "#a855f7",
-          "target-arrow-color": "#a855f7",
-          opacity: 1,
-          "z-index": 20,
-        },
-      },
-      {
         selector: "node.ktruss-faded",
         style: {
           opacity: 0.1,
           "text-opacity": 0.1,
-        },
-      },
-      {
-        selector: "edge.ktruss-faded",
-        style: {
-          opacity: 0.05,
         },
       },
       {
@@ -385,6 +340,58 @@ class GraphApp {
         },
       },
     ];
+
+    if (app.showMutuals) {
+      stylesheet.push({
+        selector: 'edge[mutual = "true"]',
+        style: {
+          width: 3,
+          "line-color": app.isLightMode ? "#059669" : "#34d399",
+          "target-arrow-color": app.isLightMode ? "#059669" : "#34d399",
+          "source-arrow-color": app.isLightMode ? "#059669" : "#34d399",
+          opacity: 1.0,
+          "z-index": 8,
+        },
+      });
+    }
+
+    stylesheet.push(
+      {
+        selector: "edge.connected-selected",
+        style: {
+          width: 3,
+          "line-color": brandColor,
+          "target-arrow-color": brandColor,
+          "source-arrow-color": brandColor,
+          opacity: 1,
+          "z-index": 10,
+        },
+      },
+      {
+        selector: "edge.faded",
+        style: {
+          opacity: 0.05,
+        },
+      },
+      {
+        selector: "edge.ktruss-highlight",
+        style: {
+          width: 2,
+          "line-color": "#a855f7",
+          "target-arrow-color": "#a855f7",
+          opacity: 1,
+          "z-index": 20,
+        },
+      },
+      {
+        selector: "edge.ktruss-faded",
+        style: {
+          opacity: 0.05,
+        },
+      }
+    );
+
+    return stylesheet;
   }
 
   initCy() {
@@ -1931,10 +1938,9 @@ class GraphApp {
           // If it was a mutual edge, update the reverse edge mutual status
           const reverseStr = `${t}->${s}`;
           if (this.edgeSet.has(reverseStr)) {
-            const reverseEdgeId = `${t}_${s}`;
-            const reverseEdge = this.cy.getElementById(reverseEdgeId);
+            const reverseEdge = this.cy.edges(`edge[source = "${t}"][target = "${s}"]`);
             if (!reverseEdge.empty()) {
-              reverseEdge.data("mutual", "false");
+              reverseEdge.first().data("mutual", "false");
             }
           }
         }
@@ -3777,7 +3783,37 @@ class GraphApp {
     }, 3000);
   }
 
+  recalculateMutuals() {
+    this.edgeSet.clear();
+    // 1. Build edgeSet
+    this.cy.edges().forEach((edge) => {
+      const s = edge.data("source");
+      const t = edge.data("target");
+      if (s && t) {
+        this.edgeSet.add(`${s}->${t}`);
+      }
+    });
+
+    // 2. Determine mutual status for each edge
+    this.cy.edges().forEach((edge) => {
+      const s = edge.data("source");
+      const t = edge.data("target");
+      const platform = edge.data("platform");
+      let isMutual = false;
+      if (platform === "facebook") {
+        isMutual = true;
+      } else if (s && t) {
+        const reverseStr = `${t}->${s}`;
+        if (this.edgeSet.has(reverseStr)) {
+          isMutual = true;
+        }
+      }
+      edge.data("mutual", isMutual ? "true" : "false");
+    });
+  }
+
   updateStylesheetForMode() {
+    this.recalculateMutuals();
     this.cy.style().clear().fromJson(this.buildStylesheet()).update();
   }
 
@@ -4609,19 +4645,11 @@ class GraphApp {
     // Helper to identify visibility/ghosting state
     const isVisible = (el) => el.visible() && !el.hasClass("faded") && !el.hasClass("ktruss-faded");
 
-    const selectedNodes = this.cy.nodes(":selected").filter(isVisible);
-    let targetNodes;
-
-    if (selectedNodes.length > 0) {
-      // Branch off from specific selection (filtered by visibility)
-      targetNodes = selectedNodes;
-    } else {
-      // Branch off from all currently visible (non-ghosted) nodes
-      targetNodes = this.cy.nodes().filter(isVisible);
-      if (targetNodes.length === 0) {
-        this.showToast("No visible nodes to isolate!");
-        return;
-      }
+    // Always branch off from all currently visible (non-ghosted) nodes
+    const targetNodes = this.cy.nodes().filter(isVisible);
+    if (targetNodes.length === 0) {
+      this.showToast("No visible nodes to isolate!");
+      return;
     }
 
     // Capture visible nodes and only edges that connect them AND are also visible
@@ -5385,6 +5413,8 @@ class GraphApp {
     
     // Merge/Reconcile Facebook numeric and vanity handles
     this.reconcileIdentities();
+
+    this.recalculateMutuals();
 
     const needsLayout = this.positionImportedNodes(
       addedElements,
@@ -6266,36 +6296,24 @@ class GraphApp {
   addEdgeToGraph(source, target, rank = null, rankDirection = null, extraClasses = "", platform = "tiktok") {
     if (source === target) return null;
 
-    const edgeId = `${source}_${target}`;
-    const reverseStr = `${target}->${source}`;
     const forwardStr = `${source}->${target}`;
+    const reverseStr = `${target}->${source}`;
 
-    if (this.edgeSet.has(forwardStr)) {
-      const existing = this.cy.getElementById(edgeId);
-      if (!existing.empty()) {
-        return existing; // Logic check
-      }
-      // Self-heal: edge was removed from Cytoscape but still in edgeSet
-      this.edgeSet.delete(forwardStr);
-    }
-    if (!this.cy.getElementById(edgeId).empty()) {
+    // Find if the edge already exists (by source/target)
+    let existingEdge = this.cy.edges(`edge[source = "${source}"][target = "${target}"]`);
+    if (!existingEdge.empty()) {
       this.edgeSet.add(forwardStr);
-      return this.cy.getElementById(edgeId); // Cytoscape strict element check
+      return existingEdge.first();
     }
 
     this.edgeSet.add(forwardStr);
     let isMutual = false;
 
-    if (this.edgeSet.has(reverseStr)) {
-      // Mutual relationship detected!
+    // Check if the reverse edge exists in Cytoscape
+    let existingReverse = this.cy.edges(`edge[source = "${target}"][target = "${source}"]`);
+    if (!existingReverse.empty()) {
       isMutual = true;
-
-      // Update the existing reverse edge to be mutual
-      const reverseEdgeId = `${target}_${source}`;
-      const existingReverse = this.cy.getElementById(reverseEdgeId);
-      if (!existingReverse.empty()) {
-        existingReverse.data("mutual", "true");
-      }
+      existingReverse.first().data("mutual", "true");
     }
 
     // Facebook: always mutual (friends = undirected)
@@ -6304,6 +6322,7 @@ class GraphApp {
       if (!extraClasses.includes("arrow-none")) extraClasses = (extraClasses + " arrow-none").trim();
     }
 
+    const edgeId = `${source}_${target}`;
     const newEdge = this.cy.add({
       group: "edges",
       data: {

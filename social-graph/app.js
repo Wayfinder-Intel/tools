@@ -23,6 +23,7 @@ class GraphApp {
       snapGrid: 100,
       avatarStyle: "avatar", // "avatar" or "dot"
       linkLabelSize: 13,
+      noteBubbleTextSize: 13,
     };
 
     this.influenceMode = false;
@@ -223,7 +224,9 @@ class GraphApp {
           "target-arrow-shape": "none",
           "source-arrow-shape": "none",
           label: "Connected to",
-          "font-size": 11,
+          "font-size": function (ele) {
+            return app.settings.linkLabelSize || 13;
+          },
           "font-family": "Inter, system-ui, sans-serif",
           "text-background-color": bgColor,
           "text-background-opacity": 0.8,
@@ -232,6 +235,29 @@ class GraphApp {
           color: "#c084fc",
           "line-color": "#c084fc",
           opacity: 0.8,
+        },
+      },
+      {
+        selector: "edge.permanent-note",
+        style: {
+          label: function (ele) {
+            const note = ele.data("note") || "";
+            return note.replace(/<[^>]*>/g, "").trim();
+          },
+          "font-size": function (ele) {
+            return app.settings.linkLabelSize || 13;
+          },
+          "font-family": "Inter, system-ui, sans-serif",
+          "text-background-color": bgColor,
+          "text-background-opacity": 0.85,
+          "text-background-padding": 4,
+          "text-background-shape": "roundrectangle",
+          color: function (ele) {
+            return app.isLightMode ? "#0284c7" : "#38bdf8";
+          },
+          "text-wrap": "wrap",
+          "text-max-width": 150,
+          "z-index": 10,
         },
       },
       {
@@ -942,6 +968,17 @@ class GraphApp {
           }
         }
       });
+      // Ensure any currently collapsed hub and its collapsed nodes are also represented in the map
+      this.collapsedHubs.forEach((hiddenIds, hubId) => {
+        if (!map.has(hubId)) map.set(hubId, []);
+        const hubList = map.get(hubId);
+        hiddenIds.forEach(id => {
+          const n = this.cy.getElementById(id);
+          if (!n.empty() && !hubList.some(node => node.id() === id)) {
+            hubList.push(n);
+          }
+        });
+      });
       return map;
     };
 
@@ -1050,7 +1087,7 @@ class GraphApp {
     if (collapseBtn) {
       collapseBtn.addEventListener("click", () => {
         const singletonMap = getSingletonMap();
-        const anyCollapsed = [...singletonMap.keys()].some(id => this.collapsedHubs.has(id));
+        const anyCollapsed = this.collapsedHubs.size > 0;
 
         if (anyCollapsed) {
           // Expand all currently collapsed hubs
@@ -1587,7 +1624,7 @@ class GraphApp {
     });
 
     // Sync slider display values
-    ["scatter-radius", "ideal-edge", "repulsion", "snap-grid", "link-label-size"].forEach(id => {
+    ["scatter-radius", "ideal-edge", "repulsion", "snap-grid", "link-label-size", "note-text-size"].forEach(id => {
       const input = document.getElementById(`pref-${id}`);
       const val = document.getElementById(`val-${id}`);
       if (input && val) {
@@ -1626,6 +1663,9 @@ class GraphApp {
 
         document.getElementById("pref-link-label-size").value = this.settings.linkLabelSize;
         document.getElementById("val-link-label-size").textContent = this.settings.linkLabelSize;
+
+        document.getElementById("pref-note-text-size").value = this.settings.noteBubbleTextSize || 13;
+        document.getElementById("val-note-text-size").textContent = this.settings.noteBubbleTextSize || 13;
       },
       onSubmitClick: () => {
         const layoutStyleEl = document.getElementById("pref-layout-style");
@@ -1640,6 +1680,7 @@ class GraphApp {
         const styleChanged = (this.settings.avatarStyle !== avatarStyle);
         this.settings.avatarStyle = avatarStyle;
         this.settings.linkLabelSize = parseInt(document.getElementById("pref-link-label-size").value);
+        this.settings.noteBubbleTextSize = parseInt(document.getElementById("pref-note-text-size").value);
 
         if (styleChanged) {
           this.isDotMode = (this.settings.avatarStyle === "dot");
@@ -1650,8 +1691,12 @@ class GraphApp {
           else this.cy.nodes().removeClass("dot-mode");
         }
 
+        // Rebuild and update Cytoscape stylesheet to apply new link label sizes immediately!
+        this.cy.style().clear().fromJson(this.buildStylesheet()).update();
+
         this.showToast("Preferences updated.");
         if (this.ffpMode !== "off") this.applyFFPStyles();
+        this.refreshNoteBadges();
       }
     });
 
@@ -1876,6 +1921,27 @@ class GraphApp {
       });
     };
 
+    this.removeElements = (collection) => {
+      const edgesToRemove = collection.edges().union(collection.nodes().connectedEdges());
+      edgesToRemove.forEach(edge => {
+        const s = edge.data("source");
+        const t = edge.data("target");
+        if (s && t) {
+          this.edgeSet.delete(`${s}->${t}`);
+          // If it was a mutual edge, update the reverse edge mutual status
+          const reverseStr = `${t}->${s}`;
+          if (this.edgeSet.has(reverseStr)) {
+            const reverseEdgeId = `${t}_${s}`;
+            const reverseEdge = this.cy.getElementById(reverseEdgeId);
+            if (!reverseEdge.empty()) {
+              reverseEdge.data("mutual", "false");
+            }
+          }
+        }
+      });
+      collection.remove();
+    };
+
     this.deleteSelected = () => {
       const selected = this.cy.elements(":selected");
       if (selected.length === 0) {
@@ -1914,7 +1980,7 @@ class GraphApp {
         elements: serialized,
       });
 
-      toRemove.remove();
+      this.removeElements(toRemove);
 
       this.refreshNoteBadges();
       this.refreshLockBadges();
@@ -3063,7 +3129,7 @@ class GraphApp {
         // Handle delete action
         if (type === "action" && newStyle === "delete") {
           this.saveState();
-          activeRadialEdge.remove();
+          this.removeElements(activeRadialEdge);
           hideEdgeRadialMenu();
           this.showToast("Link deleted");
           return;
@@ -3111,6 +3177,11 @@ class GraphApp {
           if (activeBtn) activeBtn.classList.add("active");
         }
       });
+
+      const pinBtn = document.getElementById("btn-toggle-permanent-note-edge");
+      if (pinBtn) {
+        pinBtn.classList.toggle("active", activeRadialEdge.hasClass("permanent-note"));
+      }
     };
 
     // Right clicking any edge
@@ -3119,6 +3190,17 @@ class GraphApp {
 
       activeRadialEdge = e.target;
       updateEdgeRadialButtonStates();
+
+      // Show/hide the permanent note toggle depending on whether the edge has a note
+      const pinBtn = document.getElementById("btn-toggle-permanent-note-edge");
+      if (pinBtn) {
+        const hasNote = activeRadialEdge.data("note") && activeRadialEdge.data("note").trim();
+        if (hasNote) {
+          pinBtn.classList.remove("hidden");
+        } else {
+          pinBtn.classList.add("hidden");
+        }
+      }
 
       // Position Menu
       const rect = this.cy.container().getBoundingClientRect();
@@ -3185,6 +3267,9 @@ class GraphApp {
       const finalNote = text ? html : null;
       
       activeNoteNode.data("note", finalNote);
+      if (!finalNote) {
+        activeNoteNode.removeClass("permanent-note");
+      }
       this.refreshNoteBadges();
       closeNoteEditor();
       this.showToast(finalNote ? "Note saved." : "Note cleared.");
@@ -3237,6 +3322,7 @@ class GraphApp {
       if (!activeNoteNode) return;
       this.saveState();
       activeNoteNode.data("note", null);
+      activeNoteNode.removeClass("permanent-note");
       this.refreshNoteBadges();
       closeNoteViewer();
       this.showToast("Note deleted.");
@@ -3268,6 +3354,33 @@ class GraphApp {
         if (targetLink) {
           this.openNoteEditor(targetLink);
         }
+      });
+    }
+
+    const btnTogglePermanentNoteEdge = document.getElementById("btn-toggle-permanent-note-edge");
+    if (btnTogglePermanentNoteEdge) {
+      btnTogglePermanentNoteEdge.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!activeRadialEdge) return;
+
+        this.saveState();
+
+        const isPermanent = activeRadialEdge.hasClass("permanent-note");
+        if (isPermanent) {
+          activeRadialEdge.removeClass("permanent-note");
+          this.showToast("Permanent note display disabled");
+        } else {
+          activeRadialEdge.addClass("permanent-note");
+          this.showToast("Permanent note display enabled");
+        }
+
+        // Apply style update to cytoscape to show the edge label immediately
+        this.cy.style().update();
+
+        // Refresh HTML note badges/bubbles to remove/restore HTML bubbles
+        this.refreshNoteBadges();
+
+        hideEdgeRadialMenu();
       });
     }
 
@@ -3337,25 +3450,45 @@ class GraphApp {
 
         // Reposition note bubbles if enabled
         container.querySelectorAll(".node-note-bubble").forEach(bubble => {
-          const nodeId = bubble.dataset.nodeId;
-          const node = this.cy.getElementById(nodeId);
-          if (node.empty()) { bubble.remove(); return; }
+          const eleId = bubble.dataset.eleId;
+          const eleType = bubble.dataset.eleType;
+          const ele = this.cy.getElementById(eleId);
+          if (ele.empty()) { bubble.remove(); return; }
 
-          const hidden = !node.visible() || !this.showNoteBubbles;
+          const hidden = !ele.visible() || !this.showNoteBubbles;
           bubble.style.display = hidden ? "none" : "";
           if (hidden) return;
 
-          const isFaded = node.hasClass("faded") || node.hasClass("ktruss-faded");
+          const isFaded = ele.hasClass("faded") || ele.hasClass("ktruss-faded");
           bubble.style.opacity = isFaded ? "0.2" : "1";
 
-          const nodePos = node.renderedPosition();
-          const halfW = parseFloat(node.renderedStyle("width")) / 2;
+          let pos;
+          let offset = 0;
+          if (eleType === "node") {
+            const nodePos = ele.renderedPosition();
+            const halfW = parseFloat(ele.renderedStyle("width")) / 2;
+            pos = nodePos;
+            offset = halfW;
+          } else {
+            // Edge Midpoint
+            const srcPos = ele.source().renderedPosition();
+            const tgtPos = ele.target().renderedPosition();
+            pos = {
+              x: (srcPos.x + tgtPos.x) / 2,
+              y: (srcPos.y + tgtPos.y) / 2
+            };
+            offset = 0;
+          }
 
-          const fontSize = Math.min(14, Math.max(8, Math.round(11 * zoom)));
-          const paddingVertical = Math.min(6, Math.max(2, Math.round(4 * zoom)));
-          const paddingHorizontal = Math.min(10, Math.max(4, Math.round(7 * zoom)));
-          const borderRadius = Math.min(8, Math.max(3, Math.round(5 * zoom)));
-          const maxWidth = Math.min(200, Math.max(80, Math.round(120 * zoom)));
+          const baseNoteSize = this.settings.noteBubbleTextSize || 13;
+          const scaleFactor = baseNoteSize / 13;
+
+          // Scaled based on both zoom and the custom preference scale factor:
+          const fontSize = Math.min(Math.round(baseNoteSize * 1.5), Math.max(Math.round(baseNoteSize * 0.6), Math.round(baseNoteSize * zoom)));
+          const paddingVertical = Math.min(Math.round(12 * scaleFactor), Math.max(Math.round(3 * scaleFactor), Math.round(6 * scaleFactor * zoom)));
+          const paddingHorizontal = Math.min(Math.round(18 * scaleFactor), Math.max(Math.round(5 * scaleFactor), Math.round(10 * scaleFactor * zoom)));
+          const borderRadius = Math.min(Math.round(14 * scaleFactor), Math.max(Math.round(4 * scaleFactor), Math.round(8 * scaleFactor * zoom)));
+          const maxWidth = Math.min(Math.round(400 * scaleFactor), Math.max(Math.round(100 * scaleFactor), Math.round(180 * scaleFactor * zoom)));
 
           bubble.style.fontSize = `${fontSize}px`;
           bubble.style.padding = `${paddingVertical}px ${paddingHorizontal}px`;
@@ -3366,8 +3499,8 @@ class GraphApp {
           const bubbleH = bubble.offsetHeight;
           const gap = Math.min(12, Math.max(4, Math.round(6 * zoom)));
 
-          bubble.style.left = `${nodePos.x - bubbleW / 2}px`;
-          bubble.style.top = `${nodePos.y - halfW - bubbleH - gap}px`;
+          bubble.style.left = `${pos.x - bubbleW / 2}px`;
+          bubble.style.top = `${pos.y - offset - bubbleH - gap}px`;
         });
       };
 
@@ -3403,11 +3536,29 @@ class GraphApp {
 
           const bubble = document.createElement("div");
           bubble.className = "node-note-bubble";
-          bubble.dataset.nodeId = node.id();
+          bubble.dataset.eleId = node.id();
+          bubble.dataset.eleType = "node";
           bubble.textContent = note.trim();
           bubble.addEventListener("click", (e) => {
             e.stopPropagation();
             this.openNoteEditor(node);
+          });
+          container.appendChild(bubble);
+        });
+
+        this.cy.edges().forEach(edge => {
+          const note = edge.data("note");
+          if (!note || !note.trim()) return;
+          if (edge.hasClass("permanent-note")) return;
+
+          const bubble = document.createElement("div");
+          bubble.className = "node-note-bubble";
+          bubble.dataset.eleId = edge.id();
+          bubble.dataset.eleType = "edge";
+          bubble.textContent = note.trim();
+          bubble.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.openNoteEditor(edge);
           });
           container.appendChild(bubble);
         });
@@ -3417,6 +3568,7 @@ class GraphApp {
       this.cy.edges().forEach(edge => {
         const note = edge.data("note");
         if (!note || !note.trim()) return;
+        if (edge.hasClass("permanent-note")) return;
 
         const badge = document.createElement("div");
         badge.className = "note-badge";
@@ -6118,7 +6270,14 @@ class GraphApp {
     const reverseStr = `${target}->${source}`;
     const forwardStr = `${source}->${target}`;
 
-    if (this.edgeSet.has(forwardStr)) return this.cy.getElementById(edgeId); // Logic check
+    if (this.edgeSet.has(forwardStr)) {
+      const existing = this.cy.getElementById(edgeId);
+      if (!existing.empty()) {
+        return existing; // Logic check
+      }
+      // Self-heal: edge was removed from Cytoscape but still in edgeSet
+      this.edgeSet.delete(forwardStr);
+    }
     if (!this.cy.getElementById(edgeId).empty()) {
       this.edgeSet.add(forwardStr);
       return this.cy.getElementById(edgeId); // Cytoscape strict element check

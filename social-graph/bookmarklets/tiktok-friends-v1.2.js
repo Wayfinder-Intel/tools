@@ -1,11 +1,11 @@
 /**
  * Wayfinder Connect — TikTok Friends Ingester
- * Version: 1.1
+ * Version: 1.2
  * Date: 2026-05-24
  *
  * USAGE:
  *   Create a new bookmark in Chrome. Set the URL to the contents of
- *   tiktok-friends-v1.1.min.js.
+ *   tiktok-friends-v1.2.min.js.
  *   Navigate to a TikTok profile page, click on "Following" or "Followers"
  *   to open the pop-up modal dialog, and click the bookmark.
  *

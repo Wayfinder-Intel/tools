@@ -1,11 +1,11 @@
 /**
  * Wayfinder Connect — Instagram Profile Ingester
- * Version: 1.11
+ * Version: 1.12
  * Date: 2026-05-24
  *
  * USAGE:
  *   Create a new bookmark in Chrome. Set the URL to the contents of
- *   instagram-profile-v1.11.min.js.
+ *   instagram-profile-v1.12.min.js.
  *   Navigate to any Instagram profile page (e.g. instagram.com/username)
  *   and click the bookmark.
  *
@@ -247,7 +247,7 @@
     }
 
     cd.innerHTML =
-      '<div class="h"><span class="t">Wayfinder Connect \u2014 Instagram Profile Ingester v1.11</span><button class="btn cb" id="cl">Close</button></div>' +
+      '<div class="h"><span class="t">Wayfinder Connect \u2014 Instagram Profile Ingester v1.12</span><button class="btn cb" id="cl">Close</button></div>' +
       (avatar ? '<img class="av" src="' + avatar + '" onerror="this.style.display=\'none\'">' : '') +
       '<div class="g">' +
         '<span class="l">Username</span><span class="v">'    + username  + '</span>' +

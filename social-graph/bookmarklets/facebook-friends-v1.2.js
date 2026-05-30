@@ -1,11 +1,11 @@
 /**
  * Wayfinder Connect — Facebook Friends Ingester
- * Version: 1.1
+ * Version: 1.2
  * Date: 2026-05-22
  *
  * USAGE:
  *   Create a new bookmark in Chrome. Set the URL to the contents of
- *   facebook-friends-v1.1.min.js (the single-line minified version).
+ *   facebook-friends-v1.2.min.js (the single-line minified version).
  *   Navigate to any Facebook Friends list page (e.g. facebook.com/profile/friends)
  *   and click the bookmark.
  *
@@ -399,7 +399,7 @@
       : '<div style="font-size:12px;opacity:0.5;text-align:center;padding:20px;">No visible friends found. Try scrolling the friends list section to load them first!</div>';
 
     cd.innerHTML =
-      '<div class="h"><span class="t">Wayfinder Connect \u2014 Facebook Friends Ingester v1.1</span><button class="btn cb" id="cl">Close</button></div>' +
+      '<div class="h"><span class="t">Wayfinder Connect \u2014 Facebook Friends Ingester v1.2</span><button class="btn cb" id="cl">Close</button></div>' +
       '<div class="g">' +
         (ownerAvatar ? '<img class="o-av" src="' + ownerAvatar + '" onerror="this.style.display=\'none\'">' : '<div class="o-av" style="display:flex;align-items:center;justify-content:center;background:#2ea8ff;color:#fff;font-weight:bold;font-size:18px;">' + ownerName[0] + '</div>') +
         '<div>' +

@@ -28,6 +28,7 @@ class GraphApp {
 
     this.influenceMode = false;
     this.showNoteBubbles = false;
+    this.isProgrammaticSelection = false;
 
     this.initCy();
     this.initEventListeners();
@@ -823,7 +824,7 @@ class GraphApp {
         // selection isn't strictly tracked in the undo stack currently, it's good practice
         // if we ever add selection to the state snapshot.
         this.cy.elements().unselect();
-        seedNodes.select();
+        this.selectElementsProgrammatically(seedNodes);
         this.showToast(`Selected ${seedNodes.length} seed node(s).`);
       });
     }
@@ -842,7 +843,7 @@ class GraphApp {
           return;
         }
         this.cy.elements().unselect();
-        singletons.select();
+        this.selectElementsProgrammatically(singletons);
         this.showToast(`Selected ${singletons.length} singleton node(s).`);
       });
     }
@@ -856,7 +857,7 @@ class GraphApp {
           return;
         }
         this.cy.elements().unselect();
-        pages.select();
+        this.selectElementsProgrammatically(pages);
         this.showToast(`Selected ${pages.length} page node(s).`);
       });
     }
@@ -1394,6 +1395,7 @@ class GraphApp {
 
     // Prevent selection of faded or ghosted elements
     this.cy.on("select", "node, edge", (e) => {
+      if (this.isProgrammaticSelection) return;
       const el = e.target;
       if (el.hasClass("faded") || el.hasClass("ktruss-faded")) {
         el.unselect();
@@ -3733,7 +3735,7 @@ class GraphApp {
         badge.addEventListener("click", (e) => {
           e.stopPropagation();
           this.cy.elements().unselect();
-          this.cy.nodes('[type="seed"]').select();
+          this.selectElementsProgrammatically(this.cy.nodes('[type="seed"]'));
           const count = this.cy.nodes('[type="seed"]').length;
           this.showToast(`Selected ${count} seed node${count !== 1 ? "s" : ""}`);
         });
@@ -3820,6 +3822,16 @@ class GraphApp {
   updateStylesheetForMode() {
     this.recalculateMutuals();
     this.cy.style().clear().fromJson(this.buildStylesheet()).update();
+  }
+
+  selectElementsProgrammatically(elements) {
+    if (!elements || typeof elements.select !== "function") return;
+    this.isProgrammaticSelection = true;
+    try {
+      elements.select();
+    } finally {
+      this.isProgrammaticSelection = false;
+    }
   }
 
   /**
@@ -5433,7 +5445,7 @@ class GraphApp {
 
     setTimeout(() => {
       if (addedElements && typeof addedElements.nodes === "function") {
-        addedElements.nodes().filter(n => !n.removed()).select();
+        this.selectElementsProgrammatically(addedElements.nodes().filter(n => !n.removed()));
       }
     }, 200);
 
@@ -6538,8 +6550,8 @@ class GraphApp {
       trussNodes.addClass("ktruss-highlight");
 
       // Formally select the truss elements so they reflect in the UI selection counter
-      trussEdges.select();
-      trussNodes.select();
+      this.selectElementsProgrammatically(trussEdges);
+      this.selectElementsProgrammatically(trussNodes);
 
       const nonTruss = this.cy
         .elements()
@@ -7313,7 +7325,7 @@ class GraphApp {
     // We add the newly discovered shortest path elements to the current selection,
     // OR we can replace the selection. Replacing makes the most sense so the path isolates.
     this.cy.elements().unselect();
-    resultElements.select();
+    this.selectElementsProgrammatically(resultElements);
     this.showToast("Shortest routes selected.");
   }
 

@@ -26,20 +26,27 @@ class GraphApp {
     };
 
     this.influenceMode = false;
+    this.showNoteBubbles = false;
 
     this.initCy();
     this.initEventListeners();
     this.initCanvas();
   }
 
-  initCy() {
+  buildStylesheet() {
     const app = this;
     const rootStyles = getComputedStyle(document.documentElement);
     const brandColor =
       rootStyles.getPropertyValue("--brand").trim() || "#2ea8ff";
+    const textColor = rootStyles.getPropertyValue("--text").trim() || "#e6e9f2";
+    const bgColor = rootStyles.getPropertyValue("--bg").trim() || "#0f1115";
+    const borderColor =
+      rootStyles.getPropertyValue("--muted").trim() || "#94a3b8";
 
-    // Define stylesheet for Cytoscape
-    const stylesheet = [
+    const defaultEdgeColor = this.isLightMode ? "#cbd5e1" : "#475569";
+    const mutualEdgeColor = this.showMutuals ? brandColor : defaultEdgeColor;
+
+    return [
       {
         selector: "node",
         style: {
@@ -77,7 +84,7 @@ class GraphApp {
           "background-repeat": "no-repeat no-repeat",
 
           "border-width": 2,
-          "border-color": "#94a3b8",
+          "border-color": borderColor,
           label: function (ele) {
             const id = ele.data("id") || "";
             const label = ele.data("label") || id;
@@ -114,11 +121,10 @@ class GraphApp {
           "text-valign": "bottom",
           "text-halign": "center",
           "text-margin-y": 8,
-          color: rootStyles.getPropertyValue("--text").trim() || "#e6e9f2",
+          color: textColor,
           "font-size": 12,
           "font-family": "Inter, system-ui, sans-serif",
-          "text-background-color":
-            rootStyles.getPropertyValue("--bg").trim() || "#0f1115",
+          "text-background-color": bgColor,
           "text-background-opacity": 0.8,
           "text-background-padding": 2,
           "text-background-shape": "roundrectangle",
@@ -195,14 +201,15 @@ class GraphApp {
           "background-fit": "cover",
           "background-clip": "node",
           "border-width": 2,
+          "border-color": borderColor,
         },
       },
       {
         selector: "edge",
         style: {
           width: 1.5,
-          "line-color": "#334155",
-          "target-arrow-color": "#334155",
+          "line-color": defaultEdgeColor,
+          "target-arrow-color": defaultEdgeColor,
           "target-arrow-shape": "triangle",
           "curve-style": "bezier",
           "arrow-scale": 1.2,
@@ -218,7 +225,7 @@ class GraphApp {
           label: "Connected to",
           "font-size": 11,
           "font-family": "Inter, system-ui, sans-serif",
-          "text-background-color": rootStyles.getPropertyValue("--bg").trim() || "#0f1115",
+          "text-background-color": bgColor,
           "text-background-opacity": 0.8,
           "text-background-padding": 2,
           "text-background-shape": "roundrectangle",
@@ -231,8 +238,9 @@ class GraphApp {
         selector: 'edge[mutual = "true"]',
         style: {
           width: 2,
-          "line-color": "#475569",
-          "target-arrow-color": "#475569",
+          "line-color": mutualEdgeColor,
+          "target-arrow-color": mutualEdgeColor,
+          "source-arrow-color": mutualEdgeColor,
           opacity: 0.8,
           "z-index": 5,
         },
@@ -351,11 +359,13 @@ class GraphApp {
         },
       },
     ];
+  }
 
+  initCy() {
     this.cy = cytoscape({
       container: document.getElementById("cy"),
       elements: [],
-      style: stylesheet,
+      style: this.buildStylesheet(),
       layout: {
         name: "cose",
         padding: 50,
@@ -457,6 +467,7 @@ class GraphApp {
         isLightMode: this.isLightMode,
         globalGhostMode: this.globalGhostMode,
         showMutuals: this.showMutuals,
+        showNoteBubbles: this.showNoteBubbles,
       },
     });
 
@@ -576,6 +587,12 @@ class GraphApp {
         const mutualBtn = document.getElementById("highlight-mutuals-btn");
         if (mutualBtn) mutualBtn.classList.toggle("active", this.showMutuals);
         this.updateStylesheetForMode();
+      }
+      if (state.uiState.showNoteBubbles !== undefined) {
+        this.showNoteBubbles = state.uiState.showNoteBubbles;
+        const toggleNotesBtn = document.getElementById("toggle-notes-btn");
+        if (toggleNotesBtn) toggleNotesBtn.classList.toggle("active", this.showNoteBubbles);
+        this.refreshNoteBadges();
       }
       if (typeof this.updateFFPUI === "function") {
         this.updateFFPUI();
@@ -728,6 +745,18 @@ class GraphApp {
           this.showMutuals
             ? "Mutual connections highlighted"
             : "Mutual connections faded to default",
+        );
+      });
+    }
+
+    const toggleNotesBtn = document.getElementById("toggle-notes-btn");
+    if (toggleNotesBtn) {
+      toggleNotesBtn.addEventListener("click", () => {
+        this.showNoteBubbles = !this.showNoteBubbles;
+        toggleNotesBtn.classList.toggle("active", this.showNoteBubbles);
+        this.refreshNoteBadges();
+        this.showToast(
+          this.showNoteBubbles ? "Note bubbles enabled" : "Note bubbles disabled"
         );
       });
     }
@@ -3249,8 +3278,9 @@ class GraphApp {
      */
     this.refreshNoteBadges = () => {
       const container = this.cy.container();
-      // Remove all existing badges
+      // Remove all existing badges and bubbles
       container.querySelectorAll(".note-badge").forEach(el => el.remove());
+      container.querySelectorAll(".node-note-bubble").forEach(el => el.remove());
 
       const repositionAll = () => {
         const zoom = this.cy.zoom();
@@ -3304,6 +3334,41 @@ class GraphApp {
             svg.style.height = `${iconSize}px`;
           }
         });
+
+        // Reposition note bubbles if enabled
+        container.querySelectorAll(".node-note-bubble").forEach(bubble => {
+          const nodeId = bubble.dataset.nodeId;
+          const node = this.cy.getElementById(nodeId);
+          if (node.empty()) { bubble.remove(); return; }
+
+          const hidden = !node.visible() || !this.showNoteBubbles;
+          bubble.style.display = hidden ? "none" : "";
+          if (hidden) return;
+
+          const isFaded = node.hasClass("faded") || node.hasClass("ktruss-faded");
+          bubble.style.opacity = isFaded ? "0.2" : "1";
+
+          const nodePos = node.renderedPosition();
+          const halfW = parseFloat(node.renderedStyle("width")) / 2;
+
+          const fontSize = Math.min(14, Math.max(8, Math.round(11 * zoom)));
+          const paddingVertical = Math.min(6, Math.max(2, Math.round(4 * zoom)));
+          const paddingHorizontal = Math.min(10, Math.max(4, Math.round(7 * zoom)));
+          const borderRadius = Math.min(8, Math.max(3, Math.round(5 * zoom)));
+          const maxWidth = Math.min(200, Math.max(80, Math.round(120 * zoom)));
+
+          bubble.style.fontSize = `${fontSize}px`;
+          bubble.style.padding = `${paddingVertical}px ${paddingHorizontal}px`;
+          bubble.style.borderRadius = `${borderRadius}px`;
+          bubble.style.maxWidth = `${maxWidth}px`;
+
+          const bubbleW = bubble.offsetWidth;
+          const bubbleH = bubble.offsetHeight;
+          const gap = Math.min(12, Math.max(4, Math.round(6 * zoom)));
+
+          bubble.style.left = `${nodePos.x - bubbleW / 2}px`;
+          bubble.style.top = `${nodePos.y - halfW - bubbleH - gap}px`;
+        });
       };
 
       // Remove any old listener and add a fresh one
@@ -3329,6 +3394,24 @@ class GraphApp {
         });
         container.appendChild(badge);
       });
+
+      // Create note bubbles if enabled
+      if (this.showNoteBubbles) {
+        this.cy.nodes().forEach(node => {
+          const note = node.data("note");
+          if (!note || !note.trim()) return;
+
+          const bubble = document.createElement("div");
+          bubble.className = "node-note-bubble";
+          bubble.dataset.nodeId = node.id();
+          bubble.textContent = note.trim();
+          bubble.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.openNoteEditor(node);
+          });
+          container.appendChild(bubble);
+        });
+      }
 
       // Create badges for Edges
       this.cy.edges().forEach(edge => {
@@ -3505,11 +3588,11 @@ class GraphApp {
     // ---- Badge visibility sync with node hide/show ----
     // DOM badges are outside the canvas so Cytoscape hide/show doesn't affect them.
     // Sync manually via events.
-    const badgeSelectors = ".note-badge, .lock-badge, .seed-badge";
+    const badgeSelectors = ".note-badge, .lock-badge, .seed-badge, .node-note-bubble";
     const setBadgeVisibility = (nodeId, visible) => {
       const container = this.cy.container();
       container.querySelectorAll(badgeSelectors).forEach(badge => {
-        if (badge.dataset.nodeId === nodeId) {
+        if (badge.dataset.nodeId === nodeId || badge.dataset.eleId === nodeId) {
           badge.style.display = visible ? "" : "none";
         }
       });
@@ -3543,63 +3626,7 @@ class GraphApp {
   }
 
   updateStylesheetForMode() {
-    const rootStyles = getComputedStyle(document.documentElement);
-
-    const textColor = rootStyles.getPropertyValue("--text").trim() || "#e6e9f2";
-    const bgColor = rootStyles.getPropertyValue("--bg").trim() || "#0f1115";
-    const brandColor =
-      rootStyles.getPropertyValue("--brand").trim() || "#2ea8ff";
-    const borderColor =
-      rootStyles.getPropertyValue("--muted").trim() || "#94a3b8";
-
-    const defaultEdgeColor = this.isLightMode ? "#cbd5e1" : "#475569";
-    const mutualEdgeColor = this.showMutuals ? brandColor : defaultEdgeColor;
-
-    this.cy
-      .style()
-      .selector("node")
-      .style("border-color", borderColor)
-      .style("color", textColor)
-      .style("text-background-color", bgColor)
-      .selector("node:selected")
-      .style("border-color", brandColor)
-      .selector("edge")
-      .style("line-color", defaultEdgeColor)
-      .style("target-arrow-color", defaultEdgeColor)
-      .selector('edge[mutual="true"]')
-      .style("line-color", mutualEdgeColor)
-      .style("target-arrow-color", mutualEdgeColor)
-      .style("source-arrow-color", mutualEdgeColor)
-      .selector("edge.manual-link")
-      .style("line-color", "#f59e0b")
-      .style("target-arrow-color", "#f59e0b")
-      .style("source-arrow-color", "#f59e0b")
-      .selector("edge.connected-selected")
-      .style("line-color", brandColor)
-      .style("target-arrow-color", brandColor)
-      .style("source-arrow-color", brandColor)
-      .style("opacity", 1)
-      .style("width", 3)
-      .style("z-index", 10)
-      .selector("node.faded")
-      .style("opacity", 0.15)
-      .style("text-opacity", 0.15)
-      .selector("edge.faded")
-      .style("opacity", 0.05)
-      .selector("node.ktruss-highlight")
-      .style("z-index", 20)
-      .selector("edge.ktruss-highlight")
-      .style("width", 2)
-      .style("line-color", "#a855f7")
-      .style("target-arrow-color", "#a855f7")
-      .style("opacity", 1)
-      .style("z-index", 20)
-      .selector("node.ktruss-faded")
-      .style("opacity", 0.1)
-      .style("text-opacity", 0.1)
-      .selector("edge.ktruss-faded")
-      .style("opacity", 0.05)
-      .update();
+    this.cy.style().clear().fromJson(this.buildStylesheet()).update();
   }
 
   /**
@@ -4997,6 +5024,10 @@ class GraphApp {
         if (el.data) {
           Object.entries(el.data).forEach(([k, v]) => {
             if (v !== undefined && v !== null && v !== "") {
+              // Protect seed type from being overwritten by normal type
+              if (k === "type" && existing.data("type") === "seed" && v === "normal") {
+                return;
+              }
               existing.data(k, v);
             }
           });
@@ -5635,6 +5666,35 @@ class GraphApp {
     const ingestDateTime = new Date().toISOString();
     const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
+    // Prune "Suggested for you" section and everything following it from the DOM
+    let suggestedElement = null;
+    const allElements = doc.querySelectorAll('*');
+    for (const el of allElements) {
+      if (el.textContent.trim().toLowerCase() === "suggested for you") {
+        suggestedElement = el;
+      }
+    }
+
+    if (suggestedElement) {
+      const all = Array.from(doc.querySelectorAll('*'));
+      for (const el of all) {
+        if (el.parentNode) {
+          const pos = suggestedElement.compareDocumentPosition(el);
+          if (el === suggestedElement || (pos & 4) || (pos & 16)) {
+            el.remove();
+          }
+        }
+      }
+    }
+
+    // Also truncate the rawText lines at the match to avoid fallback parsers picking them up
+    let cleanRawText = rawText;
+    const suggestedIdx = lines.findIndex(l => l.toLowerCase() === "suggested for you" || l.toLowerCase().includes("suggested for you"));
+    if (suggestedIdx !== -1) {
+      lines.length = suggestedIdx;
+      cleanRawText = lines.join("\n");
+    }
+
     if (mode === "seed") {
       let igUsername = null;
       let displayName = null;
@@ -5657,7 +5717,7 @@ class GraphApp {
 
       // 3. Extract Stats
       let followers = "Unknown", following = "Unknown", posts = "0";
-      const statsMatch = rawText.match(/(\d+(?:\.\d+)?(?:K|M|B)?)\s+(posts|followers|following)/gi);
+      const statsMatch = cleanRawText.match(/(\d+(?:\.\d+)?(?:K|M|B)?)\s+(posts|followers|following)/gi);
       if (statsMatch) {
         statsMatch.forEach(s => {
           const parts = s.trim().split(/\s+/);
@@ -5745,7 +5805,8 @@ class GraphApp {
       if (profiles.length === 0) {
         const regex = /instagram\.com\/([a-zA-Z0-9._]{3,30})\/($|\?|#)/g;
         let match;
-        while ((match = regex.exec(htmlString)) !== null) {
+        const targetHtml = doc.body ? doc.body.innerHTML : htmlString;
+        while ((match = regex.exec(targetHtml)) !== null) {
           const id = match[1].toLowerCase();
           if (["p","explore","accounts","stories","tv","reels","direct"].includes(id)) continue;
           if (!seenIds.has(id)) {

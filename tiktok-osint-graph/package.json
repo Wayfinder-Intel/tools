@@ -1,7 +1,0 @@
-{
-  "name": "tiktok-osint-graph",
-  "version": "1.1.0",
-  "dependencies": {
-    "cytoscape": "^3.33.2"
-  }
-}

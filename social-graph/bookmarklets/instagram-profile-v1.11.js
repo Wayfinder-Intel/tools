@@ -108,7 +108,24 @@
     });
 
     // Query links inside header and sections (to cover modern DOM structures)
+    var suggestedElement = null;
+    var allEls = document.querySelectorAll('*');
+    for (var i = 0; i < allEls.length; i++) {
+      if (allEls[i].textContent.trim().toLowerCase() === 'suggested for you') {
+        suggestedElement = allEls[i];
+      }
+    }
+
     var links = Array.from(document.querySelectorAll('header a, section a'));
+    if (suggestedElement) {
+      links = links.filter(function (link) {
+        var pos = suggestedElement.compareDocumentPosition(link);
+        if (link === suggestedElement || (pos & 4) || (pos & 16)) {
+          return false;
+        }
+        return true;
+      });
+    }
     links.forEach(function (link) {
       var href = link.href;
       if (!href) return;

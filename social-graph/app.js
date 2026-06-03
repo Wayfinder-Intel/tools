@@ -6137,7 +6137,7 @@ class GraphApp {
         let searchRoot = doc;
         if (h1) {
           let headerArea = h1;
-          for (let k = 0; k < 6; k++) {
+          for (let k = 0; k < 10; k++) {
             if (headerArea && headerArea.parentElement) {
               headerArea = headerArea.parentElement;
             }

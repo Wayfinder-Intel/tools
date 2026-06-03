@@ -188,7 +188,7 @@
       var searchRoot = document;
       if (h1) {
         var headerArea = h1;
-        for (var k = 0; k < 6; k++) {
+        for (var k = 0; k < 10; k++) {
           if (headerArea && headerArea.parentElement) {
             headerArea = headerArea.parentElement;
           }

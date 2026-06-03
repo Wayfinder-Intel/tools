@@ -1,11 +1,11 @@
 /**
  * Wayfinder Connect — Facebook Profile Ingester
- * Version: 1.2
- * Date: 2026-05-22
+ * Version: 1.3
+ * Date: 2026-06-03
  *
  * USAGE:
  *   Create a new bookmark in Chrome. Set the URL to the contents of
- *   facebook-profile-v1.2.min.js (the single-line minified version).
+ *   facebook-profile-v1.3.min.js (the single-line minified version).
  *   Navigate to any Facebook profile page and click the bookmark.
  *
  * WHAT IT CAPTURES:
@@ -193,6 +193,13 @@
         if (/^(posts|about|friends|photos|reels|videos|more)$/i.test(t)) return false;
         if (t.length < 3 || /^\d+$/.test(t)) return false;
         if (/^(message|follow|subscribe|add friend|following|liked|like)$/i.test(t)) return false;
+        
+        // Exclude display name, vanity slug, and numeric user ID to prevent name from being captured as bio
+        var lowerT = t.toLowerCase();
+        if (lowerT === name.toLowerCase()) return false;
+        if (van && lowerT === van.toLowerCase()) return false;
+        if (nm && lowerT === nm.toLowerCase()) return false;
+        
         return true;
       });
       if (bioSpan) {
@@ -271,7 +278,7 @@
       '.sl{font-size:10px;opacity:.55;text-transform:uppercase;letter-spacing:.05em;margin:6px 0 3px}'
     ].join('');
     sh.appendChild(se);
-
+ 
     var cd = document.createElement('div');
     cd.className = 'c';
 
@@ -298,7 +305,7 @@
       : '';
 
     cd.innerHTML =
-      '<div class="h"><span class="t">Wayfinder Connect \u2014 Facebook Profile Ingester v1.2</span><button class="btn cb" id="cl">Close</button></div>' +
+      '<div class="h"><span class="t">Wayfinder Connect \u2014 Facebook Profile Ingester v1.3</span><button class="btn cb" id="cl">Close</button></div>' +
       (av ? '<img class="av" src="' + av + '" onerror="this.style.display=\'none\'">' : '') +
       '<div class="g">' +
         '<span class="l">Name</span><span class="v">'    + name  + '</span>' +

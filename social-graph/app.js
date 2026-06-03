@@ -2756,6 +2756,33 @@ class GraphApp {
           }
         }
 
+        // Render personal detail chips dynamically
+        const personalDetailsBox = document.getElementById("hover-personal-details-box");
+        if (personalDetailsBox) {
+          personalDetailsBox.innerHTML = "";
+          const details = data.personalDetails;
+          if (details && Array.isArray(details) && details.length > 0) {
+            details.forEach(d => {
+              const chip = document.createElement("span");
+              chip.className = "hover-personal-detail-chip";
+              
+              const lowerText = d.toLowerCase();
+              let emoji = "ℹ️";
+              if (lowerText.includes("lives in")) emoji = "📍";
+              else if (lowerText.includes("from")) emoji = "🏠";
+              else if (lowerText.includes("complicated") || lowerText.includes("relationship") || lowerText.includes("married") || lowerText.includes("single") || lowerText.includes("engaged") || lowerText.includes("divorced")) emoji = "💍";
+              else if (lowerText.includes("male") || lowerText.includes("female") || lowerText.includes("binary") || lowerText.includes("trans")) emoji = "👤";
+              else if (/birthday|born/i.test(lowerText) || /^(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d+/i.test(lowerText)) emoji = "🎂";
+              
+              chip.textContent = `${emoji} ${d}`;
+              personalDetailsBox.appendChild(chip);
+            });
+            personalDetailsBox.style.display = "flex";
+          } else {
+            personalDetailsBox.style.display = "none";
+          }
+        }
+
         // Note snippet
         const hoverNoteRow = document.getElementById("hover-note-row");
         const hoverNoteSnippet = document.getElementById("hover-note-snippet");
@@ -2854,6 +2881,13 @@ class GraphApp {
         txt = `Username: @${cleanId}\nDisplay Name: ${activeHoverNodeData.label || "N/A"}\nFriends: ${activeHoverNodeData.followers || "Unknown"}\nIngested: ${timeStr}\nBio:\n${activeHoverNodeData.bio || ""}`;
       } else {
         txt = `Username: @${cleanId}\nDisplay Name: ${activeHoverNodeData.label || "N/A"}\nFollowing: ${activeHoverNodeData.following || "Unknown"}\nFollowers: ${activeHoverNodeData.followers || "Unknown"}\nIngested: ${timeStr}\nBio:\n${activeHoverNodeData.bio || ""}`;
+      }
+
+      if (activeHoverNodeData.personalDetails && activeHoverNodeData.personalDetails.length > 0) {
+        txt += `\nPersonal Details:\n- ${activeHoverNodeData.personalDetails.join('\n- ')}`;
+      }
+      if (activeHoverNodeData.connections && activeHoverNodeData.connections.length > 0) {
+        txt += `\nConnected To:\n- ${activeHoverNodeData.connections.map(c => c.text).join('\n- ')}`;
       }
 
       if (navigator.clipboard && window.isSecureContext) {
@@ -6109,6 +6143,13 @@ class GraphApp {
           if (/^(posts|about|friends|photos|reels|videos|more)$/i.test(t)) return false;
           if (t.length < 3 || /^\d+$/.test(t)) return false;
           if (/^(message|follow|subscribe|add friend|following|liked|like)$/i.test(t)) return false;
+          
+          // Exclude display name, vanity slug, and numeric user ID to prevent name from being captured as bio
+          const lowerT = t.toLowerCase();
+          if (lowerT === displayName.toLowerCase()) return false;
+          if (id && lowerT === id.toLowerCase()) return false;
+          if (id && lowerT === id.replace(/^fb_/, '').toLowerCase()) return false;
+          
           return true;
         });
         if (bioSpan) {
@@ -6924,6 +6965,12 @@ class GraphApp {
                   children: [new TextRun({ text: "Bio: ", bold: true }), new TextRun(d.bio || "N/A")],
                   spacing: { before: 80 }
                 }),
+                ...(d.personalDetails && d.personalDetails.length > 0 ? [
+                  new Paragraph({
+                    children: [new TextRun({ text: "Personal Details: ", bold: true }), new TextRun(d.personalDetails.join(" | "))],
+                    spacing: { before: 80 }
+                  })
+                ] : []),
                 new Paragraph({ 
                   children: [
                     new TextRun({ text: "Notes: ", bold: true, color: "2ea8ff" }), 

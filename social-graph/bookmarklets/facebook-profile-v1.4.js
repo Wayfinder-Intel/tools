@@ -1,11 +1,11 @@
 /**
  * Wayfinder Connect — Facebook Profile Ingester
- * Version: 1.3
+ * Version: 1.4
  * Date: 2026-06-03
  *
  * USAGE:
  *   Create a new bookmark in Chrome. Set the URL to the contents of
- *   facebook-profile-v1.3.min.js (the single-line minified version).
+ *   facebook-profile-v1.4.min.js (the single-line minified version).
  *   Navigate to any Facebook profile page and click the bookmark.
  *
  * WHAT IT CAPTURES:
@@ -183,7 +183,20 @@
     // ── INTRO BIO ─────────────────────────────────────────────────────────────
     var introBio = '';
     try {
-      var spans = Array.from(document.querySelectorAll('span[dir="auto"]'));
+      // Find a common ancestor of h1 to restrict the search for the bio, preventing
+      // matching elements from the top navigation bar, sidebar, or global search.
+      var searchRoot = document;
+      if (h1) {
+        var headerArea = h1;
+        for (var k = 0; k < 6; k++) {
+          if (headerArea && headerArea.parentElement) {
+            headerArea = headerArea.parentElement;
+          }
+        }
+        if (headerArea) searchRoot = headerArea;
+      }
+
+      var spans = Array.from(searchRoot.querySelectorAll('span[dir="auto"]'));
       var bioSpan = spans.find(function (s) {
         var t = s.innerText.trim();
         if (!t) return false;
@@ -192,7 +205,7 @@
         if (/followers|following|mutual friends/i.test(t)) return false;
         if (/^(posts|about|friends|photos|reels|videos|more)$/i.test(t)) return false;
         if (t.length < 3 || /^\d+$/.test(t)) return false;
-        if (/^(message|follow|subscribe|add friend|following|liked|like)$/i.test(t)) return false;
+        if (/^(message|follow|subscribe|add friend|following|liked|like|search|edit profile|add to story|view as)$/i.test(t)) return false;
         
         // Exclude display name, vanity slug, and numeric user ID to prevent name from being captured as bio
         var lowerT = t.toLowerCase();
@@ -278,7 +291,7 @@
       '.sl{font-size:10px;opacity:.55;text-transform:uppercase;letter-spacing:.05em;margin:6px 0 3px}'
     ].join('');
     sh.appendChild(se);
- 
+
     var cd = document.createElement('div');
     cd.className = 'c';
 
@@ -305,7 +318,7 @@
       : '';
 
     cd.innerHTML =
-      '<div class="h"><span class="t">Wayfinder Connect \u2014 Facebook Profile Ingester v1.3</span><button class="btn cb" id="cl">Close</button></div>' +
+      '<div class="h"><span class="t">Wayfinder Connect \u2014 Facebook Profile Ingester v1.4</span><button class="btn cb" id="cl">Close</button></div>' +
       (av ? '<img class="av" src="' + av + '" onerror="this.style.display=\'none\'">' : '') +
       '<div class="g">' +
         '<span class="l">Name</span><span class="v">'    + name  + '</span>' +

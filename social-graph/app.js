@@ -6133,7 +6133,19 @@ class GraphApp {
       // Extract intro bio from span[dir="auto"]
       let introBio = "";
       try {
-        const spans = Array.from(doc.querySelectorAll('span[dir="auto"]'));
+        const h1 = Array.from(doc.querySelectorAll('h1.html-h1')).find(e => e.querySelector('[role="button"]')) || doc.querySelector('h1.html-h1');
+        let searchRoot = doc;
+        if (h1) {
+          let headerArea = h1;
+          for (let k = 0; k < 6; k++) {
+            if (headerArea && headerArea.parentElement) {
+              headerArea = headerArea.parentElement;
+            }
+          }
+          if (headerArea) searchRoot = headerArea;
+        }
+
+        const spans = Array.from(searchRoot.querySelectorAll('span[dir="auto"]'));
         const bioSpan = spans.find(s => {
           const t = s.textContent.trim();
           if (!t) return false;
@@ -6142,7 +6154,7 @@ class GraphApp {
           if (/followers|following|mutual friends/i.test(t)) return false;
           if (/^(posts|about|friends|photos|reels|videos|more)$/i.test(t)) return false;
           if (t.length < 3 || /^\d+$/.test(t)) return false;
-          if (/^(message|follow|subscribe|add friend|following|liked|like)$/i.test(t)) return false;
+          if (/^(message|follow|subscribe|add friend|following|liked|like|search|edit profile|add to story|view as)$/i.test(t)) return false;
           
           // Exclude display name, vanity slug, and numeric user ID to prevent name from being captured as bio
           const lowerT = t.toLowerCase();

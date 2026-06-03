@@ -6,7 +6,7 @@ function main() {
     const indexPath = path.join(toolsDir, 'index.html');
 
     const mappings = {
-        "social-graph/bookmarklets/facebook-profile-v1.3.min.js": "bm-facebook-profile",
+        "social-graph/bookmarklets/facebook-profile-v1.4.min.js": "bm-facebook-profile",
         "social-graph/bookmarklets/facebook-friends-v1.2.min.js": "bm-facebook-friends",
         "social-graph/bookmarklets/instagram-profile-v1.12.min.js": "bm-instagram-profile",
         "social-graph/bookmarklets/instagram-friends-v1.2.min.js": "bm-instagram-friends",

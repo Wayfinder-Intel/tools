@@ -4696,8 +4696,20 @@ class GraphApp {
     // Helper to identify visibility/ghosting state
     const isVisible = (el) => el.visible() && !el.hasClass("faded") && !el.hasClass("ktruss-faded");
 
-    // Always branch off from all currently visible (non-ghosted) nodes
-    const targetNodes = this.cy.nodes().filter(isVisible);
+    let targetNodes;
+    const selectedNodes = this.cy.nodes(":selected").filter(isVisible);
+
+    if (this.ffpMode !== "off") {
+      // In FFP mode, we always isolate all currently visible (non-ghosted) nodes along the FFP paths
+      targetNodes = this.cy.nodes().filter(isVisible);
+    } else if (selectedNodes.length > 0) {
+      // If there is a selection, we isolate only the selected nodes
+      targetNodes = selectedNodes;
+    } else {
+      // Otherwise, we isolate all visible nodes
+      targetNodes = this.cy.nodes().filter(isVisible);
+    }
+
     if (targetNodes.length === 0) {
       this.showToast("No visible nodes to isolate!");
       return;

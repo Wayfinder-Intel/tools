@@ -5259,6 +5259,31 @@ class GraphApp {
               if (k === "type" && existing.data("type") === "seed" && v === "normal") {
                 return;
               }
+              // Protect stats (followers, following, likes) from being overwritten by 'Unknown' or 'unkn'
+              if ((k === "followers" || k === "following" || k === "likes") && (v === "Unknown" || v === "unkn")) {
+                const cur = existing.data(k);
+                if (cur && cur !== "Unknown" && cur !== "unkn") {
+                  return;
+                }
+              }
+              // Protect real avatar image from being overwritten by a placeholder
+              if (k === "image") {
+                const curImg = existing.data("image") || "";
+                const newImg = v || "";
+                const isCurPlaceholder = curImg.includes("ui-avatars.com") || curImg.includes("dicebear.com");
+                const isNewPlaceholder = newImg.includes("ui-avatars.com") || newImg.includes("dicebear.com");
+                if (!isCurPlaceholder && isNewPlaceholder) {
+                  return;
+                }
+              }
+              // Protect real bio from being overwritten by empty or placeholder bio
+              if (k === "bio") {
+                const curBio = existing.data("bio") || "";
+                const newBio = v || "";
+                if (curBio && !newBio) {
+                  return;
+                }
+              }
               existing.data(k, v);
             }
           });
@@ -6297,9 +6322,12 @@ class GraphApp {
       
       node.data("captureTime", now);
 
-      // Override avatar if the new profile has a real image, unconditionally overwriting whatever was there
+      // Override avatar if the new profile has a real image, protecting existing real images from placeholders
       const newImg = profile.image || "";
-      if (newImg && !newImg.includes("dicebear.com")) {
+      const curImg = node.data("image") || "";
+      const isCurPlaceholder = curImg.includes("ui-avatars.com") || curImg.includes("dicebear.com");
+      const isNewPlaceholder = newImg.includes("ui-avatars.com") || newImg.includes("dicebear.com");
+      if (newImg && (!isNewPlaceholder || isCurPlaceholder)) {
         node.data("image", newImg);
       }
     } else {

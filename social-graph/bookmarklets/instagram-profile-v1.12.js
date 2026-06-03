@@ -117,15 +117,19 @@
     }
 
     var links = Array.from(document.querySelectorAll('header a, section a'));
-    if (suggestedElement) {
-      links = links.filter(function (link) {
+    links = links.filter(function (link) {
+      // Exclude navigation bars, footer bars, and layout menus
+      if (link.closest('footer, [role="contentinfo"], nav, [role="navigation"]')) {
+        return false;
+      }
+      if (suggestedElement) {
         var pos = suggestedElement.compareDocumentPosition(link);
         if (link === suggestedElement || (pos & 4) || (pos & 16)) {
           return false;
         }
-        return true;
-      });
-    }
+      }
+      return true;
+    });
     links.forEach(function (link) {
       var href = link.href;
       if (!href) return;

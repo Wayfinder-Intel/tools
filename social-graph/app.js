@@ -4364,13 +4364,14 @@ class GraphApp {
     onClickIf(document.getElementById("export-png-btn"), () => {
       const bg = this.isLightMode ? "#f8f9fa" : "#0a0d13";
       try {
-        const dataUri = this.cy.png({
-          output: "base64uri",
+        const blob = this.cy.png({
+          output: "blob",
           full: true,
           scale: 2,
           bg,
         });
-        this.downloadFile(dataUri, `wayfinder-graph-${this.getTimestamp()}.png`);
+        const url = URL.createObjectURL(blob);
+        this.downloadFile(url, `wayfinder-graph-${this.getTimestamp()}.png`);
         this.showToast("Graph exported as PNG.");
       } catch (err) {
         console.error("PNG export failed:", err);

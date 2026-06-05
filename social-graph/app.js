@@ -4363,14 +4363,19 @@ class GraphApp {
 
     onClickIf(document.getElementById("export-png-btn"), () => {
       const bg = this.isLightMode ? "#f8f9fa" : "#0a0d13";
-      const dataUri = this.cy.png({
-        output: "base64uri",
-        full: true,
-        scale: 2,
-        bg,
-      });
-      this.downloadFile(dataUri, `wayfinder-graph-${this.getTimestamp()}.png`);
-      this.showToast("Graph exported as PNG.");
+      try {
+        const dataUri = this.cy.png({
+          output: "base64uri",
+          full: true,
+          scale: 2,
+          bg,
+        });
+        this.downloadFile(dataUri, `wayfinder-graph-${this.getTimestamp()}.png`);
+        this.showToast("Graph exported as PNG.");
+      } catch (err) {
+        console.error("PNG export failed:", err);
+        this.showToast("PNG export failed due to cross-origin images. Try SVG or JSON export instead.");
+      }
     });
 
     onClickIf(document.getElementById("export-svg-btn"), () => {
@@ -4463,9 +4468,7 @@ class GraphApp {
       !url.startsWith("data:") &&
       !url.includes("wsrv.nl") &&
       !url.includes("dicebear.com") &&
-      (url.includes("tiktokcdn.com") || url.includes("tiktok.com") || 
-       url.includes("fbcdn.net") || url.includes("cdninstagram.com") || 
-       url.includes("instagram.com"))
+      (url.startsWith("http://") || url.startsWith("https://"))
     ) {
       return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=200&output=webp`;
     }
@@ -7833,6 +7836,41 @@ class GraphApp {
 
 // Boot application
 window.addEventListener("DOMContentLoaded", () => {
+  // Patch C2S (canvas2svg) to prevent "Attempted to apply path command to node g" errors during SVG export
+  if (typeof C2S !== "undefined" && C2S.prototype) {
+    C2S.prototype.__applyCurrentDefaultPath = function () {
+      if (this.__currentElement.nodeName === "path") {
+        var d = this.__currentDefaultPath;
+        this.__currentElement.setAttribute("d", d);
+      } else {
+        const pathElement = this.__createElement("path");
+        this.__currentElement.appendChild(pathElement);
+        this.__currentElement = pathElement;
+        var d = this.__currentDefaultPath;
+        this.__currentElement.setAttribute("d", d);
+      }
+    };
+
+    const origSave = C2S.prototype.save;
+    C2S.prototype.save = function () {
+      if (this.__currentElement.nodeName === "path") {
+        !this.prevented && (this.prevented = 0);
+        this.prevented += 1;
+        return;
+      }
+      origSave.call(this);
+    };
+
+    const origRestore = C2S.prototype.restore;
+    C2S.prototype.restore = function () {
+      if (this.__currentElement.nodeName === "path" && this.prevented) {
+        this.prevented -= 1;
+        return;
+      }
+      origRestore.call(this);
+    };
+  }
+
   window.app = new GraphApp();
 
   // Check for isolated workspace handoff

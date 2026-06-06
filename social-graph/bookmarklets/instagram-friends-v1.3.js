@@ -1,17 +1,17 @@
 /**
  * Wayfinder Connect — Instagram Friends Ingester
- * Version: 1.2
- * Date: 2026-05-24
+ * Version: 1.3
+ * Date: 2026-06-06
  *
  * USAGE:
  *   Create a new bookmark in Chrome. Set the URL to the contents of
- *   instagram-friends-v1.2.min.js.
+ *   instagram-friends-v1.3.min.js.
  *   Navigate to any Instagram profile page, click on "followers" or "following"
- *   to open the pop-up modal dialog, and click the bookmark.
+ *   to open the pop-up modal dialog, or open a "suggested for you" list, and click the bookmark.
  *
  * WHAT IT CAPTURES:
  *   - Profile Owner (Username, Name, Avatar)
- *   - Followers/Following list loaded in modal (Username, Name, URL, Avatar, Order Rank)
+ *   - Followers/Following/Suggested list loaded in modal (Username, Name, URL, Avatar, Order Rank)
  *
  * JSON OUTPUT SHAPE:
  *   {
@@ -23,7 +23,7 @@
  *       url: "https://www.instagram.com/username",
  *       avatar: "https://..."
  *     },
- *     following: [  // Or "followers" if parsing a follower list modal
+ *     suggested: [  // Or "following" / "followers" depending on mode
  *       {
  *         id: "ig_followed_user",
  *         name: "Followed Name",
@@ -102,18 +102,28 @@
       return;
     }
 
-    // ── DETECT LIST TYPE (FOLLOWERS VS FOLLOWING) ─────────────────────────────
+    // ── DETECT LIST TYPE (FOLLOWERS VS FOLLOWING VS SUGGESTED) ────────────────
     var listType = 'following'; // default
-    if (location.pathname.indexOf('/followers') !== -1) {
-      listType = 'followers';
-    } else if (location.pathname.indexOf('/following') !== -1) {
-      listType = 'following';
-    } else if (dialog) {
+    if (dialog) {
       var textStr = dialog.innerText.substring(0, 1000).toLowerCase();
-      if (textStr.indexOf('followers') !== -1) {
+      if (textStr.indexOf('suggested for you') !== -1 || textStr.indexOf('suggested') !== -1) {
+        listType = 'suggested';
+      } else if (textStr.indexOf('followers') !== -1) {
         listType = 'followers';
       } else if (textStr.indexOf('following') !== -1) {
         listType = 'following';
+      }
+    } else if (location.pathname.indexOf('/followers') !== -1) {
+      listType = 'followers';
+    } else if (location.pathname.indexOf('/following') !== -1) {
+      listType = 'following';
+    } else {
+      var h2Headers = Array.from(document.querySelectorAll('h2'));
+      var hasSuggestedHeader = h2Headers.some(function (h) {
+        return h.innerText.toLowerCase().indexOf('suggested') !== -1;
+      });
+      if (hasSuggestedHeader) {
+        listType = 'suggested';
       }
     }
 
@@ -232,7 +242,7 @@
     var cd = document.createElement('div');
     cd.className = 'c';
 
-    var listTitleText = listType.substring(0,1).toUpperCase() + listType.substring(1);
+    var listTitleText = listType === 'suggested' ? 'Suggested for you' : listType.substring(0, 1).toUpperCase() + listType.substring(1);
     var friendsHtml = friendsList.length
       ? friendsList.map(function (f) {
           return '<div class="fcard">' +

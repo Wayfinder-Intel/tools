@@ -10,51 +10,60 @@ function main() {
 
     console.log("--- Bumping versions by 0.1 ---");
 
-    // 1. Bump package.json (1.1.0 -> 1.2.0)
+    // 1. Bump package.json (1.2.0 -> 1.3.0)
     const pkgPath = path.join(socialGraphDir, 'package.json');
     if (fs.existsSync(pkgPath)) {
         const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
         const oldVer = pkg.version;
-        pkg.version = "1.2.0";
+        pkg.version = "1.3.0";
         fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n", 'utf8');
         console.log(`Bumped social-graph/package.json: ${oldVer} -> ${pkg.version}`);
     }
 
-    // 2. Bump social-graph/index.html (Version 2.0 -> Version 2.1)
+    // 2. Bump social-graph/index.html (Version 2.3 -> Version 2.4)
     const graphIndexPath = path.join(socialGraphDir, 'index.html');
     if (fs.existsSync(graphIndexPath)) {
         let indexHtml = fs.readFileSync(graphIndexPath, 'utf8');
-        indexHtml = indexHtml.replace('Version 2.0', 'Version 2.1');
+        indexHtml = indexHtml.replace('Version 2.3', 'Version 2.4');
         fs.writeFileSync(graphIndexPath, indexHtml, 'utf8');
-        console.log(`Bumped social-graph/index.html to Version 2.1`);
+        console.log(`Bumped social-graph/index.html to Version 2.4`);
     }
 
     // 3. Process bookmarklets
     const bookmarkletFiles = [
-        { name: 'facebook-friends', oldVer: '1.1', newVer: '1.2' },
-        { name: 'facebook-profile', oldVer: '1.1', newVer: '1.2' },
-        { name: 'instagram-friends', oldVer: '1.1', newVer: '1.2' },
-        { name: 'instagram-profile', oldVer: '1.11', newVer: '1.12' },
-        { name: 'tiktok-friends', oldVer: '1.1', newVer: '1.2' },
-        { name: 'tiktok-profile', oldVer: '1.1', newVer: '1.2' }
+        { name: 'facebook-friends', oldVer: '1.2', newVer: '1.2' },
+        { name: 'facebook-profile', oldVer: '1.4', newVer: '1.4' },
+        { name: 'instagram-friends', oldVer: '1.2', newVer: '1.3' },
+        { name: 'instagram-profile', oldVer: '1.12', newVer: '1.12' },
+        { name: 'tiktok-friends', oldVer: '1.2', newVer: '1.2' },
+        { name: 'tiktok-profile', oldVer: '1.2', newVer: '1.2' }
     ];
 
     bookmarkletFiles.forEach(bm => {
+        if (bm.oldVer === bm.newVer) {
+            // No version change needed for this bookmarklet
+            return;
+        }
+
         const oldFile = `${bm.name}-v${bm.oldVer}.js`;
         const newFile = `${bm.name}-v${bm.newVer}.js`;
         const oldPath = path.join(bookmarkletsDir, oldFile);
         const newPath = path.join(bookmarkletsDir, newFile);
 
         if (fs.existsSync(oldPath)) {
-            let code = fs.readFileSync(oldPath, 'utf8');
-            
-            // Replace comments and internal UI strings globally
-            const escapedOldVer = bm.oldVer.replace(/\./g, '\\.');
-            code = code.replace(new RegExp(`Version:\\s*${escapedOldVer}`, 'g'), `Version: ${bm.newVer}`);
-            code = code.replace(new RegExp(`v${escapedOldVer}`, 'g'), `v${bm.newVer}`);
+            if (!fs.existsSync(newPath)) {
+                let code = fs.readFileSync(oldPath, 'utf8');
+                
+                // Replace comments and internal UI strings globally
+                const escapedOldVer = bm.oldVer.replace(/\./g, '\\.');
+                code = code.replace(new RegExp(`Version:\\s*${escapedOldVer}`, 'g'), `Version: ${bm.newVer}`);
+                code = code.replace(new RegExp(`v${escapedOldVer}`, 'g'), `v${bm.newVer}`);
 
-            fs.writeFileSync(newPath, code, 'utf8');
-            console.log(`Created new bookmarklet source: ${newFile}`);
+                fs.writeFileSync(newPath, code, 'utf8');
+                console.log(`Created new bookmarklet source: ${newFile}`);
+            } else {
+                console.log(`New bookmarklet source already exists: ${newFile}, skipping creation`);
+            }
 
             // Delete old files
             fs.unlinkSync(oldPath);
@@ -73,6 +82,7 @@ function main() {
     if (fs.existsSync(updateScriptPath)) {
         let updateScript = fs.readFileSync(updateScriptPath, 'utf8');
         bookmarkletFiles.forEach(bm => {
+            if (bm.oldVer === bm.newVer) return;
             const oldMap = `social-graph/bookmarklets/${bm.name}-v${bm.oldVer}.min.js`;
             const newMap = `social-graph/bookmarklets/${bm.name}-v${bm.newVer}.min.js`;
             updateScript = updateScript.replace(oldMap, newMap);

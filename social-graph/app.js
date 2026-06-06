@@ -261,6 +261,15 @@ class GraphApp {
         },
       },
       {
+        selector: "edge.suggested-friend",
+        style: {
+          color: "#c084fc",
+          "line-color": "#c084fc",
+          "target-arrow-color": "#c084fc",
+          "source-arrow-color": "#c084fc",
+        },
+      },
+      {
         selector: "node.faded",
         style: {
           opacity: 0.15,
@@ -3203,6 +3212,16 @@ class GraphApp {
 
           // Add new style class
           activeRadialEdge.addClass(`${type}-${finalStyle}`);
+
+          // Transition logic: if line style is changed to solid, and it was a suggested-friend, clean it up!
+          if (type === "line" && finalStyle === "solid" && activeRadialEdge.hasClass("suggested-friend")) {
+            activeRadialEdge.removeClass("suggested-friend");
+            if (activeRadialEdge.data("note") === "suggested friend") {
+              activeRadialEdge.data("note", null);
+              activeRadialEdge.removeClass("permanent-note");
+              this.refreshNoteBadges();
+            }
+          }
         });
 
         // Keep menu open for rapid toggling but update active states
@@ -3317,6 +3336,17 @@ class GraphApp {
       if (!finalNote) {
         activeNoteNode.removeClass("permanent-note");
       }
+
+      // Transition logic: if this is an edge and it is a suggested-friend link, and the note is edited
+      if (activeNoteNode.isEdge() && activeNoteNode.hasClass("suggested-friend")) {
+        const textLower = text.toLowerCase();
+        if (!textLower || textLower.indexOf("suggested") === -1) {
+          activeNoteNode.removeClass("suggested-friend");
+          activeNoteNode.removeClass("line-dashed");
+          activeNoteNode.addClass("line-solid");
+        }
+      }
+
       this.refreshNoteBadges();
       closeNoteEditor();
       this.showToast(finalNote ? "Note saved." : "Note cleared.");
@@ -4909,10 +4939,16 @@ class GraphApp {
         }
       }
 
+      let extraClasses = "";
+      if (type === "suggested") {
+        edgeData.note = "suggested friend";
+        extraClasses = " permanent-note line-dashed suggested-friend";
+      }
+
       return {
         group: "edges",
         data: edgeData,
-        classes: arrowShape === "none" ? "arrow-none" : "arrow-right"
+        classes: (arrowShape === "none" ? "arrow-none" : "arrow-right") + extraClasses
       };
     };
 
@@ -5147,7 +5183,7 @@ class GraphApp {
     };
 
     // Case 1: Friends/Followers/Following list JSON format (contains owner and a list array)
-    const connKey = ["friends", "followers", "following", "connections", "followingList", "followersList", "friendsList", "profiles", "users", "items", "data", "list", "members", "contacts"].find(k => parsed && Array.isArray(parsed[k])) ||
+    const connKey = ["friends", "followers", "following", "suggested", "connections", "followingList", "followersList", "friendsList", "suggestedList", "profiles", "users", "items", "data", "list", "members", "contacts"].find(k => parsed && Array.isArray(parsed[k])) ||
                     (parsed && Object.keys(parsed).find(k => Array.isArray(parsed[k])));
     if (parsed && parsed.owner && connKey) {
       const ownerNode = makeNode(parsed.owner, true);
@@ -5173,6 +5209,8 @@ class GraphApp {
           edge = makeEdge(ownerNode.data.id, itemNode.data.id, rankVal, platform, "following");
         } else if (connKey === "followers" || connKey === "followersList") {
           edge = makeEdge(itemNode.data.id, ownerNode.data.id, rankVal, platform, "followers");
+        } else if (connKey === "suggested" || connKey === "suggestedList") {
+          edge = makeEdge(ownerNode.data.id, itemNode.data.id, rankVal, platform, "suggested");
         } else {
           edge = makeEdge(ownerNode.data.id, itemNode.data.id, rankVal, platform, "friends");
         }
@@ -5182,7 +5220,7 @@ class GraphApp {
     }
 
     // Case 1.5: Root object has a profiles/users/friends array, but no owner
-    const rootArrayKey = ["friends", "followers", "following", "connections", "followingList", "followersList", "friendsList", "profiles", "users", "items", "data", "list", "members", "contacts"].find(k => parsed && Array.isArray(parsed[k])) ||
+    const rootArrayKey = ["friends", "followers", "following", "suggested", "connections", "followingList", "followersList", "friendsList", "suggestedList", "profiles", "users", "items", "data", "list", "members", "contacts"].find(k => parsed && Array.isArray(parsed[k])) ||
                          (parsed && !parsed.group && !parsed.data && Object.keys(parsed).find(k => Array.isArray(parsed[k])));
     if (parsed && !parsed.owner && rootArrayKey && !parsed.group && !parsed.data) {
       const items = parsed[rootArrayKey];
